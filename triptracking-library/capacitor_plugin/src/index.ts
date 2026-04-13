@@ -1,9 +1,8 @@
 import { registerPlugin } from '@capacitor/core';
-import type { triptrackingPlugin } from './definitions';
 
-const triptracking = registerPlugin<triptrackingPlugin>('triptracking', {
-  web: () => import('./web').then(m => new m.triptrackingWeb()),
-});
+import type { TripTrackerPlugin } from './definitions';
+
+const TripTracker = registerPlugin<TripTrackerPlugin>('TripTracker');
 
 export * from './definitions';
-export { triptracking };
+export { TripTracker };
