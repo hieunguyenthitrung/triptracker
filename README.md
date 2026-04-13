@@ -3,13 +3,13 @@ TripTracker is a GPS-based trip tracking and navigation application designed for
 
 Cross-platform library for iOS, Android, Flutter, Ionic
 
-# Android Native
+**1. Android Native
 gradleimplementation 'com.github.hieunguyentt:triptracking-android:1.0.0'
 
-# iOS Native
+**2. iOS Native
 rubypod 'triptracking', :git => 'https://github.com/hieunguyentt/TripTracker.git', :tag => '1.0.0'
 
-# Flutter
+**3. Flutter
 dependencies:
   triptracking_flutter:
     git:
@@ -17,7 +17,7 @@ dependencies:
       path: flutter_plugin
       ref: 1.0.0
 
-# Ionic
+**4. Ionic
 npm install github:hieunguyentt/TripTracker#1.0.0
 npx cap sync
 
