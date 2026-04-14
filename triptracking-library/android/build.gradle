@@ -9,9 +9,9 @@ android {
 
     sourceSets {
         main {
-            java.srcDirs = ['src/main/java']
-            res.srcDirs  = ['src/main/res']
-            manifest.srcFile 'src/main/AndroidManifest.xml'
+            java.srcDirs = ['app/src/main/java']
+            res.srcDirs  = ['app/src/main/res']
+            manifest.srcFile 'app/src/main/AndroidManifest.xml'
         }
     }
 
@@ -74,7 +74,7 @@ afterEvaluate {
                 from components.release  // ← không nested afterEvaluate nữa
                 groupId    = 'com.github.hieunguyentt'
                 artifactId = 'triptracking-android'
-                version    = '1.0.4'
+                version    = '1.0.5'
             }
         }
         repositories {
