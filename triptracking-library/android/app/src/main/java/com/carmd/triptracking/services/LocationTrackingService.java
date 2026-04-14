@@ -52,6 +52,8 @@ public class LocationTrackingService extends Service implements
         LocationListener {
 
     private static final String TAG = "LocationTrackingService";
+    private static LocationTrackingService instance;
+    public static LocationTrackingService getInstance() { return instance; }
     private static final int    NOTIFICATION_ID = 1001;
     private static final String CHANNEL_ID      = "location_tracking";
 
@@ -168,6 +170,7 @@ public class LocationTrackingService extends Service implements
 
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         sensorTracker   = new SensorBasedLocationTracker(this, this);
+        instance = this;
         database        = LocationDatabase.getInstance(this);
 
         PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
@@ -553,7 +556,7 @@ public class LocationTrackingService extends Service implements
     //  GPS dead   (> GPS_DEAD_MS)               → return 0
     // =========================================================================
 
-    private float getEffectiveSpeed() {
+    public float getEffectiveSpeed() {
         if (lastGpsUpdateTime == 0L) return 0f; // GPS never fired
 
         long silenceMs = System.currentTimeMillis() - lastGpsUpdateTime;
@@ -1332,4 +1335,11 @@ public class LocationTrackingService extends Service implements
                 AlarmManager.INTERVAL_DAY, pi);
         Log.d(TAG, "Daily log sender scheduled at 12:00 PM");
     }
+
+    public long getCurrentTripDuration() {
+        if (!isTracking || tripStartTime == 0) return 0;
+        return (System.currentTimeMillis() - tripStartTime) / 1000;
+    }
+    public android.location.Location getLastKnownLocation() { return lastGpsLocation; }
+
 }
