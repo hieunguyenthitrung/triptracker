@@ -20,7 +20,7 @@ public final class TripTrackerSDK {
     public static void initialize(Context context) {
         if (initialized) return;
         appContext = context.getApplicationContext();
-        LogcatWriter.getInstance(appContext).startCapture();
+        LogcatWriter.start(appContext);
         LocationDatabase.getInstance(appContext);
         Intent si = new Intent(appContext, LocationTrackingService.class);
         appContext.startForegroundService(si);
