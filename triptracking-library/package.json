@@ -10,7 +10,12 @@
     "android": { "src": "triptracking-library/capacitor_plugin/android" }
   },
   "unpkg": "dist/plugin.js",
-  "files": ["dist/", "ios/", "android/", "src/"],
+  "files": [
+    "triptracking-library/capacitor_plugin/dist/",
+    "triptracking-library/capacitor_plugin/android/",
+    "triptracking-library/capacitor_plugin/ios/",
+    "triptracking-library/capacitor_plugin/src/"
+  ],
   "keywords": ["capacitor", "plugin", "ios", "android", "triptracker", "gps", "geofence"],
   "scripts": {
     "build": "npm run clean && tsc && rollup -c rollup.config.mjs",
