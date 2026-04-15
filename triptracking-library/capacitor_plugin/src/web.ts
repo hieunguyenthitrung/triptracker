@@ -13,7 +13,19 @@ export class TripTrackerWeb extends WebPlugin implements TripTrackerPlugin {
   }
 
   async openGeofenceManager(): Promise<{ opened: boolean }> {
-    throw this.unavailable('openGeofenceManager is only available on iOS');
+    throw this.unavailable('openGeofenceManager is only available on iOS/Android');
+  }
+
+  async openMainView(): Promise<{ opened: boolean }> {
+    throw this.unavailable('openMainView is only available on iOS/Android');
+  }
+
+  async openHistory(): Promise<{ opened: boolean }> {
+    throw this.unavailable('openHistory is only available on iOS/Android');
+  }
+
+  async openDailyLocations(): Promise<{ opened: boolean }> {
+    throw this.unavailable('openDailyLocations is only available on iOS/Android');
   }
 
   async getTrackingStatus(): Promise<any> {

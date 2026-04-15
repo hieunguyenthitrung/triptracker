@@ -26,6 +26,9 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "openSettings", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "openNotificationSettings", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "openGeofenceManager", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "openMainView", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "openHistory", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "openDailyLocations", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getTrackingStatus", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getCurrentLocation", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getTripHistory", returnType: CAPPluginReturnPromise),
@@ -70,6 +73,42 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func openGeofenceManager(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
             let vc = GeofenceViewController()
+            let nav = UINavigationController(rootViewController: vc)
+            nav.modalPresentationStyle = .fullScreen
+            self.bridge?.viewController?.present(nav, animated: true) {
+                call.resolve(["opened": true])
+            }
+        }
+    }
+
+    /// Open the main TripTracker map view.
+    @objc func openMainView(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            let vc = MainViewController()
+            let nav = UINavigationController(rootViewController: vc)
+            nav.modalPresentationStyle = .fullScreen
+            self.bridge?.viewController?.present(nav, animated: true) {
+                call.resolve(["opened": true])
+            }
+        }
+    }
+
+    /// Open the Trip History page.
+    @objc func openHistory(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            let vc = HistoryViewController()
+            let nav = UINavigationController(rootViewController: vc)
+            nav.modalPresentationStyle = .fullScreen
+            self.bridge?.viewController?.present(nav, animated: true) {
+                call.resolve(["opened": true])
+            }
+        }
+    }
+
+    /// Open Daily Locations page.
+    @objc func openDailyLocations(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            let vc = DailyLocationsViewController()
             let nav = UINavigationController(rootViewController: vc)
             nav.modalPresentationStyle = .fullScreen
             self.bridge?.viewController?.present(nav, animated: true) {

@@ -10,6 +10,9 @@ CAP_PLUGIN(TripTrackerPlugin, "TripTracker",
     CAP_PLUGIN_METHOD(openSettings, CAPPluginReturnPromise);
     CAP_PLUGIN_METHOD(openNotificationSettings, CAPPluginReturnPromise);
     CAP_PLUGIN_METHOD(openGeofenceManager, CAPPluginReturnPromise);
+    CAP_PLUGIN_METHOD(openMainView, CAPPluginReturnPromise);
+    CAP_PLUGIN_METHOD(openHistory, CAPPluginReturnPromise);
+    CAP_PLUGIN_METHOD(openDailyLocations, CAPPluginReturnPromise);
     CAP_PLUGIN_METHOD(getTrackingStatus, CAPPluginReturnPromise);
     CAP_PLUGIN_METHOD(getCurrentLocation, CAPPluginReturnPromise);
     CAP_PLUGIN_METHOD(getTripHistory, CAPPluginReturnPromise);

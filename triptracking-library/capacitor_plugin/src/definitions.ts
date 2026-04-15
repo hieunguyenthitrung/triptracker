@@ -18,6 +18,15 @@ export interface TripTrackerPlugin {
   /** Open the Geofence Manager page (map + zone list). */
   openGeofenceManager(): Promise<{ opened: boolean }>;
 
+  /** Open the main TripTracker map + tracking view. */
+  openMainView(): Promise<{ opened: boolean }>;
+
+  /** Open the Trip History page. */
+  openHistory(): Promise<{ opened: boolean }>;
+
+  /** Open Daily Locations page. */
+  openDailyLocations(): Promise<{ opened: boolean }>;
+
   // ── Tracking Status ──
 
   /** Get current tracking status, speed, distance, trip info. */
