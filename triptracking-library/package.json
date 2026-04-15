@@ -6,15 +6,15 @@
   "module": "capacitor_plugin/dist/esm/index.js",
   "types": "capacitor_plugin/dist/esm/index.d.ts",
   "capacitor": {
-    "ios": { "src": "triptracking-library/capacitor_plugin/ios" },
-    "android": { "src": "triptracking-library/capacitor_plugin/android" }
+    "ios": { "src": "capacitor_plugin/ios" },
+    "android": { "src": "capacitor_plugin/android" }
   },
   "unpkg": "dist/plugin.js",
   "files": [
-    "triptracking-library/capacitor_plugin/dist/",
-    "triptracking-library/capacitor_plugin/android/",
-    "triptracking-library/capacitor_plugin/ios/",
-    "triptracking-library/capacitor_plugin/src/"
+    "capacitor_plugin/dist/",
+    "capacitor_plugin/android/",
+    "capacitor_plugin/ios/",
+    "capacitor_plugin/src/"
   ],
   "keywords": ["capacitor", "plugin", "ios", "android", "triptracker", "gps", "geofence"],
   "scripts": {
