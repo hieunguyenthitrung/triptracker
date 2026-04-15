@@ -26,7 +26,6 @@ pubspec.lock
 
 # Capacitor
 node_modules/
-dist/
 www/
 
 # System
