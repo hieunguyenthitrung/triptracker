@@ -165,9 +165,25 @@ public class LocationTrackingService extends Service implements
     public void onCreate() {
         super.onCreate();
 
-        // MUST call startForeground immediately — Android 12+ crashes otherwise
         createNotificationChannel();
-        startForegroundNotification("Trip Tracker", "Starting…");
+
+        // ⚠️ CRITICAL: Check permission BEFORE startForeground.
+        // On Android 14+ calling startForeground() with type="location"
+        // without ACCESS_FINE_LOCATION throws SecurityException → app crash.
+        if (!hasLocationPermissions()) {
+            Log.w(TAG, "⚠️ Location permissions NOT granted — stopping service without foreground");
+            stopSelf();
+            return;
+        }
+
+        // Safe to go foreground now
+        try {
+            startForegroundNotification("Trip Tracker", "Starting…");
+        } catch (SecurityException e) {
+            Log.e(TAG, "startForeground failed: " + e.getMessage());
+            stopSelf();
+            return;
+        }
 
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         sensorTracker   = new SensorBasedLocationTracker(this, this);
@@ -176,12 +192,6 @@ public class LocationTrackingService extends Service implements
 
         PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "TripTracker::WakeLock");
-
-        if (!hasLocationPermissions()) {
-            Log.w(TAG, "Location permissions not granted — stopping service");
-            stopSelf();
-            return;
-        }
 
         if (!wakeLock.isHeld()) wakeLock.acquire();
 
@@ -1247,6 +1257,12 @@ public class LocationTrackingService extends Service implements
     }
 
     private void startForegroundNotification(String title, String text) {
+        // Safety guard: don't even try if permission not granted
+        if (!hasLocationPermissions()) {
+            Log.w(TAG, "Skipping startForeground — location permission not granted");
+            return;
+        }
+
         Intent launch = getPackageManager().getLaunchIntentForPackage(getPackageName());
         PendingIntent pi = PendingIntent.getActivity(this, 0, launch,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
@@ -1255,10 +1271,16 @@ public class LocationTrackingService extends Service implements
                 .setSmallIcon(android.R.drawable.ic_menu_mylocation)
                 .setContentIntent(pi).setOngoing(true)
                 .setPriority(NotificationCompat.PRIORITY_LOW).build();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-            startForeground(NOTIFICATION_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
-        else
-            startForeground(NOTIFICATION_ID, n);
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+                startForeground(NOTIFICATION_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
+            else
+                startForeground(NOTIFICATION_ID, n);
+        } catch (SecurityException e) {
+            Log.e(TAG, "startForeground SecurityException: " + e.getMessage());
+        } catch (Exception e) {
+            Log.e(TAG, "startForeground error: " + e.getMessage());
+        }
     }
 
     private void createNotificationChannel() {
