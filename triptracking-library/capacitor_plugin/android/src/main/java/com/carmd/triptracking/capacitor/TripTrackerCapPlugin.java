@@ -64,6 +64,14 @@ public class TripTrackerCapPlugin extends Plugin {
         // getContext().bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
     }
 
+    @PluginMethod
+    public void startTracking(PluginCall call) {
+        TripTrackerSDK.startTracking(getContext());
+        JSObject ret = new JSObject();
+        ret.put("started", true);
+        call.resolve(ret);
+    }
+
     // ═══════════════════════════════════════════════════════════════════
     // Native Pages
     // ═══════════════════════════════════════════════════════════════════
