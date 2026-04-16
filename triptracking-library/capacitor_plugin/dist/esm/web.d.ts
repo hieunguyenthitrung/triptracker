@@ -4,6 +4,19 @@ export declare class TripTrackerWeb extends WebPlugin implements TripTrackerPlug
     initializeWithConfig(): Promise<{
         initialized: boolean;
     }>;
+    updateVehicleId(): Promise<{
+        updated: boolean;
+        vehicleId: string;
+    }>;
+    hasLocationPermission(): Promise<{
+        granted: boolean;
+    }>;
+    startTracking(): Promise<{
+        started: boolean;
+    }>;
+    stopTracking(): Promise<{
+        stopped: boolean;
+    }>;
     openSettings(): Promise<{
         opened: boolean;
     }>;
@@ -34,5 +47,4 @@ export declare class TripTrackerWeb extends WebPlugin implements TripTrackerPlug
     stopWebMonitor(): Promise<any>;
     sendTodayLog(): Promise<any>;
     sendAllLogs(): Promise<any>;
-    startTracking(): Promise<any>;
 }

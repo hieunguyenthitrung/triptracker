@@ -3,6 +3,18 @@ export class TripTrackerWeb extends WebPlugin {
     async initializeWithConfig() {
         throw this.unavailable('initializeWithConfig is only available on iOS/Android');
     }
+    async updateVehicleId() {
+        throw this.unavailable('updateVehicleId is only available on iOS/Android');
+    }
+    async hasLocationPermission() {
+        throw this.unavailable('hasLocationPermission is only available on iOS/Android');
+    }
+    async startTracking() {
+        throw this.unavailable('startTracking is only available on iOS/Android');
+    }
+    async stopTracking() {
+        throw this.unavailable('stopTracking is only available on iOS/Android');
+    }
     async openSettings() {
         throw this.unavailable('openSettings is only available on iOS');
     }
@@ -56,9 +68,6 @@ export class TripTrackerWeb extends WebPlugin {
     }
     async sendAllLogs() {
         throw this.unavailable('sendAllLogs is only available on iOS');
-    }
-    async startTracking() {
-        throw this.unavailable('startTracking is only available on iOS');
     }
 }
 //# sourceMappingURL=web.js.map

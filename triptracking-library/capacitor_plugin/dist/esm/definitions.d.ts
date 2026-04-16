@@ -19,6 +19,42 @@ export interface TripTrackerPlugin {
      */
     initializeWithConfig(options?: TripTrackerConfigOptions): Promise<{
         initialized: boolean;
+        permissionGranted?: boolean;
+        trackingStarted?: boolean;
+    }>;
+    /**
+     * Update vehicle_id at runtime.
+     * Call this when the user switches to a different vehicle.
+     * The new vehicle_id will be used in all subsequent /ping/v2 requests
+     * during an active trip.
+     */
+    updateVehicleId(options: {
+        vehicleId: string;
+    }): Promise<{
+        updated: boolean;
+        vehicleId: string;
+    }>;
+    /**
+     * Check if location permission is granted at runtime.
+     * Returns { granted: true } if ACCESS_FINE_LOCATION (Android) or
+     * kCLAuthorizationStatusAuthorizedAlways/WhenInUse (iOS) is granted.
+     */
+    hasLocationPermission(): Promise<{
+        granted: boolean;
+    }>;
+    /**
+     * Start the location tracking service.
+     * Call this after the user has granted location permission.
+     * Throws if permission is not granted.
+     */
+    startTracking(): Promise<{
+        started: boolean;
+    }>;
+    /**
+     * Stop the tracking service.
+     */
+    stopTracking(): Promise<{
+        stopped: boolean;
     }>;
     /** Open the full native Settings page (sliders, toggles, web monitor, CarPlay). */
     openSettings(): Promise<{
@@ -97,10 +133,6 @@ export interface TripTrackerPlugin {
     sendAllLogs(): Promise<{
         shared: boolean;
         count: number;
-    }>;
-    /** Call this after user grants permission to start the service manually. */
-    startTracking(): Promise<{
-        started: boolean;
     }>;
 }
 export interface TrackingStatus {
@@ -214,6 +246,8 @@ export interface TripTrackerConfigOptions {
     routeId?: string;
     /** Value for AuthorizationKey header */
     authorizationKey?: string;
-    /** Value for api-auth-key header */
+    /** Value for api-auth-key header (legacy) */
     apiAuthKey?: string;
+    /** Value for api-auth-token header (new) */
+    apiAuthToken?: string;
 }
