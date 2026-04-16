@@ -8,6 +8,22 @@ export class TripTrackerWeb extends WebPlugin implements TripTrackerPlugin {
     throw this.unavailable('initializeWithConfig is only available on iOS/Android');
   }
 
+  async updateVehicleId(): Promise<{ updated: boolean; vehicleId: string }> {
+    throw this.unavailable('updateVehicleId is only available on iOS/Android');
+  }
+
+  async hasLocationPermission(): Promise<{ granted: boolean }> {
+    throw this.unavailable('hasLocationPermission is only available on iOS/Android');
+  }
+
+  async startTracking(): Promise<{ started: boolean }> {
+    throw this.unavailable('startTracking is only available on iOS/Android');
+  }
+
+  async stopTracking(): Promise<{ stopped: boolean }> {
+    throw this.unavailable('stopTracking is only available on iOS/Android');
+  }
+
   async openSettings(): Promise<{ opened: boolean }> {
     throw this.unavailable('openSettings is only available on iOS');
   }
@@ -78,9 +94,5 @@ export class TripTrackerWeb extends WebPlugin implements TripTrackerPlugin {
 
   async sendAllLogs(): Promise<any> {
     throw this.unavailable('sendAllLogs is only available on iOS');
-  }
-
-  async startTracking(): Promise<any> {
-    throw this.unavailable('startTracking is only available on iOS');
   }
 }

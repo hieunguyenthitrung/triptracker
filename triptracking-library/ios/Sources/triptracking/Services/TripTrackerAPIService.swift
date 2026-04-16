@@ -8,11 +8,12 @@ public struct TripTrackerAPIConfig {
     public var pingURL: String = ""
     public var endURL: String = ""
     public var userId: String = ""
-    public var vehicleId: String = ""
+    public var vehicleId: String = ""       // Optional — can be empty
     public var osInfo: String = ""
     public var routeId: String = ""
     public var authorizationKey: String = ""
-    public var apiAuthKey: String = ""
+    public var apiAuthKey: String = ""        // Legacy — kept for backwards compat
+    public var apiAuthToken: String = ""      // New header: api-auth-token
 
     public var isConfigured: Bool { !pingURL.isEmpty && !endURL.isEmpty && !userId.isEmpty }
 
@@ -28,6 +29,7 @@ public struct TripTrackerAPIConfig {
         if let v = dict["routeId"] as? String          { routeId = v }
         if let v = dict["authorizationKey"] as? String { authorizationKey = v }
         if let v = dict["apiAuthKey"] as? String       { apiAuthKey = v }
+        if let v = dict["apiAuthToken"] as? String     { apiAuthToken = v }
     }
 }
 
@@ -40,18 +42,37 @@ public final class TripTrackerAPIService {
     public var config = TripTrackerAPIConfig()
     public var isEnabled: Bool { config.isConfigured }
 
+    /// Whether to include vehicle_Id in outgoing payloads.
+    /// Automatically set to true on trip start, false on trip end.
+    public var includeVehicleId: Bool = false
+
     private let session: URLSession = {
         let cfg = URLSessionConfiguration.default
         cfg.timeoutIntervalForRequest = 15
         return URLSession(configuration: cfg)
     }()
 
+    // ── Update vehicle_id at any time (e.g. user switches vehicle) ──
+    public func updateVehicleId(_ vehicleId: String) {
+        config.vehicleId = vehicleId
+        print("📡 API vehicle_id updated → \(vehicleId)")
+    }
+
+    // ── Called on trip start to start including vehicle_id ──
+    public func onTripStart() {
+        includeVehicleId = true
+    }
+
+    // ── Called on trip end to stop including vehicle_id ──
+    public func onTripEnd() {
+        includeVehicleId = false
+    }
+
     // POST /ping/v2
     public func sendPing(location: CLLocation, isMoving: Bool, speed: Float, activityType: String, routeId: String? = nil) {
         guard isEnabled else { return }
-        let body: [String: Any] = [
+        var body: [String: Any] = [
             "user_Id": config.userId,
-            "vehicle_Id": config.vehicleId,
             "os_Info": config.osInfo,
             "location": [[
                 "is_Moving": isMoving,
@@ -63,6 +84,10 @@ public final class TripTrackerAPIService {
                 "route_Id": routeId ?? config.routeId
             ]]
         ]
+        // Only include vehicle_Id during active trip and if configured
+        if includeVehicleId && !config.vehicleId.isEmpty {
+            body["vehicle_Id"] = config.vehicleId
+        }
         post(url: config.pingURL, body: body) { ok in
             print("📡 API ping \(ok ? "OK" : "FAIL"): \(location.coordinate.latitude),\(location.coordinate.longitude)")
         }
@@ -77,13 +102,16 @@ public final class TripTrackerAPIService {
              "latitude": loc.coordinate.latitude, "longitude": loc.coordinate.longitude,
              "speed": spd, "activityType": activity, "route_Id": routeId ?? config.routeId]
         }
-        let body: [String: Any] = ["user_Id": config.userId, "vehicle_Id": config.vehicleId, "os_Info": config.osInfo, "location": arr]
+        var body: [String: Any] = ["user_Id": config.userId, "os_Info": config.osInfo, "location": arr]
+        if includeVehicleId && !config.vehicleId.isEmpty {
+            body["vehicle_Id"] = config.vehicleId
+        }
         post(url: config.pingURL, body: body) { ok in
             print("📡 API batch (\(locations.count)): \(ok ? "OK" : "FAIL")")
         }
     }
 
-    // POST /end
+    // POST /end — vehicle_id NOT included after trip end
     public func sendTripEnd(location: CLLocation) {
         guard isEnabled else { return }
         let body: [String: Any] = [
@@ -94,6 +122,8 @@ public final class TripTrackerAPIService {
         ]
         post(url: config.endURL, body: body) { [weak self] ok in
             print("📡 API trip-end \(ok ? "OK" : "FAIL")")
+            // Stop including vehicle_id after trip end
+            self?.includeVehicleId = false
             if !ok {
                 DispatchQueue.global().asyncAfter(deadline: .now() + 5) {
                     self?.post(url: self?.config.endURL ?? "", body: body, completion: nil)
@@ -111,6 +141,7 @@ public final class TripTrackerAPIService {
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if !config.authorizationKey.isEmpty { req.setValue(config.authorizationKey, forHTTPHeaderField: "AuthorizationKey") }
         if !config.apiAuthKey.isEmpty { req.setValue(config.apiAuthKey, forHTTPHeaderField: "api-auth-key") }
+        if !config.apiAuthToken.isEmpty { req.setValue(config.apiAuthToken, forHTTPHeaderField: "api-auth-token") }
         do { req.httpBody = try JSONSerialization.data(withJSONObject: body) } catch { completion?(false); return }
         session.dataTask(with: req) { data, response, error in
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0

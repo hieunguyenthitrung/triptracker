@@ -24,6 +24,10 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
     public let jsName = "TripTracker"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "initializeWithConfig", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "updateVehicleId", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "hasLocationPermission", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "startTracking", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "stopTracking", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "openSettings", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "openNotificationSettings", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "openGeofenceManager", returnType: CAPPluginReturnPromise),
@@ -71,9 +75,52 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
         if let v = call.getString("routeId")                { config.routeId = v }
         if let v = call.getString("authorizationKey")       { config.authorizationKey = v }
         if let v = call.getString("apiAuthKey")             { config.apiAuthKey = v }
+        if let v = call.getString("apiAuthToken")           { config.apiAuthToken = v }
 
         TripTrackerSDK.initialize(config: config)
-        call.resolve(["initialized": true])
+
+        let granted = Self.hasLocationPermissionNative()
+        call.resolve([
+            "initialized": true,
+            "permissionGranted": granted,
+            "trackingStarted": granted
+        ])
+    }
+
+    /// Update vehicle_id at any time (e.g. user switches vehicle).
+    @objc func updateVehicleId(_ call: CAPPluginCall) {
+        guard let vehicleId = call.getString("vehicleId") else {
+            call.reject("Missing 'vehicleId'")
+            return
+        }
+        TripTrackerSDK.updateVehicleId(vehicleId)
+        call.resolve(["updated": true, "vehicleId": vehicleId])
+    }
+
+    /// Check if location permission is granted.
+    @objc func hasLocationPermission(_ call: CAPPluginCall) {
+        call.resolve(["granted": Self.hasLocationPermissionNative()])
+    }
+
+    /// Start tracking (iOS starts automatically when permission is granted and SDK is initialized).
+    @objc func startTracking(_ call: CAPPluginCall) {
+        guard Self.hasLocationPermissionNative() else {
+            call.reject("Location permission not granted")
+            return
+        }
+        LocationTrackingService.shared.startBackgroundTracking()
+        call.resolve(["started": true])
+    }
+
+    /// Stop tracking.
+    @objc func stopTracking(_ call: CAPPluginCall) {
+        LocationTrackingService.shared.stopTrip()
+        call.resolve(["stopped": true])
+    }
+
+    private static func hasLocationPermissionNative() -> Bool {
+        let status = CLLocationManager().authorizationStatus
+        return status == .authorizedAlways || status == .authorizedWhenInUse
     }
 
     /// Open the full native Settings page (sliders, toggles, everything).

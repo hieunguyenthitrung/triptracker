@@ -322,6 +322,9 @@ class LocationTrackingService: NSObject {
         currentTripId = DatabaseManager.shared.startTrip()
         print("💾 Created trip: ID=\(currentTripId)")
 
+        // API: mark trip start — vehicle_id will be included in pings
+        TripTrackerAPIService.shared.onTripStart()
+
         // Seed with best available position; always start in Sensors mode
         if let seed = initialLocation ?? locationManager.location {
             lastGPSLocation    = seed
@@ -383,6 +386,9 @@ class LocationTrackingService: NSObject {
         isTracking    = true
         currentTripId = id
         tripStartTime = Date(timeIntervalSince1970: Double(startTimeMs) / 1000.0)
+
+        // API: trip resumed — include vehicle_id in pings again
+        TripTrackerAPIService.shared.onTripStart()
 
         // Seed location state from last known GPS fix
         if let loc = locationManager.location {

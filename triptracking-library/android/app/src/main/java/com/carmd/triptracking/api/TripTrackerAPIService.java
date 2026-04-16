@@ -12,7 +12,6 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 import java.util.concurrent.ExecutorService;
@@ -26,11 +25,16 @@ public final class TripTrackerAPIService {
     private String pingURL = "";
     private String endURL = "";
     private String userId = "";
-    private String vehicleId = "";
+    private String vehicleId = "";           // Optional
     private String osInfo = "Android " + Build.VERSION.RELEASE;
     private String routeId = "";
     private String authorizationKey = "";
-    private String apiAuthKey = "";
+    private String apiAuthKey = "";          // Legacy
+    private String apiAuthToken = "";        // New header: api-auth-token
+
+    // Whether to include vehicle_id in outgoing payloads
+    // True during active trip, false otherwise
+    private boolean includeVehicleId = false;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
@@ -41,9 +45,17 @@ public final class TripTrackerAPIService {
         return instance;
     }
 
-    // ── Config setters ──
+    // ── Full config (legacy — kept for backwards compat) ──
     public void configure(String pingURL, String endURL, String userId, String vehicleId,
                           String osInfo, String routeId, String authorizationKey, String apiAuthKey) {
+        configure(pingURL, endURL, userId, vehicleId, osInfo, routeId,
+                authorizationKey, apiAuthKey, "");
+    }
+
+    // ── Full config with new apiAuthToken ──
+    public void configure(String pingURL, String endURL, String userId, String vehicleId,
+                          String osInfo, String routeId, String authorizationKey,
+                          String apiAuthKey, String apiAuthToken) {
         this.pingURL = pingURL != null ? pingURL : "";
         this.endURL = endURL != null ? endURL : "";
         this.userId = userId != null ? userId : "";
@@ -52,11 +64,29 @@ public final class TripTrackerAPIService {
         this.routeId = routeId != null ? routeId : "";
         this.authorizationKey = authorizationKey != null ? authorizationKey : "";
         this.apiAuthKey = apiAuthKey != null ? apiAuthKey : "";
+        this.apiAuthToken = apiAuthToken != null ? apiAuthToken : "";
         Log.i(TAG, "API configured: ping=" + this.pingURL + " end=" + this.endURL + " user=" + this.userId);
+    }
+
+    // ── Update vehicle_id at any time ──
+    public void updateVehicleId(String vehicleId) {
+        this.vehicleId = vehicleId != null ? vehicleId : "";
+        Log.i(TAG, "vehicle_id updated → " + this.vehicleId);
     }
 
     public void setRouteId(String id) { this.routeId = id != null ? id : ""; }
     public boolean isEnabled() { return !pingURL.isEmpty() && !endURL.isEmpty() && !userId.isEmpty(); }
+
+    // ── Trip lifecycle — controls vehicle_id inclusion ──
+    public void onTripStart() {
+        includeVehicleId = true;
+        Log.i(TAG, "Trip started — vehicle_id will be included in pings");
+    }
+
+    public void onTripEnd() {
+        includeVehicleId = false;
+        Log.i(TAG, "Trip ended — vehicle_id will NOT be included until next trip");
+    }
 
     // ── POST /ping/v2 ──
     public void sendPing(Location location, boolean isMoving, float speed, String activityType) {
@@ -81,9 +111,13 @@ public final class TripTrackerAPIService {
 
                 JSONObject body = new JSONObject();
                 body.put("user_Id", userId);
-                body.put("vehicle_Id", vehicleId);
                 body.put("os_Info", osInfo);
                 body.put("location", locArr);
+
+                // Only include vehicle_Id during active trip and if configured
+                if (includeVehicleId && !vehicleId.isEmpty()) {
+                    body.put("vehicle_Id", vehicleId);
+                }
 
                 boolean ok = post(pingURL, body);
                 Log.d(TAG, "Ping " + (ok ? "OK" : "FAIL") + ": " + location.getLatitude() + "," + location.getLongitude());
@@ -93,7 +127,7 @@ public final class TripTrackerAPIService {
         });
     }
 
-    // ── POST /end ──
+    // ── POST /end — vehicle_id NOT included ──
     public void sendTripEnd(Location location) {
         if (!isEnabled()) return;
         executor.execute(() -> {
@@ -107,7 +141,9 @@ public final class TripTrackerAPIService {
                 boolean ok = post(endURL, body);
                 Log.d(TAG, "Trip-end " + (ok ? "OK" : "FAIL"));
 
-                // Retry once on failure
+                // Stop including vehicle_id after trip end
+                includeVehicleId = false;
+
                 if (!ok) {
                     Thread.sleep(5000);
                     post(endURL, body);
@@ -134,6 +170,8 @@ public final class TripTrackerAPIService {
                 conn.setRequestProperty("AuthorizationKey", authorizationKey);
             if (!apiAuthKey.isEmpty())
                 conn.setRequestProperty("api-auth-key", apiAuthKey);
+            if (!apiAuthToken.isEmpty())
+                conn.setRequestProperty("api-auth-token", apiAuthToken);
 
             OutputStream os = conn.getOutputStream();
             os.write(body.toString().getBytes("UTF-8"));

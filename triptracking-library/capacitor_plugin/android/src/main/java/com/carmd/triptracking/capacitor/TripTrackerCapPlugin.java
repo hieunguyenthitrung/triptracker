@@ -9,7 +9,6 @@ import android.net.Uri;
 import android.os.IBinder;
 
 import androidx.core.content.FileProvider;
-import com.carmd.triptracking.TripTrackerSDK;
 
 import com.carmd.triptracking.database.LocationDatabase;
 import com.carmd.triptracking.geofence.GeofenceManager;
@@ -60,15 +59,65 @@ public class TripTrackerCapPlugin extends Plugin {
 
     @Override
     public void load() {
-        // Intent intent = new Intent(getContext(), LocationTrackingService.class);
-        // getContext().bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+        // Don't auto-bind to service — wait until permission granted + initialize() called.
+        // Otherwise app crashes on Android 14+ if user hasn't granted ACCESS_FINE_LOCATION.
+    }
+
+    /** Bind to service if it's running (called after startTracking succeeds). */
+    private void bindToServiceIfRunning() {
+        if (serviceBound) return;
+        try {
+            Intent intent = new Intent(getContext(), LocationTrackingService.class);
+            getContext().bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+        } catch (Exception e) {
+            android.util.Log.e("TripTrackerCap", "bindService failed: " + e.getMessage());
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Permission & Tracking Control
+    // ═══════════════════════════════════════════════════════════════════
+
+    @PluginMethod
+    public void hasLocationPermission(PluginCall call) {
+        boolean granted = TripTrackerSDK.hasLocationPermission(getContext());
+        JSObject ret = new JSObject();
+        ret.put("granted", granted);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void updateVehicleId(PluginCall call) {
+        String vehicleId = call.getString("vehicleId");
+        if (vehicleId == null) {
+            call.reject("Missing 'vehicleId'");
+            return;
+        }
+        TripTrackerSDK.updateVehicleId(vehicleId);
+        JSObject ret = new JSObject();
+        ret.put("updated", true);
+        ret.put("vehicleId", vehicleId);
+        call.resolve(ret);
     }
 
     @PluginMethod
     public void startTracking(PluginCall call) {
+        if (!TripTrackerSDK.hasLocationPermission(getContext())) {
+            call.reject("Location permission not granted. Grant permission first.");
+            return;
+        }
         TripTrackerSDK.startTracking(getContext());
+        bindToServiceIfRunning();
         JSObject ret = new JSObject();
         ret.put("started", true);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void stopTracking(PluginCall call) {
+        TripTrackerSDK.stopTracking(getContext());
+        JSObject ret = new JSObject();
+        ret.put("stopped", true);
         call.resolve(ret);
     }
 
@@ -138,19 +187,21 @@ public class TripTrackerCapPlugin extends Plugin {
         if (authKey != null) config.authorizationKey = authKey;
         String apiAuth = call.getString("apiAuthKey");
         if (apiAuth != null) config.apiAuthKey = apiAuth;
+        String apiAuthTok = call.getString("apiAuthToken");
+        if (apiAuthTok != null) config.apiAuthToken = apiAuthTok;
 
         TripTrackerSDK.initialize(getContext(), config);
 
+        // If permission already granted, bind to service
+        boolean permGranted = TripTrackerSDK.hasLocationPermission(getContext());
+        if (permGranted) {
+            bindToServiceIfRunning();
+        }
+
         JSObject ret = new JSObject();
         ret.put("initialized", true);
-        call.resolve(ret);
-    }
-
-    @PluginMethod
-    public void startTracking(PluginCall call) {
-        TripTrackerSDK.startTracking(getContext());
-        JSObject ret = new JSObject();
-        ret.put("started", true);
+        ret.put("permissionGranted", permGranted);
+        ret.put("trackingStarted", permGranted);
         call.resolve(ret);
     }
 
@@ -364,7 +415,7 @@ public class TripTrackerCapPlugin extends Plugin {
             obj.put("name", z.name);
             obj.put("latitude", z.latitude);
             obj.put("longitude", z.longitude);
-            obj.put("radius", z.radiusMeters);
+            obj.put("radius", z.radius);
             obj.put("notifyOnEnter", z.notifyOnEnter);
             obj.put("notifyOnExit", z.notifyOnExit);
             obj.put("autoStopOnEnter", z.autoStopTrip);
@@ -385,16 +436,13 @@ public class TripTrackerCapPlugin extends Plugin {
             call.reject("Missing name/latitude/longitude"); return;
         }
 
-        Double radiusDouble = call.getDouble("radius");
-        float radiusMeters = radiusDouble != null ? radiusDouble.floatValue() : 200.0f;
-
         GeofenceManager.GeofenceZone zone = new GeofenceManager.GeofenceZone(
-        name, lat, lon,
-        radiusMeters,
-        call.getBoolean("notifyOnEnter", true),
-        call.getBoolean("notifyOnExit", true),
-        call.getBoolean("autoStopOnEnter", false)
-);
+                name, lat, lon,
+                call.getDouble("radius", 200.0),
+                call.getBoolean("notifyOnEnter", true),
+                call.getBoolean("notifyOnExit", true),
+                call.getBoolean("autoStopOnEnter", false)
+        );
         GeofenceManager.addZone(getContext(), zone);
         GeofenceManager.registerAll(getContext());
 

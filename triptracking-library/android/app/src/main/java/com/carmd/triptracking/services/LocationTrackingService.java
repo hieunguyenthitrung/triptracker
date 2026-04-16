@@ -403,6 +403,9 @@ public class LocationTrackingService extends Service implements
         lastSaveTime  = 0L;
         stillSinceMs  = 0L; // reset still timer — we're moving
 
+        // API: mark trip start — vehicle_id will be included in pings
+        TripTrackerAPIService.getInstance().onTripStart();
+
         // Capture step count baseline for per-trip step tracking
         SensorBasedLocationTracker.TrackingStats startStats = sensorTracker.getStats();
         tripStartStepCount = (startStats != null) ? startStats.getStepCount() : 0;

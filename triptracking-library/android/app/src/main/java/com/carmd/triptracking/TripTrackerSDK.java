@@ -4,7 +4,9 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.util.Log;
+import androidx.core.content.ContextCompat;
 import com.carmd.triptracking.api.TripTrackerAPIService;
 import com.carmd.triptracking.database.LocationDatabase;
 import com.carmd.triptracking.geofence.GeofenceManager;
@@ -12,8 +14,6 @@ import com.carmd.triptracking.services.LocationTrackingService;
 import com.carmd.triptracking.ui.*;
 import com.carmd.triptracking.util.LogcatWriter;
 import com.carmd.triptracking.util.VoiceFeedback;
-import android.util.Log;
-
 
 public final class TripTrackerSDK {
     private static final String TAG = "TripTrackerSDK";
@@ -51,6 +51,7 @@ public final class TripTrackerSDK {
         public String routeId = "";
         public String authorizationKey = "";
         public String apiAuthKey = "";
+        public String apiAuthToken = "";   // NEW header: api-auth-token
 
         public Config() {}
 
@@ -77,6 +78,7 @@ public final class TripTrackerSDK {
         public Config route(String v)               { routeId = v; return this; }
         public Config authorization(String v)       { authorizationKey = v; return this; }
         public Config apiAuth(String v)             { apiAuthKey = v; return this; }
+        public Config apiAuthToken(String v)        { apiAuthToken = v; return this; }
     }
 
     public static void initialize(Context context) {
@@ -89,8 +91,21 @@ public final class TripTrackerSDK {
         applyConfig(appContext, config);
         LogcatWriter.start(appContext);
         LocationDatabase.getInstance(appContext);
-        Intent si = new Intent(appContext, LocationTrackingService.class);
-        appContext.startForegroundService(si);
+
+        // Only start foreground service if permission is granted — otherwise crash on Android 14+
+        if (hasLocationPermission(appContext)) {
+            try {
+                Intent si = new Intent(appContext, LocationTrackingService.class);
+                appContext.startForegroundService(si);
+                Log.i(TAG, "✅ Location service started");
+            } catch (SecurityException e) {
+                Log.e(TAG, "Cannot start service: " + e.getMessage());
+            }
+        } else {
+            Log.w(TAG, "⚠️ Location permission NOT granted — service NOT started. " +
+                    "Call TripTrackerSDK.startTracking(context) after user grants permission.");
+        }
+
         VoiceFeedback.getInstance(appContext);
         if (config.geofenceEnabled) GeofenceManager.registerAll(appContext);
         initialized = true;
@@ -98,14 +113,36 @@ public final class TripTrackerSDK {
                 + "min dist=" + config.saveDistanceMeters + "m autoStop=" + config.autoStopTimeoutMinutes + "min");
     }
 
-    /** Call this after user grants permission to start the service manually. */
+    /** Check if ACCESS_FINE_LOCATION or ACCESS_COARSE_LOCATION is granted at runtime. */
+    public static boolean hasLocationPermission(Context ctx) {
+        int fine = ContextCompat.checkSelfPermission(ctx, android.Manifest.permission.ACCESS_FINE_LOCATION);
+        int coarse = ContextCompat.checkSelfPermission(ctx, android.Manifest.permission.ACCESS_COARSE_LOCATION);
+        return fine == PackageManager.PERMISSION_GRANTED || coarse == PackageManager.PERMISSION_GRANTED;
+    }
+
+    /** Start the location tracking service. Call this after the user grants permission. */
     public static void startTracking(Context context) {
+        if (!hasLocationPermission(context)) {
+            Log.e(TAG, "Cannot start tracking — ACCESS_FINE_LOCATION / ACCESS_COARSE_LOCATION not granted");
+            return;
+        }
         try {
-            Intent si = new Intent(context, LocationTrackingService.class);
-            context.startForegroundService(si);
-            Log.i(TAG, "✅ Tracking service started");
+            Intent si = new Intent(context.getApplicationContext(), LocationTrackingService.class);
+            context.getApplicationContext().startForegroundService(si);
+            Log.i(TAG, "✅ Location tracking started");
         } catch (SecurityException e) {
-            Log.e(TAG, "Start failed: " + e.getMessage());
+            Log.e(TAG, "Start tracking failed: " + e.getMessage());
+        }
+    }
+
+    /** Stop the tracking service. */
+    public static void stopTracking(Context context) {
+        try {
+            Intent si = new Intent(context.getApplicationContext(), LocationTrackingService.class);
+            context.getApplicationContext().stopService(si);
+            Log.i(TAG, "⏹️ Location tracking stopped");
+        } catch (Exception e) {
+            Log.e(TAG, "Stop tracking failed: " + e.getMessage());
         }
     }
 
@@ -132,7 +169,8 @@ public final class TripTrackerSDK {
         // API
         TripTrackerAPIService.getInstance().configure(
                 config.pingURL, config.endURL, config.userId, config.vehicleId,
-                config.osInfo, config.routeId, config.authorizationKey, config.apiAuthKey);
+                config.osInfo, config.routeId, config.authorizationKey,
+                config.apiAuthKey, config.apiAuthToken);
     }
 
     public static boolean isInitialized() { return initialized; }
@@ -167,4 +205,9 @@ public final class TripTrackerSDK {
     public static boolean isVoiceEnabled()      { return appContext != null && AppSettings.isVoiceEnabled(appContext); }
     public static boolean isWebMonitorEnabled() { return appContext != null && AppSettings.isWebServerEnabled(appContext); }
     public static boolean isGeofencingEnabled() { return appContext != null && GeofenceManager.isEnabled(appContext); }
+
+    // ── Update vehicle_id at runtime ──
+    public static void updateVehicleId(String vehicleId) {
+        TripTrackerAPIService.getInstance().updateVehicleId(vehicleId);
+    }
 }

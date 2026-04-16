@@ -27,6 +27,7 @@ public struct TripTrackerConfig {
     public var routeId: String = ""
     public var authorizationKey: String = ""
     public var apiAuthKey: String = ""
+    public var apiAuthToken: String = ""    // NEW header: api-auth-token
 
     // Notifications
     public var notifyTripStart: Bool = true
@@ -55,6 +56,7 @@ public struct TripTrackerConfig {
         if let v = dict["routeId"] as? String                 { routeId = v }
         if let v = dict["authorizationKey"] as? String        { authorizationKey = v }
         if let v = dict["apiAuthKey"] as? String              { apiAuthKey = v }
+        if let v = dict["apiAuthToken"] as? String            { apiAuthToken = v }
         if let v = dict["notifyTripStart"] as? Bool          { notifyTripStart = v }
         if let v = dict["notifyTripEnd"] as? Bool            { notifyTripEnd = v }
         if let v = dict["notifyDistanceKm"] as? Bool         { notifyDistanceKm = v }
@@ -147,6 +149,7 @@ public final class TripTrackerSDK {
         apiConfig.routeId = config.routeId
         apiConfig.authorizationKey = config.authorizationKey
         apiConfig.apiAuthKey = config.apiAuthKey
+        apiConfig.apiAuthToken = config.apiAuthToken
         TripTrackerAPIService.shared.config = apiConfig
 
         if config.geofenceEnabled { GeofenceManager.shared.startMonitoringAll() }
@@ -187,4 +190,9 @@ public final class TripTrackerSDK {
     // ── Web Monitor ──
     public static func startWebMonitor() { UserDefaults.standard.set(true, forKey: "tt_webMonitorEnabled"); if webServer == nil { webServer = LocationWebServer() }; webServer?.start() }
     public static func stopWebMonitor() { UserDefaults.standard.set(false, forKey: "tt_webMonitorEnabled"); webServer?.stop() }
+
+    // ── Update vehicle_id at runtime ──
+    public static func updateVehicleId(_ vehicleId: String) {
+        TripTrackerAPIService.shared.updateVehicleId(vehicleId)
+    }
 }
