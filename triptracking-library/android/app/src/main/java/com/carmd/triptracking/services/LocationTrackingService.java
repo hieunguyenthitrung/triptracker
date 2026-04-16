@@ -167,14 +167,17 @@ public class LocationTrackingService extends Service implements
 
         createNotificationChannel();
 
-        // ⚠️ CRITICAL: Check permission BEFORE startForeground.
-        // On Android 14+ calling startForeground() with type="location"
-        // without ACCESS_FINE_LOCATION throws SecurityException → app crash.
-        if (!hasLocationPermissions()) {
-            Log.w(TAG, "⚠️ Location permissions NOT granted — stopping service without foreground");
-            stopSelf();
-            return;
-        }
+    // ⚠️ MUST call startForeground() within 5 seconds, or Android kills us.
+    // Always call it first with a minimal notification.
+    startMinimalForeground();
+
+    // Now check permission — if missing, stop gracefully.
+    if (!hasLocationPermissions()) {
+        Log.w(TAG, "⚠️ Location permissions NOT granted — stopping service");
+        stopForeground(STOP_FOREGROUND_REMOVE);
+        stopSelf();
+        return;
+    }
 
         // Safe to go foreground now
         try {
@@ -1284,6 +1287,25 @@ public void onDestroy() {
             Log.e(TAG, "startForeground error: " + e.getMessage());
         }
     }
+
+    /**
+ * Start foreground with a minimal notification (called first to satisfy the
+ * 5-second rule). No FOREGROUND_SERVICE_TYPE — works without location permission.
+ */
+private void startMinimalForeground() {
+    try {
+        Notification n = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("Trip Tracker")
+                .setContentText("Initializing…")
+                .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+                .setOngoing(true)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .build();
+        startForeground(NOTIFICATION_ID, n);
+    } catch (Exception e) {
+        Log.e(TAG, "startMinimalForeground failed: " + e.getMessage());
+    }
+}
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
