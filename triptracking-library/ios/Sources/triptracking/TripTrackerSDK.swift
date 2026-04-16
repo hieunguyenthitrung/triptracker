@@ -18,6 +18,16 @@ public struct TripTrackerConfig {
     public var webMonitorEnabled: Bool = false
     public var voiceFeedbackEnabled: Bool = true
 
+    // API
+    public var pingURL: String = ""
+    public var endURL: String = ""
+    public var userId: String = ""
+    public var vehicleId: String = ""
+    public var osInfo: String = ""
+    public var routeId: String = ""
+    public var authorizationKey: String = ""
+    public var apiAuthKey: String = ""
+
     // Notifications
     public var notifyTripStart: Bool = true
     public var notifyTripEnd: Bool = true
@@ -37,6 +47,14 @@ public struct TripTrackerConfig {
         if let v = dict["geofenceEnabled"] as? Bool          { geofenceEnabled = v }
         if let v = dict["webMonitorEnabled"] as? Bool        { webMonitorEnabled = v }
         if let v = dict["voiceFeedbackEnabled"] as? Bool     { voiceFeedbackEnabled = v }
+        if let v = dict["pingURL"] as? String                { pingURL = v }
+        if let v = dict["endURL"] as? String                  { endURL = v }
+        if let v = dict["userId"] as? String                  { userId = v }
+        if let v = dict["vehicleId"] as? String               { vehicleId = v }
+        if let v = dict["osInfo"] as? String                  { osInfo = v }
+        if let v = dict["routeId"] as? String                 { routeId = v }
+        if let v = dict["authorizationKey"] as? String        { authorizationKey = v }
+        if let v = dict["apiAuthKey"] as? String              { apiAuthKey = v }
         if let v = dict["notifyTripStart"] as? Bool          { notifyTripStart = v }
         if let v = dict["notifyTripEnd"] as? Bool            { notifyTripEnd = v }
         if let v = dict["notifyDistanceKm"] as? Bool         { notifyDistanceKm = v }
@@ -118,6 +136,19 @@ public final class TripTrackerSDK {
         VoiceFeedbackManager.shared.isEnabled = config.voiceFeedbackEnabled
 
         if config.webMonitorEnabled { startWebMonitor() } else { stopWebMonitor() }
+
+        // API Service
+        var apiConfig = TripTrackerAPIConfig()
+        apiConfig.pingURL = config.pingURL
+        apiConfig.endURL = config.endURL
+        apiConfig.userId = config.userId
+        apiConfig.vehicleId = config.vehicleId
+        if !config.osInfo.isEmpty { apiConfig.osInfo = config.osInfo }
+        apiConfig.routeId = config.routeId
+        apiConfig.authorizationKey = config.authorizationKey
+        apiConfig.apiAuthKey = config.apiAuthKey
+        TripTrackerAPIService.shared.config = apiConfig
+
         if config.geofenceEnabled { GeofenceManager.shared.startMonitoringAll() }
     }
 

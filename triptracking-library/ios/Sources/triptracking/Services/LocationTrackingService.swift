@@ -360,6 +360,11 @@ class LocationTrackingService: NSObject {
             steps: stepCount
         )
 
+        // API: send final GPS location when trip ends
+        if let lastLoc = locationManager.location {
+            TripTrackerAPIService.shared.sendTripEnd(location: lastLoc)
+        }
+
         isTracking    = false
         currentTripId = -1
         tripStartTime = nil
@@ -657,6 +662,7 @@ class LocationTrackingService: NSObject {
         DatabaseManager.shared.saveCachedLocation(location: pt)
         if isTracking && currentTripId != -1 {
             DatabaseManager.shared.saveLocation(tripId: currentTripId, location: pt)
+            sendAPIPing(location: pt, source: source)
         }
         delegate?.didUpdateLocation(pt, source: source, totalDistance: totalDistance)
 
@@ -843,6 +849,7 @@ class LocationTrackingService: NSObject {
         DatabaseManager.shared.saveCachedLocation(location: pt)
         if isTracking && currentTripId != -1 {
             DatabaseManager.shared.saveLocation(tripId: currentTripId, location: pt)
+            sendAPIPing(location: pt, source: source)
         }
         delegate?.didUpdateLocation(pt, source: source, totalDistance: totalDistance)
 
@@ -1084,6 +1091,8 @@ class LocationTrackingService: NSObject {
         DatabaseManager.shared.saveCachedLocation(location: location)
         if isTracking && tripId != -1 {
             DatabaseManager.shared.saveLocation(tripId: tripId, location: location)
+            // API: send ping on every GPS save during trip
+            sendAPIPing(location: location, source: source)
         }
         return true
     }
@@ -1349,5 +1358,25 @@ extension LocationTrackingService: CLLocationManagerDelegate {
         @unknown default:
             break
         }
+    }
+
+    // MARK: - API Ping Helper
+
+    /// Send location ping to server during active trip.
+    private func sendAPIPing(location: LocationPoint, source: TrackingSource) {
+        let clLoc = CLLocation(latitude: location.latitude, longitude: location.longitude)
+        let activityType: String
+        switch lastMotionState {
+        case .still, .unknown: activityType = "still"
+        case .walking, .running: activityType = "walking"
+        case .automotive: activityType = "vehicle"
+        }
+        TripTrackerAPIService.shared.sendPing(
+            location: clLoc,
+            isMoving: isTracking,
+            speed: location.speed,
+            activityType: activityType,
+            routeId: String(currentTripId)
+        )
     }
 }

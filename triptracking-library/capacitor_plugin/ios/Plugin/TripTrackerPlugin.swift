@@ -63,6 +63,14 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
         if let v = call.getBool("notifyDistanceKm")         { config.notifyDistanceKm = v }
         if let v = call.getBool("notifyGeofenceEnter")      { config.notifyGeofenceEnter = v }
         if let v = call.getBool("notifyGeofenceExit")       { config.notifyGeofenceExit = v }
+        if let v = call.getString("pingURL")                { config.pingURL = v }
+        if let v = call.getString("endURL")                 { config.endURL = v }
+        if let v = call.getString("userId")                 { config.userId = v }
+        if let v = call.getString("vehicleId")              { config.vehicleId = v }
+        if let v = call.getString("osInfo")                 { config.osInfo = v }
+        if let v = call.getString("routeId")                { config.routeId = v }
+        if let v = call.getString("authorizationKey")       { config.authorizationKey = v }
+        if let v = call.getString("apiAuthKey")             { config.apiAuthKey = v }
 
         TripTrackerSDK.initialize(config: config)
         call.resolve(["initialized": true])

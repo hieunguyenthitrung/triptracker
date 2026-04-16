@@ -113,6 +113,23 @@ public class TripTrackerCapPlugin extends Plugin {
         Boolean nExit = call.getBoolean("notifyGeofenceExit");
         if (nExit != null) config.notifyGeofenceExit = nExit;
 
+        String pingURL = call.getString("pingURL");
+        if (pingURL != null) config.pingURL = pingURL;
+        String endURL = call.getString("endURL");
+        if (endURL != null) config.endURL = endURL;
+        String userId = call.getString("userId");
+        if (userId != null) config.userId = userId;
+        String vehicleId = call.getString("vehicleId");
+        if (vehicleId != null) config.vehicleId = vehicleId;
+        String osInfo = call.getString("osInfo");
+        if (osInfo != null) config.osInfo = osInfo;
+        String routeId = call.getString("routeId");
+        if (routeId != null) config.routeId = routeId;
+        String authKey = call.getString("authorizationKey");
+        if (authKey != null) config.authorizationKey = authKey;
+        String apiAuth = call.getString("apiAuthKey");
+        if (apiAuth != null) config.apiAuthKey = apiAuth;
+
         TripTrackerSDK.initialize(getContext(), config);
 
         JSObject ret = new JSObject();

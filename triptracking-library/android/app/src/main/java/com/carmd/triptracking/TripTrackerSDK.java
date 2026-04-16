@@ -10,7 +10,9 @@ import com.carmd.triptracking.geofence.GeofenceManager;
 import com.carmd.triptracking.services.LocationTrackingService;
 import com.carmd.triptracking.ui.*;
 import com.carmd.triptracking.util.LogcatWriter;
+import com.carmd.triptracking.api.TripTrackerAPIService;
 import com.carmd.triptracking.util.VoiceFeedback;
+import com.carmd.triptracking.server.TripTrackerAPIService;
 
 public final class TripTrackerSDK {
     private static final String TAG = "TripTrackerSDK";
@@ -43,6 +45,26 @@ public final class TripTrackerSDK {
         public boolean notifyGeofenceEnter = true;
         public boolean notifyGeofenceExit = true;
 
+        // API
+        public String apiPingURL = "";
+        public String apiEndURL = "";
+        public String apiUserId = "";
+        public String apiVehicleId = "";
+        public String apiOsInfo = "";
+        public String apiRouteId = "";
+        public String apiAuthorizationKey = "";
+        public String apiAuthKey = "";
+
+        // API
+        public String pingURL = "";
+        public String endURL = "";
+        public String userId = "";
+        public String vehicleId = "";
+        public String osInfo = "";
+        public String routeId = "";
+        public String authorizationKey = "";
+        public String apiAuthKey = "";
+
         public Config() {}
 
         /** Builder-style setters */
@@ -60,6 +82,22 @@ public final class TripTrackerSDK {
         public Config notifDistanceKm(boolean v)         { notifyDistanceKm = v; return this; }
         public Config notifGeofenceEnter(boolean v)      { notifyGeofenceEnter = v; return this; }
         public Config notifGeofenceExit(boolean v)       { notifyGeofenceExit = v; return this; }
+        public Config pingUrl(String v)                  { pingURL = v; return this; }
+        public Config endUrl(String v)                   { endURL = v; return this; }
+        public Config user(String v)                     { userId = v; return this; }
+        public Config vehicle(String v)                  { vehicleId = v; return this; }
+        public Config os(String v)                       { osInfo = v; return this; }
+        public Config route(String v)                    { routeId = v; return this; }
+        public Config authorization(String v)            { authorizationKey = v; return this; }
+        public Config apiAuth(String v)                  { apiAuthKey = v; return this; }
+        public Config pingURL(String v)              { apiPingURL = v; return this; }
+        public Config endURL(String v)               { apiEndURL = v; return this; }
+        public Config userId(String v)               { apiUserId = v; return this; }
+        public Config vehicleId(String v)            { apiVehicleId = v; return this; }
+        public Config osInfo(String v)               { apiOsInfo = v; return this; }
+        public Config routeId(String v)              { apiRouteId = v; return this; }
+        public Config authorizationKey(String v)     { apiAuthorizationKey = v; return this; }
+        public Config apiKey(String v)               { apiAuthKey = v; return this; }
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -128,9 +166,20 @@ public final class TripTrackerSDK {
         ctx.getSharedPreferences("triptracker_settings", Context.MODE_PRIVATE)
                 .edit().putInt("transport_type", config.transportType).apply();
 
+        // API Service
+        TripTrackerAPIService.getInstance().configure(
+            config.apiPingURL, config.apiEndURL, config.apiUserId, config.apiVehicleId,
+            config.apiOsInfo, config.apiRouteId, config.apiAuthorizationKey, config.apiAuthKey
+        );
+
         // Geofence toggle
         GeofenceManager.setEnabled(ctx, config.geofenceEnabled);
         if (config.geofenceEnabled) GeofenceManager.registerAll(ctx);
+
+        // API Service
+        TripTrackerAPIService.getInstance().configure(
+                config.pingURL, config.endURL, config.userId, config.vehicleId,
+                config.osInfo, config.routeId, config.authorizationKey, config.apiAuthKey);
     }
 
     public static boolean isInitialized() { return initialized; }

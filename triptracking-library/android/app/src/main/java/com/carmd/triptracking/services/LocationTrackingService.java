@@ -21,6 +21,7 @@ import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import com.carmd.triptracking.tracking.SensorBasedLocationTracker;
+import com.carmd.triptracking.api.TripTrackerAPIService;
 import com.carmd.triptracking.database.LocationDatabase;
 import com.carmd.triptracking.server.LocationWebServer;
 import android.app.AlarmManager;
@@ -534,6 +535,13 @@ public class LocationTrackingService extends Service implements
             int tripSteps = stats.getStepCount() - tripStartStepCount;
             if (tripSteps < 0) tripSteps = 0;
             database.endTrip(currentTripId, totalDistance, duration, tripSteps);
+
+            // API: send final GPS location when trip ends
+            Location endLoc = getLastKnownLocation();
+            if (endLoc != null) {
+                TripTrackerAPIService.getInstance().sendTripEnd(endLoc);
+            }
+
             Log.d(TAG, "⏹️ Trip #" + currentTripId + " ended, " +
                     database.getLocationCount(currentTripId) + " points saved" +
                     ", dist=" + String.format("%.0f", totalDistance) + "m" +
@@ -931,6 +939,11 @@ public class LocationTrackingService extends Service implements
         if (isTracking && currentTripId != -1) {
             database.saveLocation(currentTripId, location, sourceStr);
             lastSaveTime = System.currentTimeMillis();
+
+            // API: send ping on every GPS save during trip
+            String activityType = speed >= vehicleThreshold ? "vehicle" : (speed > 0.5f ? "walking" : "still");
+            TripTrackerAPIService.getInstance().sendPing(location, true, speed, activityType);
+
             Log.d(TAG, "Saved: source=" + sourceStr +
                     " speed=" + String.format("%.1f", speed) + " m/s trip=" + currentTripId);
         }
