@@ -9,6 +9,7 @@ import android.net.Uri;
 import android.os.IBinder;
 
 import androidx.core.content.FileProvider;
+import com.carmd.triptracking.TripTrackerSDK;
 
 import com.carmd.triptracking.database.LocationDatabase;
 import com.carmd.triptracking.geofence.GeofenceManager;
