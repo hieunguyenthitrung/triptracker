@@ -95,6 +95,9 @@ export interface TripTrackerPlugin {
 
   /** Share all log files via share sheet. */
   sendAllLogs(): Promise<{ shared: boolean; count: number }>;
+
+  /** Call this after user grants permission to start the service manually. */
+  startTracking(): Promise<{ started: boolean }>;
 }
 
 // ── Types ──

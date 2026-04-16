@@ -79,4 +79,8 @@ export class TripTrackerWeb extends WebPlugin implements TripTrackerPlugin {
   async sendAllLogs(): Promise<any> {
     throw this.unavailable('sendAllLogs is only available on iOS');
   }
+
+  async startTracking(): Promise<any> {
+    throw this.unavailable('startTracking is only available on iOS');
+  }
 }

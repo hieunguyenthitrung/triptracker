@@ -34,4 +34,5 @@ export declare class TripTrackerWeb extends WebPlugin implements TripTrackerPlug
     stopWebMonitor(): Promise<any>;
     sendTodayLog(): Promise<any>;
     sendAllLogs(): Promise<any>;
+    startTracking(): Promise<any>;
 }

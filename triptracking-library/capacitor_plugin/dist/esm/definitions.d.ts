@@ -98,6 +98,10 @@ export interface TripTrackerPlugin {
         shared: boolean;
         count: number;
     }>;
+    /** Call this after user grants permission to start the service manually. */
+    startTracking(): Promise<{
+        started: boolean;
+    }>;
 }
 export interface TrackingStatus {
     isTracking: boolean;

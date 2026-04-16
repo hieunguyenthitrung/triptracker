@@ -57,5 +57,8 @@ export class TripTrackerWeb extends WebPlugin {
     async sendAllLogs() {
         throw this.unavailable('sendAllLogs is only available on iOS');
     }
+    async startTracking() {
+        throw this.unavailable('startTracking is only available on iOS');
+    }
 }
 //# sourceMappingURL=web.js.map
