@@ -941,7 +941,7 @@ public class LocationTrackingService extends Service implements
             lastSaveTime = System.currentTimeMillis();
 
             // API: send ping on every GPS save during trip
-            String activityType = speed >= vehicleThreshold ? "vehicle" : (speed > 0.5f ? "walking" : "still");
+            String activityType = speed >= vehicleThreshold() ? "vehicle" : (speed > 0.5f ? "walking" : "still");
             TripTrackerAPIService.getInstance().sendPing(location, true, speed, activityType);
 
             Log.d(TAG, "Saved: source=" + sourceStr +

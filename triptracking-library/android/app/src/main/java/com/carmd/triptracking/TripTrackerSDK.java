@@ -5,14 +5,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.util.Log;
+import com.carmd.triptracking.api.TripTrackerAPIService;
 import com.carmd.triptracking.database.LocationDatabase;
 import com.carmd.triptracking.geofence.GeofenceManager;
 import com.carmd.triptracking.services.LocationTrackingService;
 import com.carmd.triptracking.ui.*;
 import com.carmd.triptracking.util.LogcatWriter;
-import com.carmd.triptracking.api.TripTrackerAPIService;
 import com.carmd.triptracking.util.VoiceFeedback;
-import com.carmd.triptracking.server.TripTrackerAPIService;
 
 public final class TripTrackerSDK {
     private static final String TAG = "TripTrackerSDK";
@@ -20,16 +19,12 @@ public final class TripTrackerSDK {
     private static boolean initialized = false;
     private TripTrackerSDK() {}
 
-    // ═══════════════════════════════════════════════════════════════════
-    // Configuration
-    // ═══════════════════════════════════════════════════════════════════
-
     public static class Config {
         // Save & Tracking
         public double saveIntervalMinutes = 15.0;
         public double saveDistanceMeters = 30.0;
-        public float  vehicleThreshold = 6.0f;      // m/s (22 km/h)
-        public int    transportType = 0;              // 0=Car, 1=Moto, 2=Bike, 3=Walk
+        public float  vehicleThreshold = 6.0f;
+        public int    transportType = 0;
         public double autoStopTimeoutMinutes = 5.0;
         public double routeGapMeters = 500.0;
 
@@ -46,16 +41,6 @@ public final class TripTrackerSDK {
         public boolean notifyGeofenceExit = true;
 
         // API
-        public String apiPingURL = "";
-        public String apiEndURL = "";
-        public String apiUserId = "";
-        public String apiVehicleId = "";
-        public String apiOsInfo = "";
-        public String apiRouteId = "";
-        public String apiAuthorizationKey = "";
-        public String apiAuthKey = "";
-
-        // API
         public String pingURL = "";
         public String endURL = "";
         public String userId = "";
@@ -67,116 +52,71 @@ public final class TripTrackerSDK {
 
         public Config() {}
 
-        /** Builder-style setters */
-        public Config saveInterval(double minutes)     { saveIntervalMinutes = minutes; return this; }
-        public Config saveDistance(double meters)       { saveDistanceMeters = meters; return this; }
-        public Config vehicleSpeed(float ms)            { vehicleThreshold = ms; return this; }
-        public Config transport(int type)                { transportType = type; return this; }
-        public Config autoStopTimeout(double minutes)  { autoStopTimeoutMinutes = minutes; return this; }
-        public Config routeGap(double meters)           { routeGapMeters = meters; return this; }
-        public Config geofence(boolean enabled)          { geofenceEnabled = enabled; return this; }
-        public Config webMonitor(boolean enabled)        { webMonitorEnabled = enabled; return this; }
-        public Config voice(boolean enabled)             { voiceFeedbackEnabled = enabled; return this; }
-        public Config notifTripStart(boolean v)          { notifyTripStart = v; return this; }
-        public Config notifTripEnd(boolean v)            { notifyTripEnd = v; return this; }
-        public Config notifDistanceKm(boolean v)         { notifyDistanceKm = v; return this; }
-        public Config notifGeofenceEnter(boolean v)      { notifyGeofenceEnter = v; return this; }
-        public Config notifGeofenceExit(boolean v)       { notifyGeofenceExit = v; return this; }
-        public Config pingUrl(String v)                  { pingURL = v; return this; }
-        public Config endUrl(String v)                   { endURL = v; return this; }
-        public Config user(String v)                     { userId = v; return this; }
-        public Config vehicle(String v)                  { vehicleId = v; return this; }
-        public Config os(String v)                       { osInfo = v; return this; }
-        public Config route(String v)                    { routeId = v; return this; }
-        public Config authorization(String v)            { authorizationKey = v; return this; }
-        public Config apiAuth(String v)                  { apiAuthKey = v; return this; }
-        public Config pingURL(String v)              { apiPingURL = v; return this; }
-        public Config endURL(String v)               { apiEndURL = v; return this; }
-        public Config userId(String v)               { apiUserId = v; return this; }
-        public Config vehicleId(String v)            { apiVehicleId = v; return this; }
-        public Config osInfo(String v)               { apiOsInfo = v; return this; }
-        public Config routeId(String v)              { apiRouteId = v; return this; }
-        public Config authorizationKey(String v)     { apiAuthorizationKey = v; return this; }
-        public Config apiKey(String v)               { apiAuthKey = v; return this; }
+        // Builder setters
+        public Config saveInterval(double v)     { saveIntervalMinutes = v; return this; }
+        public Config saveDistance(double v)       { saveDistanceMeters = v; return this; }
+        public Config vehicleSpeed(float v)        { vehicleThreshold = v; return this; }
+        public Config transport(int v)              { transportType = v; return this; }
+        public Config autoStopTimeout(double v)    { autoStopTimeoutMinutes = v; return this; }
+        public Config routeGap(double v)            { routeGapMeters = v; return this; }
+        public Config geofence(boolean v)           { geofenceEnabled = v; return this; }
+        public Config webMonitor(boolean v)         { webMonitorEnabled = v; return this; }
+        public Config voice(boolean v)              { voiceFeedbackEnabled = v; return this; }
+        public Config notifTripStart(boolean v)     { notifyTripStart = v; return this; }
+        public Config notifTripEnd(boolean v)       { notifyTripEnd = v; return this; }
+        public Config notifDistanceKm(boolean v)    { notifyDistanceKm = v; return this; }
+        public Config notifGeofenceEnter(boolean v) { notifyGeofenceEnter = v; return this; }
+        public Config notifGeofenceExit(boolean v)  { notifyGeofenceExit = v; return this; }
+        public Config pingUrl(String v)             { pingURL = v; return this; }
+        public Config endUrl(String v)              { endURL = v; return this; }
+        public Config user(String v)                { userId = v; return this; }
+        public Config vehicle(String v)             { vehicleId = v; return this; }
+        public Config os(String v)                  { osInfo = v; return this; }
+        public Config route(String v)               { routeId = v; return this; }
+        public Config authorization(String v)       { authorizationKey = v; return this; }
+        public Config apiAuth(String v)             { apiAuthKey = v; return this; }
     }
 
-    // ═══════════════════════════════════════════════════════════════════
-    // Initialize
-    // ═══════════════════════════════════════════════════════════════════
-
-    /** Initialize with default config. */
     public static void initialize(Context context) {
         initialize(context, new Config());
     }
 
-    /** Initialize with custom config. */
     public static void initialize(Context context, Config config) {
-        if (initialized) {
-            applyConfig(context, config);
-            return;
-        }
+        if (initialized) { applyConfig(context, config); return; }
         appContext = context.getApplicationContext();
-
-        // Apply config to SharedPreferences
         applyConfig(appContext, config);
-
-        // Start services
         LogcatWriter.start(appContext);
         LocationDatabase.getInstance(appContext);
-
         Intent si = new Intent(appContext, LocationTrackingService.class);
         appContext.startForegroundService(si);
-
         VoiceFeedback.getInstance(appContext);
-
-        if (config.geofenceEnabled) {
-            GeofenceManager.registerAll(appContext);
-        }
-
+        if (config.geofenceEnabled) GeofenceManager.registerAll(appContext);
         initialized = true;
         Log.i(TAG, "✅ TripTrackerSDK initialized — interval=" + config.saveIntervalMinutes
                 + "min dist=" + config.saveDistanceMeters + "m autoStop=" + config.autoStopTimeoutMinutes + "min");
     }
 
-    /** Apply config to SharedPreferences (can be called anytime). */
     public static void applyConfig(Context ctx, Config config) {
         SharedPreferences.Editor ed = ctx.getSharedPreferences("triptracker_settings", Context.MODE_PRIVATE).edit();
-
-        // Save & Tracking
         ed.putFloat(AppSettings.KEY_STILL_INTERVAL, (float) config.saveIntervalMinutes);
         ed.putFloat(AppSettings.KEY_VEHICLE_DISTANCE, (float) config.saveDistanceMeters);
         ed.putFloat(AppSettings.KEY_VEHICLE_SPEED, config.vehicleThreshold);
         ed.putFloat(AppSettings.KEY_AUTO_STOP_TIMEOUT, (float) config.autoStopTimeoutMinutes);
         ed.putFloat(AppSettings.KEY_ROUTE_GAP, (float) config.routeGapMeters);
-
-        // Features
         ed.putBoolean(AppSettings.KEY_WEB_SERVER_ENABLED, config.webMonitorEnabled);
         ed.putBoolean(AppSettings.KEY_VOICE_ENABLED, config.voiceFeedbackEnabled);
-
-        // Notifications
         ed.putBoolean(AppSettings.KEY_NOTIF_TRIP_START, config.notifyTripStart);
         ed.putBoolean(AppSettings.KEY_NOTIF_TRIP_END, config.notifyTripEnd);
         ed.putBoolean(AppSettings.KEY_NOTIF_DISTANCE_KM, config.notifyDistanceKm);
         ed.putBoolean(AppSettings.KEY_NOTIF_GEOFENCE_ENTER, config.notifyGeofenceEnter);
         ed.putBoolean(AppSettings.KEY_NOTIF_GEOFENCE_EXIT, config.notifyGeofenceExit);
-
+        ed.putInt("transport_type", config.transportType);
         ed.apply();
 
-        // Transport type (stored separately)
-        ctx.getSharedPreferences("triptracker_settings", Context.MODE_PRIVATE)
-                .edit().putInt("transport_type", config.transportType).apply();
-
-        // API Service
-        TripTrackerAPIService.getInstance().configure(
-            config.apiPingURL, config.apiEndURL, config.apiUserId, config.apiVehicleId,
-            config.apiOsInfo, config.apiRouteId, config.apiAuthorizationKey, config.apiAuthKey
-        );
-
-        // Geofence toggle
         GeofenceManager.setEnabled(ctx, config.geofenceEnabled);
         if (config.geofenceEnabled) GeofenceManager.registerAll(ctx);
 
-        // API Service
+        // API
         TripTrackerAPIService.getInstance().configure(
                 config.pingURL, config.endURL, config.userId, config.vehicleId,
                 config.osInfo, config.routeId, config.authorizationKey, config.apiAuthKey);
@@ -184,32 +124,22 @@ public final class TripTrackerSDK {
 
     public static boolean isInitialized() { return initialized; }
 
-    // ═══════════════════════════════════════════════════════════════════
-    // Native Pages (each has built-in Google Map)
-    // ═══════════════════════════════════════════════════════════════════
-
+    // Native pages
     public static void openMainView(Activity a)       { a.startActivity(new Intent(a, MainActivity.class)); }
     public static void openSettings(Activity a)        { a.startActivity(new Intent(a, SettingsActivity.class)); }
     public static void openNotifications(Activity a)   { a.startActivity(new Intent(a, NotificationSettingsActivity.class)); }
     public static void openGeofence(Activity a)        { a.startActivity(new Intent(a, GeofenceSettingsActivity.class)); }
     public static void openHistory(Activity a)         { a.startActivity(new Intent(a, TripHistoryActivity.class)); }
     public static void openDailyLocations(Activity a)  { a.startActivity(new Intent(a, DailyLocationsActivity.class)); }
-
     public static void openMainView(Context c)      { launch(c, MainActivity.class); }
     public static void openSettings(Context c)       { launch(c, SettingsActivity.class); }
     public static void openNotifications(Context c)  { launch(c, NotificationSettingsActivity.class); }
     public static void openGeofence(Context c)       { launch(c, GeofenceSettingsActivity.class); }
     public static void openHistory(Context c)        { launch(c, TripHistoryActivity.class); }
     public static void openDailyLocations(Context c) { launch(c, DailyLocationsActivity.class); }
+    private static void launch(Context c, Class<?> cls) { Intent i = new Intent(c, cls); i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); c.startActivity(i); }
 
-    private static void launch(Context c, Class<?> cls) {
-        Intent i = new Intent(c, cls); i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); c.startActivity(i);
-    }
-
-    // ═══════════════════════════════════════════════════════════════════
-    // Data Access
-    // ═══════════════════════════════════════════════════════════════════
-
+    // Data access
     public static boolean isTracking()    { LocationTrackingService s = LocationTrackingService.getInstance(); return s != null && s.isCurrentlyTracking(); }
     public static long getCurrentTripId() { LocationTrackingService s = LocationTrackingService.getInstance(); return s != null ? s.getCurrentTripId() : 0; }
     public static double getDistance()    { LocationTrackingService s = LocationTrackingService.getInstance(); return s != null ? s.getTotalDistance() : 0; }
@@ -219,10 +149,7 @@ public final class TripTrackerSDK {
     public static int getSteps()          { LocationTrackingService s = LocationTrackingService.getInstance(); return s != null ? s.getCurrentTripSteps() : 0; }
     public static android.location.Location getLastLocation() { LocationTrackingService s = LocationTrackingService.getInstance(); return s != null ? s.getLastKnownLocation() : null; }
 
-    // ═══════════════════════════════════════════════════════════════════
-    // Settings Getters
-    // ═══════════════════════════════════════════════════════════════════
-
+    // Settings getters
     public static float getVehicleThreshold()   { return appContext != null ? AppSettings.getVehicleSpeed(appContext) : 6f; }
     public static boolean isVoiceEnabled()      { return appContext != null && AppSettings.isVoiceEnabled(appContext); }
     public static boolean isWebMonitorEnabled() { return appContext != null && AppSettings.isWebServerEnabled(appContext); }
