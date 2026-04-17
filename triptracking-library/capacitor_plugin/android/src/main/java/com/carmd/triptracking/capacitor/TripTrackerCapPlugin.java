@@ -9,7 +9,11 @@ import android.net.Uri;
 import android.os.IBinder;
 
 import androidx.core.content.FileProvider;
-
+import com.carmd.triptracking.TripTrackerSDK;
+import com.carmd.triptracking.database.LocationDatabase;
+import com.carmd.triptracking.geofence.GeofenceManager;
+import com.carmd.triptracking.services.LocationTrackingService;
+import com.carmd.triptracking.ui.AppSettings;
 import com.carmd.triptracking.database.LocationDatabase;
 import com.carmd.triptracking.geofence.GeofenceManager;
 import com.carmd.triptracking.services.LocationTrackingService;
@@ -437,7 +441,7 @@ public class TripTrackerCapPlugin extends Plugin {
             obj.put("name", z.name);
             obj.put("latitude", z.latitude);
             obj.put("longitude", z.longitude);
-            obj.put("radius", z.radius);
+            obj.put("radius", z.radiusMeters);
             obj.put("notifyOnEnter", z.notifyOnEnter);
             obj.put("notifyOnExit", z.notifyOnExit);
             obj.put("autoStopOnEnter", z.autoStopTrip);
@@ -458,13 +462,16 @@ public class TripTrackerCapPlugin extends Plugin {
             call.reject("Missing name/latitude/longitude"); return;
         }
 
-        GeofenceManager.GeofenceZone zone = new GeofenceManager.GeofenceZone(
-                name, lat, lon,
-                call.getDouble("radius", 200.0),
-                call.getBoolean("notifyOnEnter", true),
-                call.getBoolean("notifyOnExit", true),
-                call.getBoolean("autoStopOnEnter", false)
-        );
+      Double radiusDouble = call.getDouble("radius");
+      float radiusMeters = radiusDouble != null ? radiusDouble.floatValue() : 200.0f;
+
+      GeofenceManager.GeofenceZone zone = new GeofenceManager.GeofenceZone(
+        name, lat, lon,
+        radiusMeters,
+        call.getBoolean("notifyOnEnter", true),
+        call.getBoolean("notifyOnExit", true),
+        call.getBoolean("autoStopOnEnter", false)
+      );
         GeofenceManager.addZone(getContext(), zone);
         GeofenceManager.registerAll(getContext());
 
