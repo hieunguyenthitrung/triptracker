@@ -555,7 +555,7 @@ public void onDestroy() {
             database.endTrip(currentTripId, totalDistance, duration, tripSteps);
 
             // API: send final GPS location when trip ends
-            Location endLoc = getLastKnownLocation();
+            Location endLoc = lastSavedGpsLocation != null ? lastSavedGpsLocation : lastSavedSensorLocation;
             if (endLoc != null) {
                 TripTrackerAPIService.getInstance().sendTripEnd(endLoc);
             }
@@ -960,6 +960,7 @@ public void onDestroy() {
 
             // API: send ping on every GPS save during trip
             String activityType;
+            boolean moving = true;
             if (speed >= vehicleThreshold()) {
                 activityType = "in-vehicle";
             } else if (speed > 1.5f) {
@@ -967,9 +968,10 @@ public void onDestroy() {
             } else if (speed > 0.5f) {
                 activityType = "walking";
             } else {
+                moving = false;
                 activityType = "still";
             }
-            TripTrackerAPIService.getInstance().sendPing(location, true, speed, activityType);
+            TripTrackerAPIService.getInstance().sendPing(location, moving, speed, activityType);
 
             Log.d(TAG, "Saved: source=" + sourceStr +
                     " speed=" + String.format("%.1f", speed) + " m/s trip=" + currentTripId);
