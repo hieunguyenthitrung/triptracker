@@ -83,7 +83,7 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
         call.resolve([
             "initialized": true,
             "permissionGranted": granted,
-            "trackingStarted": granted
+            "trackingStarted": true  // Service always starts
         ])
     }
 
@@ -99,15 +99,15 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
 
     /// Check if location permission is granted.
     @objc func hasLocationPermission(_ call: CAPPluginCall) {
-        call.resolve(["granted": Self.hasLocationPermissionNative()])
+        let granted = Self.hasLocationPermissionNative()
+        if granted {
+            TripTrackerSDK.onPermissionGranted()
+        }
+        call.resolve(["granted": granted])
     }
 
-    /// Start tracking (iOS starts automatically when permission is granted and SDK is initialized).
+    /// Start tracking.
     @objc func startTracking(_ call: CAPPluginCall) {
-        guard Self.hasLocationPermissionNative() else {
-            call.reject("Location permission not granted")
-            return
-        }
         LocationTrackingService.shared.startBackgroundTracking()
         call.resolve(["started": true])
     }

@@ -63,25 +63,21 @@ public class TripTrackerCapPlugin extends Plugin {
 
     @Override
     public void load() {
-        // Don't auto-bind to service — wait until permission granted + initialize() called.
-        // Otherwise app crashes on Android 14+ if user hasn't granted ACCESS_FINE_LOCATION.
+        // Service is always started by SDK. Bind to it.
+        bindToServiceIfRunning();
     }
 
     @Override
     protected void handleOnResume() {
         super.handleOnResume();
-        // User may have just returned from system Settings after granting permission.
-        // If SDK was initialized but service not started, start it now.
-        if (TripTrackerSDK.isInitialized()
-                && TripTrackerSDK.hasLocationPermission(getContext())
-                && com.carmd.triptracking.services.LocationTrackingService.getInstance() == null) {
-            android.util.Log.i("TripTrackerCap", "onResume: permission granted — auto-starting service");
-            TripTrackerSDK.startTracking(getContext());
-            bindToServiceIfRunning();
+        // User may have just granted permission in Settings
+        if (TripTrackerSDK.isInitialized() && TripTrackerSDK.hasLocationPermission(getContext())) {
+            TripTrackerSDK.onPermissionGranted(getContext());
+            if (!serviceBound) bindToServiceIfRunning();
         }
     }
 
-    /** Bind to service if it's running (called after startTracking succeeds). */
+    /** Bind to service if it's running. */
     private void bindToServiceIfRunning() {
         if (serviceBound) return;
         try {
@@ -99,14 +95,9 @@ public class TripTrackerCapPlugin extends Plugin {
     @PluginMethod
     public void hasLocationPermission(PluginCall call) {
         boolean granted = TripTrackerSDK.hasLocationPermission(getContext());
-
-        // Auto-start tracking if permission is now granted but service isn't running
-        if (granted && TripTrackerSDK.isInitialized()
-                && com.carmd.triptracking.services.LocationTrackingService.getInstance() == null) {
-            TripTrackerSDK.startTracking(getContext());
-            bindToServiceIfRunning();
+        if (granted) {
+            TripTrackerSDK.onPermissionGranted(getContext());
         }
-
         JSObject ret = new JSObject();
         ret.put("granted", granted);
         call.resolve(ret);
@@ -218,16 +209,14 @@ public class TripTrackerCapPlugin extends Plugin {
 
         TripTrackerSDK.initialize(getContext(), config);
 
-        // If permission already granted, bind to service
+        // Service always starts — bind to it
         boolean permGranted = TripTrackerSDK.hasLocationPermission(getContext());
-        if (permGranted) {
-            bindToServiceIfRunning();
-        }
+        bindToServiceIfRunning();
 
         JSObject ret = new JSObject();
         ret.put("initialized", true);
         ret.put("permissionGranted", permGranted);
-        ret.put("trackingStarted", permGranted);
+        ret.put("trackingStarted", true);  // Service always starts
         call.resolve(ret);
     }
 

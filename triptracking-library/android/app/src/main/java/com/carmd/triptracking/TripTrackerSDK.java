@@ -81,6 +81,10 @@ public final class TripTrackerSDK {
         public Config apiAuthToken(String v)        { apiAuthToken = v; return this; }
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    // Initialize — ALWAYS starts the service
+    // ═══════════════════════════════════════════════════════════════
+
     public static void initialize(Context context) {
         initialize(context, new Config());
     }
@@ -92,59 +96,28 @@ public final class TripTrackerSDK {
         LogcatWriter.start(appContext);
         LocationDatabase.getInstance(appContext);
 
-        // Only start foreground service if permission is granted — otherwise crash on Android 14+
-        if (hasLocationPermission(appContext)) {
-            try {
-                Intent si = new Intent(appContext, LocationTrackingService.class);
-                appContext.startForegroundService(si);
-                Log.i(TAG, "✅ Location service started");
-            } catch (SecurityException e) {
-                Log.e(TAG, "Cannot start service: " + e.getMessage());
-            }
-        } else {
-            Log.w(TAG, "⚠️ Location permission NOT granted — service NOT started. " +
-                    "Call TripTrackerSDK.startTracking(context) after user grants permission.");
+        // ALWAYS start the service — it handles permission internally.
+        // Service starts with minimal notification if no permission,
+        // then upgrades to full location tracking when permission granted.
+        try {
+            Intent si = new Intent(appContext, LocationTrackingService.class);
+            appContext.startForegroundService(si);
+            Log.i(TAG, "✅ Service started");
+        } catch (Exception e) {
+            Log.e(TAG, "Service start failed: " + e.getMessage());
         }
 
         VoiceFeedback.getInstance(appContext);
-        if (config.geofenceEnabled) GeofenceManager.registerAll(appContext);
+        if (config.geofenceEnabled && hasLocationPermission(appContext)) {
+            GeofenceManager.registerAll(appContext);
+        }
         initialized = true;
-        Log.i(TAG, "✅ TripTrackerSDK initialized — interval=" + config.saveIntervalMinutes
-                + "min dist=" + config.saveDistanceMeters + "m autoStop=" + config.autoStopTimeoutMinutes + "min");
+        Log.i(TAG, "✅ TripTrackerSDK initialized");
     }
 
-    /** Check if ACCESS_FINE_LOCATION or ACCESS_COARSE_LOCATION is granted at runtime. */
-    public static boolean hasLocationPermission(Context ctx) {
-        int fine = ContextCompat.checkSelfPermission(ctx, android.Manifest.permission.ACCESS_FINE_LOCATION);
-        int coarse = ContextCompat.checkSelfPermission(ctx, android.Manifest.permission.ACCESS_COARSE_LOCATION);
-        return fine == PackageManager.PERMISSION_GRANTED || coarse == PackageManager.PERMISSION_GRANTED;
-    }
-
-    /** Start the location tracking service. Call this after the user grants permission. */
-    public static void startTracking(Context context) {
-        if (!hasLocationPermission(context)) {
-            Log.e(TAG, "Cannot start tracking — ACCESS_FINE_LOCATION / ACCESS_COARSE_LOCATION not granted");
-            return;
-        }
-        try {
-            Intent si = new Intent(context.getApplicationContext(), LocationTrackingService.class);
-            context.getApplicationContext().startForegroundService(si);
-            Log.i(TAG, "✅ Location tracking started");
-        } catch (SecurityException e) {
-            Log.e(TAG, "Start tracking failed: " + e.getMessage());
-        }
-    }
-
-    /** Stop the tracking service. */
-    public static void stopTracking(Context context) {
-        try {
-            Intent si = new Intent(context.getApplicationContext(), LocationTrackingService.class);
-            context.getApplicationContext().stopService(si);
-            Log.i(TAG, "⏹️ Location tracking stopped");
-        } catch (Exception e) {
-            Log.e(TAG, "Stop tracking failed: " + e.getMessage());
-        }
-    }
+    // ═══════════════════════════════════════════════════════════════
+    // Apply config — settings + API (API only works if URLs set)
+    // ═══════════════════════════════════════════════════════════════
 
     public static void applyConfig(Context ctx, Config config) {
         SharedPreferences.Editor ed = ctx.getSharedPreferences("triptracker_settings", Context.MODE_PRIVATE).edit();
@@ -164,7 +137,9 @@ public final class TripTrackerSDK {
         ed.apply();
 
         GeofenceManager.setEnabled(ctx, config.geofenceEnabled);
-        if (config.geofenceEnabled) GeofenceManager.registerAll(ctx);
+        if (config.geofenceEnabled && hasLocationPermission(ctx)) {
+            GeofenceManager.registerAll(ctx);
+        }
 
         // API
         TripTrackerAPIService.getInstance().configure(
@@ -175,7 +150,53 @@ public final class TripTrackerSDK {
 
     public static boolean isInitialized() { return initialized; }
 
+    // ═══════════════════════════════════════════════════════════════
+    // Permission
+    // ═══════════════════════════════════════════════════════════════
+
+    public static boolean hasLocationPermission(Context ctx) {
+        int fine = ContextCompat.checkSelfPermission(ctx, android.Manifest.permission.ACCESS_FINE_LOCATION);
+        int coarse = ContextCompat.checkSelfPermission(ctx, android.Manifest.permission.ACCESS_COARSE_LOCATION);
+        return fine == PackageManager.PERMISSION_GRANTED || coarse == PackageManager.PERMISSION_GRANTED;
+    }
+
+    /**
+     * Notify the service that permission has been granted.
+     * Call from Activity.onRequestPermissionsResult or plugin handleOnResume.
+     */
+    public static void onPermissionGranted(Context context) {
+        LocationTrackingService svc = LocationTrackingService.getInstance();
+        if (svc != null) {
+            svc.onLocationPermissionGranted();
+            Log.i(TAG, "✅ Permission granted — location tracking activated");
+        } else {
+            // Service not running yet, start it
+            startTracking(context);
+        }
+    }
+
+    public static void startTracking(Context context) {
+        try {
+            Intent si = new Intent(context.getApplicationContext(), LocationTrackingService.class);
+            context.getApplicationContext().startForegroundService(si);
+        } catch (Exception e) {
+            Log.e(TAG, "Start tracking failed: " + e.getMessage());
+        }
+    }
+
+    public static void stopTracking(Context context) {
+        try {
+            Intent si = new Intent(context.getApplicationContext(), LocationTrackingService.class);
+            context.getApplicationContext().stopService(si);
+        } catch (Exception e) {
+            Log.e(TAG, "Stop tracking failed: " + e.getMessage());
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
     // Native pages
+    // ═══════════════════════════════════════════════════════════════
+
     public static void openMainView(Activity a)       { a.startActivity(new Intent(a, MainActivity.class)); }
     public static void openSettings(Activity a)        { a.startActivity(new Intent(a, SettingsActivity.class)); }
     public static void openNotifications(Activity a)   { a.startActivity(new Intent(a, NotificationSettingsActivity.class)); }

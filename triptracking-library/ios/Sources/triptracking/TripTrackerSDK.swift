@@ -91,6 +91,8 @@ public final class TripTrackerSDK {
 
         let isLocationRelaunch = launchOptions?[.location] != nil
         DatabaseManager.shared.initializeDatabase()
+
+        // ALWAYS start the service — it requests permission internally
         LocationTrackingService.shared.startBackgroundTracking()
 
         if let info = DatabaseManager.shared.getActiveTripInfo() {
@@ -107,9 +109,32 @@ public final class TripTrackerSDK {
         NotificationManager.shared.requestPermission()
         if GeofenceManager.shared.isEnabled { GeofenceManager.shared.startMonitoringAll() }
 
+        // If permission not yet granted, request it and observe for changes
+        if !hasLocationPermission {
+            print("⚠️ Location permission not granted — requesting…")
+            permissionDelegate = LocationPermissionDelegate()
+        } else {
+            print("✅ Location permission already granted — tracking active")
+        }
+
         _initialized = true
-        print("✅ TripTrackerSDK initialized — interval=\(config.saveIntervalMinutes)min dist=\(config.saveDistanceMeters)m autoStop=\(config.autoStopTimeoutMinutes)min")
+        print("✅ TripTrackerSDK initialized")
     }
+
+    // ── Permission ──
+    public static var hasLocationPermission: Bool {
+        let status = CLLocationManager().authorizationStatus
+        return status == .authorizedAlways || status == .authorizedWhenInUse
+    }
+
+    /// Called when permission is granted (from delegate or plugin)
+    public static func onPermissionGranted() {
+        LocationTrackingService.shared.startBackgroundTracking()
+        permissionDelegate = nil  // no longer needed
+        print("✅ Permission granted — tracking activated")
+    }
+
+    private static var permissionDelegate: LocationPermissionDelegate?
 
     // ── Apply config to UserDefaults + live services ──
     public static func applyConfig(_ config: TripTrackerConfig) {
@@ -194,5 +219,28 @@ public final class TripTrackerSDK {
     // ── Update vehicle_id at runtime ──
     public static func updateVehicleId(_ vehicleId: String) {
         TripTrackerAPIService.shared.updateVehicleId(vehicleId)
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Permission Observer — auto-starts tracking when user grants permission
+// ═══════════════════════════════════════════════════════════════
+
+private class LocationPermissionDelegate: NSObject, CLLocationManagerDelegate {
+    private let manager = CLLocationManager()
+
+    override init() {
+        super.init()
+        manager.delegate = self
+        // Request permission — iOS shows the system dialog
+        manager.requestWhenInUseAuthorization()
+    }
+
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        let status = manager.authorizationStatus
+        if status == .authorizedAlways || status == .authorizedWhenInUse {
+            print("✅ Location permission granted via delegate — auto-starting tracking")
+            TripTrackerSDK.onPermissionGranted()
+        }
     }
 }

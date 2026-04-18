@@ -161,41 +161,72 @@ public class LocationTrackingService extends Service implements
     // Lifecycle
     // =========================================================================
 
+    private boolean locationTrackingActive = false;
+    private android.os.Handler permissionHandler;
+    private Runnable permissionRunnable;
+
     @Override
     public void onCreate() {
         super.onCreate();
 
         createNotificationChannel();
+        instance = this;
+        database = LocationDatabase.getInstance(this);
 
-    // ⚠️ MUST call startForeground() within 5 seconds, or Android kills us.
-    // Always call it first with a minimal notification.
-    startMinimalForeground();
-
-    // Now check permission — if missing, stop gracefully.
-    if (!hasLocationPermissions()) {
-        Log.w(TAG, "⚠️ Location permissions NOT granted — stopping service");
-        stopForeground(STOP_FOREGROUND_REMOVE);
-        stopSelf();
-        return;
-    }
-
-        // Safe to go foreground now
+        // ALWAYS start foreground — minimal notification WITHOUT location type
+        // so it works even without location permission on Android 14+.
         try {
-            startForegroundNotification("Trip Tracker", "Starting…");
-        } catch (SecurityException e) {
+            Notification n = new NotificationCompat.Builder(this, CHANNEL_ID)
+                    .setContentTitle("Trip Tracker")
+                    .setContentText("Waiting for location permission…")
+                    .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+                    .setOngoing(true)
+                    .setPriority(NotificationCompat.PRIORITY_LOW)
+                    .build();
+            startForeground(NOTIFICATION_ID, n);
+        } catch (Exception e) {
             Log.e(TAG, "startForeground failed: " + e.getMessage());
             stopSelf();
             return;
         }
 
+        // If permission already granted → activate full tracking now
+        if (hasLocationPermissions()) {
+            activateLocationTracking();
+        } else {
+            // No permission yet → poll every 2s until granted
+            Log.w(TAG, "⚠️ No location permission — waiting…");
+            startPermissionPoller();
+        }
+    }
+
+    /**
+     * Called when location permission is granted.
+     * Can be called from SDK or from the permission poller.
+     */
+    public void onLocationPermissionGranted() {
+        if (locationTrackingActive) return;
+        Log.i(TAG, "✅ Permission granted — activating location tracking");
+        stopPermissionPoller();
+        activateLocationTracking();
+    }
+
+    /**
+     * Activate full location tracking. Only called when permission confirmed.
+     */
+    private void activateLocationTracking() {
+        locationTrackingActive = true;
+
+        // Upgrade to location-type foreground notification
+        startForegroundNotification("Trip Tracker", "Starting…");
+
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        sensorTracker   = new SensorBasedLocationTracker(this, this);
-        instance = this;
-        database        = LocationDatabase.getInstance(this);
+        if (sensorTracker == null) {
+            sensorTracker = new SensorBasedLocationTracker(this, this);
+        }
 
         PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "TripTracker::WakeLock");
-
         if (!wakeLock.isHeld()) wakeLock.acquire();
 
         // Seed sensor tracker with best available cached location
@@ -272,26 +303,27 @@ public class LocationTrackingService extends Service implements
     }
 
     @Override
-public void onDestroy() {
-    super.onDestroy();
-    try {
-        if (isTracking) {
-            saveCheckpoint();
-            scheduleWatchdog();
-        }
-        cancelAutoStopTimer();
-        if (sensorTracker != null) sensorTracker.stopTracking();
-        stopSaveLoop();
-        if (wakeLock != null && wakeLock.isHeld()) wakeLock.release();
-        if (webServer != null) webServer.stop();
+    public void onDestroy() {
+        super.onDestroy();
         try {
-            com.carmd.triptracking.util.VoiceFeedback.getInstance(this).shutdown();
-        } catch (Exception e) { /* ignored */ }
-    } catch (Exception e) {
-        Log.e(TAG, "onDestroy error: " + e.getMessage());
+            stopPermissionPoller();
+            if (isTracking) {
+                saveCheckpoint();
+                scheduleWatchdog();
+            }
+            cancelAutoStopTimer();
+            if (sensorTracker != null) sensorTracker.stopTracking();
+            stopSaveLoop();
+            if (wakeLock != null && wakeLock.isHeld()) wakeLock.release();
+            if (webServer != null) webServer.stop();
+            try {
+                com.carmd.triptracking.util.VoiceFeedback.getInstance(this).shutdown();
+            } catch (Exception e) { /* ignored */ }
+        } catch (Exception e) {
+            Log.e(TAG, "onDestroy error: " + e.getMessage());
+        }
+        instance = null;
     }
-    instance = null;
-}
 
     // =========================================================================
     // Public API
@@ -1419,4 +1451,36 @@ private void startMinimalForeground() {
     }
     public android.location.Location getLastKnownLocation() { return lastGpsLocation; }
 
+    // ═══════════════════════════════════════════════════════════════
+    // Permission Poller — checks every 2s until permission granted
+    // ═══════════════════════════════════════════════════════════════
+
+    private void startPermissionPoller() {
+        if (permissionHandler != null) return;
+        permissionHandler = new android.os.Handler(Looper.getMainLooper());
+        permissionRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (hasLocationPermissions()) {
+                    Log.i(TAG, "✅ Permission detected by poller — activating tracking");
+                    onLocationPermissionGranted();
+                    return;
+                }
+                // Check again in 2 seconds
+                if (permissionHandler != null) {
+                    permissionHandler.postDelayed(this, 2000);
+                }
+            }
+        };
+        permissionHandler.postDelayed(permissionRunnable, 2000);
+        Log.i(TAG, "🔄 Started permission poller (every 2s)");
+    }
+
+    private void stopPermissionPoller() {
+        if (permissionHandler != null && permissionRunnable != null) {
+            permissionHandler.removeCallbacks(permissionRunnable);
+        }
+        permissionHandler = null;
+        permissionRunnable = null;
+    }
 }
