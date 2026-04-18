@@ -363,8 +363,8 @@ class LocationTrackingService: NSObject {
             steps: stepCount
         )
 
-        // API: send final GPS location when trip ends
-        if let lastLoc = locationManager.location {
+        // API: send final GPS location when trip ends (only if route_id is set)
+        if let lastLoc = locationManager.location, !TripTrackerAPIService.shared.config.routeId.isEmpty {
             TripTrackerAPIService.shared.sendTripEnd(location: lastLoc)
         }
 
@@ -666,10 +666,10 @@ class LocationTrackingService: NSObject {
 
         lastPersistedTimestampSec = nowMs / 1000
         DatabaseManager.shared.saveCachedLocation(location: pt)
-         if isTracking && currentTripId != -1 {
+        if isTracking && currentTripId != -1 {
             DatabaseManager.shared.saveLocation(tripId: currentTripId, location: pt)
         }
-        // API: ping on every save (trip and no trip)
+        // API: ping on EVERY save (trip AND no trip)
         sendAPIPing(location: pt, source: source)
         delegate?.didUpdateLocation(pt, source: source, totalDistance: totalDistance)
 
@@ -857,7 +857,7 @@ class LocationTrackingService: NSObject {
         if isTracking && currentTripId != -1 {
             DatabaseManager.shared.saveLocation(tripId: currentTripId, location: pt)
         }
-        // API: ping on every save (trip and no trip)
+        // API: ping on EVERY save (trip AND no trip)
         sendAPIPing(location: pt, source: source)
         delegate?.didUpdateLocation(pt, source: source, totalDistance: totalDistance)
 
@@ -1100,7 +1100,7 @@ class LocationTrackingService: NSObject {
         if isTracking && tripId != -1 {
             DatabaseManager.shared.saveLocation(tripId: tripId, location: location)
         }
-        // API: send ping on every GPS save (trip and no trip)
+        // API: ping on EVERY save (trip AND no trip)
         sendAPIPing(location: location, source: source)
         return true
     }

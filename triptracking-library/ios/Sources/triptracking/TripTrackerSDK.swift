@@ -89,6 +89,9 @@ public final class TripTrackerSDK {
         applyConfig(config)
         LogManager.shared.start()
 
+        // Restore API config from UserDefaults (in case app was killed + relaunched)
+        restoreAPIConfigFromDefaults()
+
         let isLocationRelaunch = launchOptions?[.location] != nil
         DatabaseManager.shared.initializeDatabase()
 
@@ -177,7 +180,36 @@ public final class TripTrackerSDK {
         apiConfig.apiAuthToken = config.apiAuthToken
         TripTrackerAPIService.shared.config = apiConfig
 
+        // Persist API config — survives app kill + service restart
+        ud.set(config.pingURL, forKey: "tt_api_pingURL")
+        ud.set(config.endURL, forKey: "tt_api_endURL")
+        ud.set(config.userId, forKey: "tt_api_userId")
+        ud.set(config.vehicleId, forKey: "tt_api_vehicleId")
+        ud.set(config.osInfo, forKey: "tt_api_osInfo")
+        ud.set(apiConfig.routeId, forKey: "tt_api_routeId")
+        ud.set(config.authorizationKey, forKey: "tt_api_authorizationKey")
+        ud.set(config.apiAuthKey, forKey: "tt_api_apiAuthKey")
+        ud.set(config.apiAuthToken, forKey: "tt_api_apiAuthToken")
+
         if config.geofenceEnabled { GeofenceManager.shared.startMonitoringAll() }
+    }
+
+    /// Restore API config from UserDefaults (after app kill + relaunch).
+    public static func restoreAPIConfigFromDefaults() {
+        let ud = UserDefaults.standard
+        var apiConfig = TripTrackerAPIConfig()
+        apiConfig.pingURL = ud.string(forKey: "tt_api_pingURL") ?? ""
+        apiConfig.endURL = ud.string(forKey: "tt_api_endURL") ?? ""
+        apiConfig.userId = ud.string(forKey: "tt_api_userId") ?? ""
+        apiConfig.vehicleId = ud.string(forKey: "tt_api_vehicleId") ?? ""
+        let osInfo = ud.string(forKey: "tt_api_osInfo") ?? ""
+        if !osInfo.isEmpty { apiConfig.osInfo = osInfo }
+        apiConfig.routeId = ud.string(forKey: "tt_api_routeId") ?? ""
+        apiConfig.authorizationKey = ud.string(forKey: "tt_api_authorizationKey") ?? ""
+        apiConfig.apiAuthKey = ud.string(forKey: "tt_api_apiAuthKey") ?? ""
+        apiConfig.apiAuthToken = ud.string(forKey: "tt_api_apiAuthToken") ?? ""
+        TripTrackerAPIService.shared.config = apiConfig
+        print("📡 API config restored from UserDefaults — enabled=\(apiConfig.isConfigured) ping=\(apiConfig.pingURL)")
     }
 
     // ── Lifecycle ──

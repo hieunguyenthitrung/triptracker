@@ -134,6 +134,17 @@ public final class TripTrackerSDK {
         ed.putBoolean(AppSettings.KEY_NOTIF_GEOFENCE_ENTER, config.notifyGeofenceEnter);
         ed.putBoolean(AppSettings.KEY_NOTIF_GEOFENCE_EXIT, config.notifyGeofenceExit);
         ed.putInt("transport_type", config.transportType);
+
+        // Persist API config — survives app kill + service restart
+        ed.putString("api_pingURL", config.pingURL != null ? config.pingURL : "");
+        ed.putString("api_endURL", config.endURL != null ? config.endURL : "");
+        ed.putString("api_userId", config.userId != null ? config.userId : "");
+        ed.putString("api_vehicleId", config.vehicleId != null ? config.vehicleId : "");
+        ed.putString("api_osInfo", config.osInfo != null ? config.osInfo : "");
+        ed.putString("api_routeId", config.routeId != null ? config.routeId : "");
+        ed.putString("api_authorizationKey", config.authorizationKey != null ? config.authorizationKey : "");
+        ed.putString("api_apiAuthKey", config.apiAuthKey != null ? config.apiAuthKey : "");
+        ed.putString("api_apiAuthToken", config.apiAuthToken != null ? config.apiAuthToken : "");
         ed.apply();
 
         GeofenceManager.setEnabled(ctx, config.geofenceEnabled);
@@ -149,6 +160,34 @@ public final class TripTrackerSDK {
     }
 
     public static boolean isInitialized() { return initialized; }
+
+    /**
+     * Restore API config from SharedPreferences.
+     * Called by LocationTrackingService.onCreate when service restarts after app kill.
+     */
+    public static void restoreAPIConfigFromPrefs(Context ctx) {
+        SharedPreferences prefs = ctx.getSharedPreferences("triptracker_settings", Context.MODE_PRIVATE);
+        String pingURL = prefs.getString("api_pingURL", "");
+        String endURL = prefs.getString("api_endURL", "");
+        String userId = prefs.getString("api_userId", "");
+        String vehicleId = prefs.getString("api_vehicleId", "");
+        String osInfo = prefs.getString("api_osInfo", "");
+        String routeId = prefs.getString("api_routeId", "");
+        String authKey = prefs.getString("api_authorizationKey", "");
+        String apiAuthKey = prefs.getString("api_apiAuthKey", "");
+        String apiAuthToken = prefs.getString("api_apiAuthToken", "");
+
+        // Use vehicleId as routeId if routeId is empty
+        String effectiveRouteId = (routeId != null && !routeId.isEmpty()) ? routeId : vehicleId;
+
+        TripTrackerAPIService.getInstance().configure(
+                pingURL, endURL, userId, vehicleId,
+                osInfo, effectiveRouteId, authKey, apiAuthKey, apiAuthToken);
+
+        boolean enabled = TripTrackerAPIService.getInstance().isEnabled();
+        Log.i(TAG, "API config restored from prefs — enabled=" + enabled
+                + " ping=" + pingURL + " user=" + userId);
+    }
 
     // ═══════════════════════════════════════════════════════════════
     // Permission

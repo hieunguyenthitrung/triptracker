@@ -76,6 +76,7 @@ public final class TripTrackerAPIService {
 
     public void setRouteId(String id) { this.routeId = id != null ? id : ""; }
     public boolean isEnabled() { return !pingURL.isEmpty() && !endURL.isEmpty() && !userId.isEmpty(); }
+    public boolean hasRouteId() { return routeId != null && !routeId.isEmpty(); }
 
     // ── Trip lifecycle — controls vehicle_id inclusion ──
     public void onTripStart() {
@@ -130,6 +131,7 @@ public final class TripTrackerAPIService {
     // ── POST /end — vehicle_id NOT included ──
     public void sendTripEnd(Location location) {
         if (!isEnabled()) return;
+        if (routeId == null || routeId.isEmpty()) return;
         executor.execute(() -> {
             try {
                 JSONObject body = new JSONObject();

@@ -588,7 +588,7 @@ public class LocationTrackingService extends Service implements
 
             // API: send final GPS location when trip ends
             Location endLoc = lastSavedGpsLocation != null ? lastSavedGpsLocation : lastSavedSensorLocation;
-            if (endLoc != null) {
+            if (endLoc != null && TripTrackerAPIService.getInstance().hasRouteId()) {
                 TripTrackerAPIService.getInstance().sendTripEnd(endLoc);
             }
 
