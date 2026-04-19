@@ -16,6 +16,7 @@ import Foundation
 import Capacitor
 import UIKit
 import CoreLocation
+import triptracking
 
 @objc(TripTrackerPlugin)
 public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
