@@ -9,7 +9,7 @@
 
 import UIKit
 
-class NotificationSettingsViewController: UIViewController {
+public class NotificationSettingsViewController: UIViewController {
 
     // MARK: - Keys (UserDefaults)
 

@@ -8,7 +8,7 @@
 import Foundation
 import SQLite3
 
-class DatabaseManager {
+public class DatabaseManager {
     
     static let shared = DatabaseManager()
     

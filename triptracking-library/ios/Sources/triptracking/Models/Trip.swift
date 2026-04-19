@@ -5,7 +5,7 @@
 
 import Foundation
 
-struct Trip {
+public struct Trip {
     let id: Int64
     let startTime: Int64
     var endTime: Int64

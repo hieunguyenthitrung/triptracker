@@ -6,7 +6,7 @@
 import Foundation
 import CoreLocation
 
-struct LocationPoint {
+public struct LocationPoint {
     let id: Int64
     let tripId: Int64?
     let latitude: Double

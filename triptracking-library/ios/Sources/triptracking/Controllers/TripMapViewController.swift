@@ -8,7 +8,7 @@
 import UIKit
 import MapKit
 
-class TripMapViewController: UIViewController {
+public class TripMapViewController: UIViewController {
     
     var tripLocations: [LocationPoint] = []
     var tripInfo: Trip?

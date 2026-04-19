@@ -19,7 +19,7 @@
 import UIKit
 import CarPlay
 
-class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
+public class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
 
     var interfaceController: CPInterfaceController?
     var carWindow: CPWindow?

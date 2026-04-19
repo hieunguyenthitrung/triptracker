@@ -21,7 +21,7 @@ import UIKit
 // MainViewController reads this and injects it into the page via a JS override.
 let kRouteGapThresholdKey = "tt_routeGapThresholdM"
 
-class SettingsViewController: UIViewController {
+public class SettingsViewController: UIViewController {
 
     // MARK: - UserDefaults keys
     private enum Keys {
@@ -797,7 +797,7 @@ class SettingsViewController: UIViewController {
 // MARK: - SettingRow
 
 /// A self-contained row: title, subtitle, value label, and a stepped slider.
-class SettingRow: UIView {
+public class SettingRow: UIView {
 
     private let titleLabel    = UILabel()
     private let subtitleLabel = UILabel()

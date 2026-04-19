@@ -16,7 +16,7 @@
 import Foundation
 import UIKit
 
-class LogManager: NSObject {
+public class LogManager: NSObject {
 
     static let shared = LogManager()
 

@@ -7,7 +7,7 @@ import UIKit
 import MapKit
 import CoreLocation
 
-class DailyLocationsViewController: UIViewController {
+public class DailyLocationsViewController: UIViewController {
     
     private let tableView: UITableView = {
         let table = UITableView()
@@ -113,7 +113,7 @@ extension DailyLocationsViewController: UITableViewDelegate, UITableViewDataSour
     }
 }
 
-class DateCell: UITableViewCell {
+public class DateCell: UITableViewCell {
     
     private let dateLabel = UILabel()
     private let countLabel = UILabel()
@@ -173,7 +173,7 @@ class DateCell: UITableViewCell {
 // MARK: - Daily POI Map View Controller
 
 // Custom annotation carrying a full LocationPoint
-class LocationAnnotation: NSObject, MKAnnotation {
+public class LocationAnnotation: NSObject, MKAnnotation {
     let locationPoint: LocationPoint
     var coordinate: CLLocationCoordinate2D
     var title: String?
@@ -190,7 +190,7 @@ class LocationAnnotation: NSObject, MKAnnotation {
     }
 }
 
-class DailyRouteMapViewController: UIViewController {
+public class DailyRouteMapViewController: UIViewController {
 
     var dayLocations: [LocationPoint] = []
     var dateString: String = ""

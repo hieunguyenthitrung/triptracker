@@ -19,7 +19,7 @@ import Foundation
 import CoreLocation
 import UserNotifications
 
-class GeofenceManager {
+public class GeofenceManager {
 
     static let shared = GeofenceManager()
 

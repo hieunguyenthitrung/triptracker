@@ -14,7 +14,7 @@ import UIKit
 import MapKit
 import CoreLocation
 
-class GeofenceViewController: UIViewController {
+public class GeofenceViewController: UIViewController {
 
     // MARK: - UI
 
@@ -283,7 +283,7 @@ extension GeofenceViewController: MKMapViewDelegate {
 // MARK: - Add Geofence Sheet Controller
 
 /// Clean bottom sheet for adding a geofence zone.
-class AddGeofenceSheetController: UIViewController {
+public class AddGeofenceSheetController: UIViewController {
 
     private let coordinate: CLLocationCoordinate2D
     private let onAdd: (GeofenceZone) -> Void

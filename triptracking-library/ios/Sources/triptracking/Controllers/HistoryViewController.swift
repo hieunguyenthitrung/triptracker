@@ -6,7 +6,7 @@
 import UIKit
 import MapKit
 
-class HistoryViewController: UIViewController {
+public class HistoryViewController: UIViewController {
     
     private let tableView: UITableView = {
         let table = UITableView()
@@ -124,7 +124,7 @@ extension HistoryViewController: UITableViewDelegate, UITableViewDataSource {
     }
 }
 
-class TripCell: UITableViewCell {
+public class TripCell: UITableViewCell {
     
     private let dateLabel = UILabel()
     private let distanceLabel = UILabel()

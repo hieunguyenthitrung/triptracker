@@ -8,7 +8,7 @@
 import Foundation
 import CoreLocation
 
-struct GeofenceZone: Codable {
+public struct GeofenceZone: Codable {
     let id: String              // UUID
     var name: String            // e.g. "Home", "Office"
     var latitude: Double

@@ -11,7 +11,7 @@ import UIKit
 import MapKit
 import CarPlay
 
-class CarPlayMapViewController: UIViewController {
+public class CarPlayMapViewController: UIViewController {
 
     // MARK: - UI
 

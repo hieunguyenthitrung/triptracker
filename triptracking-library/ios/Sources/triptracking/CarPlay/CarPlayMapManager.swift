@@ -16,7 +16,7 @@ import UIKit
 import MapKit
 import CarPlay
 
-class CarPlayMapManager: NSObject {
+public class CarPlayMapManager: NSObject {
 
     private let interfaceController: CPInterfaceController
     private let window: CPWindow

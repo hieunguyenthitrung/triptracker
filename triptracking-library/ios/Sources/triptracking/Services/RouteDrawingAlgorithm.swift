@@ -23,7 +23,7 @@ import MapKit
 
 // MARK: - Result types
 
-struct RoutePoint {
+public struct RoutePoint {
     let coordinate: CLLocationCoordinate2D
     let source: TrackingSource
     let timestamp: Int64
@@ -31,7 +31,7 @@ struct RoutePoint {
     let accuracy: Float
 }
 
-struct RouteSegment {
+public struct RouteSegment {
     let polyline: MKPolyline
     let source: TrackingSource
 
@@ -45,12 +45,12 @@ struct RouteSegment {
 
 // MARK: - Tagged polylines
 
-final class GPSPolyline:    MKPolyline {}
-final class SensorPolyline: MKPolyline {}
+public final class GPSPolyline:    MKPolyline {}
+public final class SensorPolyline: MKPolyline {}
 
 // MARK: - RouteDrawingAlgorithm
 
-struct RouteDrawingAlgorithm {
+public struct RouteDrawingAlgorithm {
 
     // ─── Parameters ───────────────────────────────────────────────────────
 

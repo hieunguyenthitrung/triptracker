@@ -11,7 +11,7 @@ import CoreLocation
 
 /// Tagged polyline so the renderer always draws it green regardless of tracking state
 
-class MainViewController: UIViewController {
+public class MainViewController: UIViewController {
     
     // MARK: - UI Components
     
@@ -1328,7 +1328,7 @@ extension MainViewController: AutoTripDelegate {
 
 // MARK: - StatLabel
 
-class StatLabel: UIView {
+public class StatLabel: UIView {
     
     private let titleLabel: UILabel = {
         let label = UILabel()

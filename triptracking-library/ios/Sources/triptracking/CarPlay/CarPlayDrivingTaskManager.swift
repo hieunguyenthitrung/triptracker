@@ -17,7 +17,7 @@
 import UIKit
 import CarPlay
 
-class CarPlayDrivingTaskManager: NSObject {
+public class CarPlayDrivingTaskManager: NSObject {
 
     private let interfaceController: CPInterfaceController
 

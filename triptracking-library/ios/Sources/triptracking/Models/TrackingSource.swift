@@ -8,7 +8,7 @@ import Foundation
 // Two sources only:
 //   .sensors → speed < 6 m/s (stationary, walking, device on table)
 //   .gps     → speed >= 6 m/s (vehicle)
-enum TrackingSource: String {
+public enum TrackingSource: String {
     case sensors = "Sensors"
     case gps     = "GPS"
 
@@ -20,7 +20,7 @@ enum TrackingSource: String {
     }
 }
 
-enum MovementState {
+public enum MovementState {
     case stationary
     case slow
     case fast
@@ -44,7 +44,7 @@ enum MovementState {
 
 import MapKit
 
-enum RouteTransportType {
+public enum RouteTransportType {
     /// Read the user's chosen transport type from Settings.
     static var currentMKType: MKDirectionsTransportType {
         let index = UserDefaults.standard.integer(forKey: "tt_transportType")
@@ -76,7 +76,7 @@ enum RouteTransportType {
 
 import UIKit
 
-enum MapAppearanceHelper {
+public enum MapAppearanceHelper {
     /// Apply day/night appearance to an MKMapView based on current hour.
     /// Night = 19:00–05:59 → dark map.  Day = 06:00–18:59 → light map.
     static func applyTimeBasedAppearance(to mapView: UIView) {

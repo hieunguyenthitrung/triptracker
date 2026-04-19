@@ -16,7 +16,7 @@
 import Foundation
 import AVFoundation
 
-class VoiceFeedbackManager {
+public class VoiceFeedbackManager {
 
     static let shared = VoiceFeedbackManager()
 

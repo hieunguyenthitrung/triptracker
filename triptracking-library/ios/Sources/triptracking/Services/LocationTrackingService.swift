@@ -48,7 +48,7 @@ protocol LocationUpdateDelegate: AnyObject {
     func didChangeTrackingState(isTracking: Bool)
 }
 
-class LocationTrackingService: NSObject {
+public class LocationTrackingService: NSObject {
 
     static let shared = LocationTrackingService()
 
