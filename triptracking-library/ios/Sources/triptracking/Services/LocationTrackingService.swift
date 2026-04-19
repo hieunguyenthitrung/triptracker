@@ -116,10 +116,10 @@ public class LocationTrackingService: NSObject {
     private let requiredConsecutiveVehicleFixes: Int = 3
 
     // Speed thresholds — internal so SettingsViewController can read/write
-    internal var vehicleThreshold:    Float = 6.0 {  // m/s — at or above → GPS saves
+    public var vehicleThreshold:    Float = 6.0 {  // m/s — at or above → GPS saves
         didSet { print("⚙️ vehicleThreshold updated → \(vehicleThreshold) m/s") }
     }
-    internal var stationaryThreshold: Float = 0.5 {  // m/s — below → device is still / on table
+    public var stationaryThreshold: Float = 0.5 {  // m/s — below → device is still / on table
         didSet { print("⚙️ stationaryThreshold updated → \(stationaryThreshold) m/s") }
     }
 
@@ -133,25 +133,25 @@ public class LocationTrackingService: NSObject {
 
     // MARK: - Save intervals — internal so SettingsViewController can read/write
     /// 5-minute interval used when device is still / on table.
-    internal var saveIntervalStillMs:  Int64  = 900_000 {  // 15 min default
+    public var saveIntervalStillMs:  Int64  = 900_000 {  // 15 min default
         didSet {
             print("⚙️ saveIntervalStillMs updated → \(saveIntervalStillMs) ms (\(saveIntervalStillMs/1000)s)")
             startPeriodicSaveTimer()
         }
     }
     /// 1-minute interval used when moving slowly (< 6 m/s).
-    internal var saveIntervalSlowMs:   Int64  = 60_000 {
+    public var saveIntervalSlowMs:   Int64  = 60_000 {
         didSet {
             print("⚙️ saveIntervalSlowMs updated → \(saveIntervalSlowMs) ms (\(saveIntervalSlowMs/1000)s)")
             startPeriodicSaveTimer()
         }
     }
     /// Convenience accessor kept for SettingsViewController compatibility (maps to still interval).
-    internal var saveIntervalMs: Int64 {
+    public var saveIntervalMs: Int64 {
         get { saveIntervalStillMs }
         set { saveIntervalStillMs = newValue }
     }
-    internal var saveDistanceVehicleM: Double = 30.0    // GPS: save every 30 m at vehicle speed
+    public var saveDistanceVehicleM: Double = 30.0    // GPS: save every 30 m at vehicle speed
 
     // MARK: - Auto Trip (always enabled)
     //
@@ -162,7 +162,7 @@ public class LocationTrackingService: NSObject {
 
     /// Duration in seconds the device must report speed == 0 before auto-ending a trip.
     /// Default: 300 s (5 minutes).
-    internal var autoEndStillnessSecs: Double = 300.0 {
+    public var autoEndStillnessSecs: Double = 300.0 {
         didSet {
             print("⚙️ autoEndStillnessSecs updated → \(autoEndStillnessSecs)s")
             UserDefaults.standard.set(autoEndStillnessSecs, forKey: "tt_autoEndStillnessSecs")
