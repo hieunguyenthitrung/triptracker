@@ -23,19 +23,19 @@ public class NotificationSettingsViewController: UIViewController {
 
     // MARK: - Static helpers for checking from anywhere
 
-    static var isTripStartEnabled: Bool {
+    public static var isTripStartEnabled: Bool {
         UserDefaults.standard.object(forKey: Keys.tripStart) == nil ? true : UserDefaults.standard.bool(forKey: Keys.tripStart)
     }
-    static var isTripEndEnabled: Bool {
+    public static var isTripEndEnabled: Bool {
         UserDefaults.standard.object(forKey: Keys.tripEnd) == nil ? true : UserDefaults.standard.bool(forKey: Keys.tripEnd)
     }
-    static var isDistanceKmEnabled: Bool {
+    public static var isDistanceKmEnabled: Bool {
         UserDefaults.standard.object(forKey: Keys.distanceKm) == nil ? true : UserDefaults.standard.bool(forKey: Keys.distanceKm)
     }
-    static var isGeofenceEnterEnabled: Bool {
+    public static var isGeofenceEnterEnabled: Bool {
         UserDefaults.standard.object(forKey: Keys.geofenceEnter) == nil ? true : UserDefaults.standard.bool(forKey: Keys.geofenceEnter)
     }
-    static var isGeofenceExitEnabled: Bool {
+    public static var isGeofenceExitEnabled: Bool {
         UserDefaults.standard.object(forKey: Keys.geofenceExit) == nil ? true : UserDefaults.standard.bool(forKey: Keys.geofenceExit)
     }
 

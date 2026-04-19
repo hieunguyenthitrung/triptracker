@@ -18,13 +18,13 @@ import UIKit
 
 public class LogManager: NSObject {
 
-    static let shared = LogManager()
+    public static let shared = LogManager()
 
     /// Default recipient for log emails.
-    static let defaultEmail = "hieu.nguyen@sw.innova.com"
+    public static let defaultEmail = "hieu.nguyen@sw.innova.com"
 
     /// Directory where log files are stored (Caches/Logs/).
-    private(set) var logsDirectory: URL?
+    public private(set) var logsDirectory: URL?
 
     /// File handle for today's log file.
     private var fileHandle: FileHandle?

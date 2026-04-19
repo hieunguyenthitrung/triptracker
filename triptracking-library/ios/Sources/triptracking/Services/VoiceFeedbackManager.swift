@@ -18,7 +18,7 @@ import AVFoundation
 
 public class VoiceFeedbackManager {
 
-    static let shared = VoiceFeedbackManager()
+    public static let shared = VoiceFeedbackManager()
 
     private let synthesizer = AVSpeechSynthesizer()
     private let enabledKey = "tt_voiceFeedbackEnabled"
@@ -173,10 +173,10 @@ public class VoiceFeedbackManager {
 // MARK: - Notification Names
 
 extension Notification.Name {
-    static let tripDistanceMilestone = Notification.Name("tt_tripDistanceMilestone")
-    static let tripAutoStarted      = Notification.Name("tt_tripAutoStarted")
-    static let tripAutoEnded        = Notification.Name("tt_tripAutoEnded")
-    static let tripVehicleStopped   = Notification.Name("tt_tripVehicleStopped")
-    static let geofenceEntered      = Notification.Name("tt_geofenceEntered")
-    static let geofenceExited       = Notification.Name("tt_geofenceExited")
+    public static let tripDistanceMilestone = Notification.Name("tt_tripDistanceMilestone")
+    public static let tripAutoStarted      = Notification.Name("tt_tripAutoStarted")
+    public static let tripAutoEnded        = Notification.Name("tt_tripAutoEnded")
+    public static let tripVehicleStopped   = Notification.Name("tt_tripVehicleStopped")
+    public static let geofenceEntered      = Notification.Name("tt_geofenceEntered")
+    public static let geofenceExited       = Notification.Name("tt_geofenceExited")
 }

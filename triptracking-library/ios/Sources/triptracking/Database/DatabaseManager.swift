@@ -10,7 +10,7 @@ import SQLite3
 
 public class DatabaseManager {
     
-    static let shared = DatabaseManager()
+    public static let shared = DatabaseManager()
     
     private var db: OpaquePointer?
     

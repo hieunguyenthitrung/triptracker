@@ -46,7 +46,7 @@ import MapKit
 
 public enum RouteTransportType {
     /// Read the user's chosen transport type from Settings.
-    static var currentMKType: MKDirectionsTransportType {
+    public static var currentMKType: MKDirectionsTransportType {
         let index = UserDefaults.standard.integer(forKey: "tt_transportType")
         switch index {
         case 0:  return .automobile   // Car
@@ -57,7 +57,7 @@ public enum RouteTransportType {
         }
     }
 
-    static var displayName: String {
+    public static var displayName: String {
         let index = UserDefaults.standard.integer(forKey: "tt_transportType")
         switch index {
         case 0:  return "🚗 Car"
@@ -79,14 +79,14 @@ import UIKit
 public enum MapAppearanceHelper {
     /// Apply day/night appearance to an MKMapView based on current hour.
     /// Night = 19:00–05:59 → dark map.  Day = 06:00–18:59 → light map.
-    static func applyTimeBasedAppearance(to mapView: UIView) {
+    public static func applyTimeBasedAppearance(to mapView: UIView) {
         let hour = Calendar.current.component(.hour, from: Date())
         let isNight = hour >= 19 || hour < 6
         mapView.overrideUserInterfaceStyle = isNight ? .dark : .light
     }
 
     /// Whether it's currently nighttime (for logging).
-    static var isNight: Bool {
+    public static var isNight: Bool {
         let hour = Calendar.current.component(.hour, from: Date())
         return hour >= 19 || hour < 6
     }

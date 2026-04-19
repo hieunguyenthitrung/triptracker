@@ -14,7 +14,7 @@ import UIKit
 
 public class NotificationManager: NSObject {
 
-    static let shared = NotificationManager()
+    public static let shared = NotificationManager()
 
     // MARK: - Notification identifiers
     private let dailyReminderID = "tt_daily_route_reminder"

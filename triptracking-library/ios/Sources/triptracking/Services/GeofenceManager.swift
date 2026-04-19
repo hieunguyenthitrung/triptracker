@@ -21,14 +21,14 @@ import UserNotifications
 
 public class GeofenceManager {
 
-    static let shared = GeofenceManager()
+    public static let shared = GeofenceManager()
 
     private let storageKey = "tt_geofence_zones"
     private let enabledKey = "tt_geofence_enabled"
     private let stateKey   = "tt_geofence_inside_ids"
 
     /// All saved zones.
-    private(set) var zones: [GeofenceZone] = []
+    public private(set) var zones: [GeofenceZone] = []
 
     /// Set of zone IDs the user is currently inside (persisted for app relaunch).
     private var insideZoneIDs: Set<String> = []

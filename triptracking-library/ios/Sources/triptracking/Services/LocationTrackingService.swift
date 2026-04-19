@@ -50,7 +50,7 @@ protocol LocationUpdateDelegate: AnyObject {
 
 public class LocationTrackingService: NSObject {
 
-    static let shared = LocationTrackingService()
+    public static let shared = LocationTrackingService()
 
     // MARK: - Delegates
     weak var delegate: LocationUpdateDelegate?
@@ -67,8 +67,8 @@ public class LocationTrackingService: NSObject {
     private let altimeter       = CMAltimeter()
 
     // MARK: - Tracking state
-    private(set) var isTracking       = false
-    private(set) var currentTripId: Int64 = -1
+    public private(set) var isTracking       = false
+    public private(set) var currentTripId: Int64 = -1
     private var tripStartTime: Date?
     private var totalDistance: Double = 0.0
     private var stepCount: Int        = 0
@@ -78,7 +78,7 @@ public class LocationTrackingService: NSObject {
     private var lastSensorLocation:   CLLocation?   // latest dead-reckoned position
     public var lastKnownLocation:    CLLocation?   // best position available — exposed so UI can read it without creating a new CLLocationManager
     private var lastSavedGPSLocation: CLLocation?   // last GPS point actually persisted
-    private(set) var currentSource: TrackingSource = .sensors
+    public private(set) var currentSource: TrackingSource = .sensors
 
     /// Convenience accessor for the fake-route injector in MainViewController.
     public var lastKnownCoordinate: CLLocationCoordinate2D? { lastKnownLocation?.coordinate }
@@ -173,7 +173,7 @@ public class LocationTrackingService: NSObject {
     private var autoEndTimer: Timer?
 
     /// Timestamp when the speed last dropped to 0 (for countdown UI).
-    private(set) var stillSinceDate: Date?
+    public private(set) var stillSinceDate: Date?
 
     /// Delegate for auto-trip lifecycle events so the UI can react.
     weak var autoTripDelegate: AutoTripDelegate?

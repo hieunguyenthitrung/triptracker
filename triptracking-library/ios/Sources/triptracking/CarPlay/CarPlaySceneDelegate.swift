@@ -27,9 +27,9 @@ public class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelega
     private var mapManager: CarPlayMapManager?
     private var drivingTaskManager: CarPlayDrivingTaskManager?
 
-    static let carPlayModeKey = "tt_carPlayMode"
+    public static let carPlayModeKey = "tt_carPlayMode"
 
-    static var isMapMode: Bool {
+    public static var isMapMode: Bool {
         return UserDefaults.standard.string(forKey: carPlayModeKey) == "map"
     }
 

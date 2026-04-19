@@ -54,23 +54,23 @@ public struct RouteDrawingAlgorithm {
 
     // ─── Parameters ───────────────────────────────────────────────────────
 
-    static let maxAccuracyMetres:      Float  = 50.0
-    static let minPointDistanceMetres: Double = 8.0
-    static let dpEpsilonMetres:        Double = 3.0
-    static let maxPlausibleSpeedMs:    Double = 40.0
-    static let enableSmoothing:        Bool   = true
-    static let smoothingSubdivisions:  Int    = 4
+    public static let maxAccuracyMetres:      Float  = 50.0
+    public static let minPointDistanceMetres: Double = 8.0
+    public static let dpEpsilonMetres:        Double = 3.0
+    public static let maxPlausibleSpeedMs:    Double = 40.0
+    public static let enableSmoothing:        Bool   = true
+    public static let smoothingSubdivisions:  Int    = 4
 
     // ─── Trip / live route entry point ────────────────────────────────────
     //  Dense points (~30 m apart). Full pipeline including Douglas-Peucker.
 
-    static func buildSegments(from raw: [LocationPoint]) -> [RouteSegment] {
+    public static func buildSegments(from raw: [LocationPoint]) -> [RouteSegment] {
         let pts = process(raw)
         guard pts.count >= 2 else { return [] }
         return buildPolylineSegments(from: pts)
     }
 
-    static func process(_ raw: [LocationPoint]) -> [RoutePoint] {
+    public static func process(_ raw: [LocationPoint]) -> [RoutePoint] {
         var pts = deduplicatePoints(raw)
         pts = filterGPSOnly(pts)           // GPS coords only — sensor dead-reckoning drifts
         pts = filterAccuracy(pts)
@@ -83,7 +83,7 @@ public struct RouteDrawingAlgorithm {
     // ─── Daily Locations entry point ──────────────────────────────────────
     //  No MKDirections — connects points directly in timestamp order.
 
-    static func buildSegmentsForDailyView(from raw: [LocationPoint]) -> [RouteSegment] {
+    public static func buildSegmentsForDailyView(from raw: [LocationPoint]) -> [RouteSegment] {
         var pts = deduplicatePoints(raw)
         pts = filterSources(pts)
         pts = filterAccuracy(pts)
@@ -95,7 +95,7 @@ public struct RouteDrawingAlgorithm {
 
     // ─── Pipeline steps ───────────────────────────────────────────────────
 
-    static func deduplicatePoints(_ points: [LocationPoint]) -> [RoutePoint] {
+    public static func deduplicatePoints(_ points: [LocationPoint]) -> [RoutePoint] {
         var seen = Set<Int64>()
         return points.compactMap { lp -> RoutePoint? in
             let sec = lp.timestamp / 1000
@@ -111,21 +111,21 @@ public struct RouteDrawingAlgorithm {
         }
     }
 
-    static func filterSources(_ points: [RoutePoint]) -> [RoutePoint] {
+    public static func filterSources(_ points: [RoutePoint]) -> [RoutePoint] {
         points.filter { $0.source == .gps || $0.source == .sensors }
     }
 
     // GPS-only filter: used for trip history routes where sensor dead-reckoning
     // coordinates drift significantly and should not be drawn on the map.
-    static func filterGPSOnly(_ points: [RoutePoint]) -> [RoutePoint] {
+    public static func filterGPSOnly(_ points: [RoutePoint]) -> [RoutePoint] {
         points.filter { $0.source == .gps }
     }
 
-    static func filterAccuracy(_ points: [RoutePoint]) -> [RoutePoint] {
+    public static func filterAccuracy(_ points: [RoutePoint]) -> [RoutePoint] {
         points.filter { $0.accuracy <= maxAccuracyMetres || $0.accuracy <= 0 }
     }
 
-    static func rejectOutliers(_ points: [RoutePoint]) -> [RoutePoint] {
+    public static func rejectOutliers(_ points: [RoutePoint]) -> [RoutePoint] {
         guard points.count > 1 else { return points }
         var kept: [RoutePoint] = [points[0]]
         for pt in points.dropFirst() {
@@ -143,7 +143,7 @@ public struct RouteDrawingAlgorithm {
         return kept
     }
 
-    static func enforceMinDistance(_ points: [RoutePoint], minDist: Double? = nil) -> [RoutePoint] {
+    public static func enforceMinDistance(_ points: [RoutePoint], minDist: Double? = nil) -> [RoutePoint] {
         let threshold = minDist ?? minPointDistanceMetres
         guard points.count > 1 else { return points }
         var kept: [RoutePoint] = [points[0]]
@@ -155,7 +155,7 @@ public struct RouteDrawingAlgorithm {
         return kept
     }
 
-    static func douglasPeucker(_ points: [RoutePoint], epsilon: Double) -> [RoutePoint] {
+    public static func douglasPeucker(_ points: [RoutePoint], epsilon: Double) -> [RoutePoint] {
         guard points.count > 2 else { return points }
         var maxDist = 0.0
         var maxIdx  = 0
@@ -173,7 +173,7 @@ public struct RouteDrawingAlgorithm {
         return [points.first!, points.last!]
     }
 
-    static func smoothWithCatmullRom(_ points: [RoutePoint]) -> [CLLocationCoordinate2D] {
+    public static func smoothWithCatmullRom(_ points: [RoutePoint]) -> [CLLocationCoordinate2D] {
         guard enableSmoothing, points.count >= 2 else { return points.map(\.coordinate) }
         var result: [CLLocationCoordinate2D] = []
         let n = points.count
@@ -194,7 +194,7 @@ public struct RouteDrawingAlgorithm {
         return result
     }
 
-    static func buildPolylineSegments(from points: [RoutePoint]) -> [RouteSegment] {
+    public static func buildPolylineSegments(from points: [RoutePoint]) -> [RouteSegment] {
         guard points.count >= 2 else { return [] }
         var segments: [RouteSegment] = []
         var groupStart = 0
@@ -225,7 +225,7 @@ public struct RouteDrawingAlgorithm {
 
     // ─── MapKit renderer helper ───────────────────────────────────────────
 
-    static func renderer(for overlay: MKOverlay, lineWidth: CGFloat = 4.0) -> MKOverlayRenderer? {
+    public static func renderer(for overlay: MKOverlay, lineWidth: CGFloat = 4.0) -> MKOverlayRenderer? {
         if let poly = overlay as? GPSPolyline {
             let r = MKPolylineRenderer(polyline: poly)
             r.strokeColor = UIColor.systemBlue
@@ -247,7 +247,7 @@ public struct RouteDrawingAlgorithm {
 
     // ─── Geometry helpers ─────────────────────────────────────────────────
 
-    static func distance(from a: CLLocationCoordinate2D, to b: CLLocationCoordinate2D) -> Double {
+    public static func distance(from a: CLLocationCoordinate2D, to b: CLLocationCoordinate2D) -> Double {
         CLLocation(latitude: a.latitude, longitude: a.longitude)
             .distance(from: CLLocation(latitude: b.latitude, longitude: b.longitude))
     }
