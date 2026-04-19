@@ -240,23 +240,23 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
     // MARK: - Trip History
 
     /// Get list of all trips.
-    @objc func getTripHistory(_ call: CAPPluginCall) {
-        let limit = call.getInt("limit") ?? 50
-        let trips = DatabaseManager.shared.getAllTrips(limit: limit)
+    // @objc func getTripHistory(_ call: CAPPluginCall) {
+    //     let limit = call.getInt("limit") ?? 50
+    //     let trips = DatabaseManager.shared.getAllTrips(limit: limit)
 
-        let tripList = trips.map { trip -> [String: Any] in
-            return [
-                "id": trip.id,
-                "startTime": trip.startTimeMs,
-                "endTime": trip.endTimeMs ?? 0,
-                "distance": trip.distanceMeters,
-                "duration": trip.durationSeconds,
-                "isActive": trip.isActive,
-            ]
-        }
+    //     let tripList = trips.map { trip -> [String: Any] in
+    //         return [
+    //             "id": trip.id,
+    //             "startTime": trip.startTimeMs,
+    //             "endTime": trip.endTimeMs ?? 0,
+    //             "distance": trip.distanceMeters,
+    //             "duration": trip.durationSeconds,
+    //             "isActive": trip.isActive,
+    //         ]
+    //     }
 
-        call.resolve(["trips": tripList, "count": tripList.count])
-    }
+    //     call.resolve(["trips": tripList, "count": tripList.count])
+    // }
 
     // MARK: - Settings (Read / Write)
 
