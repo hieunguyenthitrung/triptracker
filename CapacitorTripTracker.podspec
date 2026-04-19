@@ -8,7 +8,7 @@ Pod::Spec.new do |s|
   s.license      = 'MIT'
   s.author       = { 'Hieu Nguyen' => 'hieu.nguyen@sw.innova.com' }
   s.homepage     = 'https://github.com/hieunguyentt/TripTracker'
-  s.source       = { :git => 'https://github.com/hieunguyentt/TripTracker.git', :tag => s.version.to_s }
+  s.source       = { :path => '.' }
 
   # ← Chỉ lấy Plugin files, không lấy iOS library source
   s.source_files = 'triptracking-library/capacitor_plugin/ios/Plugin/**/*.{swift,h,m,c,cc,mm,cpp}'
