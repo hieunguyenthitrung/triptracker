@@ -93,6 +93,10 @@ export class TripTrackerWeb extends WebPlugin implements TripTrackerPlugin {
   }
 
   async sendAllLogs(): Promise<any> {
-    throw this.unavailable('sendAllLogs is only available on iOS');
+    throw this.unavailable('sendAllLogs is only available on iOS/Android');
+  }
+
+  async sendRecentLogs(): Promise<any> {
+    throw this.unavailable('sendRecentLogs is only available on iOS/Android');
   }
 }

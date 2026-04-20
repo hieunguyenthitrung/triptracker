@@ -47,6 +47,7 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "stopWebMonitor", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "sendTodayLog", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "sendAllLogs", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "sendRecentLogs", returnType: CAPPluginReturnPromise),
     ]
 
     // MARK: - Native Settings Pages
@@ -224,16 +225,20 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
     /// Get current GPS location.
     @objc func getCurrentLocation(_ call: CAPPluginCall) {
         let svc = LocationTrackingService.shared
-        guard let coord = svc.lastKnownCoordinate else {
+        guard let loc = svc.lastKnownLocation else {
             call.reject("No location available")
             return
         }
         let stats = svc.getCurrentStats()
         call.resolve([
-            "latitude": coord.latitude,
-            "longitude": coord.longitude,
+            "latitude": loc.coordinate.latitude,
+            "longitude": loc.coordinate.longitude,
             "speed": stats.speed,
             "speedKmh": stats.speed * 3.6,
+            "accuracy": loc.horizontalAccuracy,
+            "bearing": loc.course >= 0 ? loc.course : 0,
+            "altitude": loc.altitude,
+            "timestamp": Int64(loc.timestamp.timeIntervalSince1970 * 1000),
         ])
     }
 
@@ -441,6 +446,42 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
             }
             self.shareFiles(files, subject: "TripTracker All Logs")
             call.resolve(["shared": true, "count": files.count])
+        }
+    }
+
+    /// Send the last 3 days of log files via share sheet (email, AirDrop, etc.)
+    @objc func sendRecentLogs(_ call: CAPPluginCall) {
+        let days = call.getInt("days") ?? 3
+        DispatchQueue.main.async {
+            let allFiles = LogManager.shared.getAllLogFiles()  // sorted newest first
+            guard !allFiles.isEmpty else {
+                call.reject("No log files found")
+                return
+            }
+
+            // Get date strings for the last N days
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd"
+            var recentDates: Set<String> = []
+            for i in 0..<days {
+                let date = Calendar.current.date(byAdding: .day, value: -i, to: Date())!
+                recentDates.insert(formatter.string(from: date))
+            }
+
+            // Filter files matching recent dates
+            let recentFiles = allFiles.filter { file in
+                let name = file.lastPathComponent
+                return recentDates.contains(where: { name.contains($0) })
+            }
+
+            guard !recentFiles.isEmpty else {
+                call.reject("No log files for the last \(days) days")
+                return
+            }
+
+            let dateRange = "\(formatter.string(from: Calendar.current.date(byAdding: .day, value: -(days-1), to: Date())!)) to \(formatter.string(from: Date()))"
+            self.shareFiles(recentFiles, subject: "TripTracker Logs — \(dateRange)")
+            call.resolve(["shared": true, "count": recentFiles.count, "days": days])
         }
     }
 

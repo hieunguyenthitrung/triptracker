@@ -305,18 +305,32 @@ public class TripTrackerCapPlugin extends Plugin {
     @PluginMethod
     public void getCurrentLocation(PluginCall call) {
         JSObject ret = new JSObject();
+        // Try bound service first, then static instance
+        android.location.Location loc = null;
         if (trackingService != null) {
-            android.location.Location loc = trackingService.getLastKnownLocation();
-            if (loc != null) {
-                ret.put("latitude", loc.getLatitude());
-                ret.put("longitude", loc.getLongitude());
-                ret.put("speed", (double) loc.getSpeed());
-                ret.put("speedKmh", (double) loc.getSpeed() * 3.6);
-                call.resolve(ret);
-                return;
-            }
+            loc = trackingService.getLastKnownLocation();
         }
-        call.reject("No location available");
+        if (loc == null) {
+            LocationTrackingService svc = LocationTrackingService.getInstance();
+            if (svc != null) loc = svc.getLastKnownLocation();
+        }
+        if (loc == null) {
+            LocationTrackingService svc = LocationTrackingService.getInstance();
+            if (svc != null) loc = svc.getCurrentLocation();
+        }
+        if (loc != null) {
+            ret.put("latitude", loc.getLatitude());
+            ret.put("longitude", loc.getLongitude());
+            ret.put("speed", (double) loc.getSpeed());
+            ret.put("speedKmh", (double) loc.getSpeed() * 3.6);
+            ret.put("accuracy", (double) loc.getAccuracy());
+            ret.put("bearing", (double) loc.getBearing());
+            ret.put("altitude", loc.getAltitude());
+            ret.put("timestamp", loc.getTime());
+            call.resolve(ret);
+        } else {
+            call.reject("No location available");
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -508,7 +522,7 @@ public class TripTrackerCapPlugin extends Plugin {
 
     @PluginMethod
     public void sendTodayLog(PluginCall call) {
-        shareLogs(false);
+        shareLogFiles(0);  // 0 = today only
         JSObject ret = new JSObject();
         ret.put("shared", true);
         call.resolve(ret);
@@ -516,9 +530,19 @@ public class TripTrackerCapPlugin extends Plugin {
 
     @PluginMethod
     public void sendAllLogs(PluginCall call) {
-        shareLogs(true);
+        shareLogFiles(-1);  // -1 = all files
         JSObject ret = new JSObject();
         ret.put("shared", true);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void sendRecentLogs(PluginCall call) {
+        int days = call.getInt("days", 3);
+        shareLogFiles(days);
+        JSObject ret = new JSObject();
+        ret.put("shared", true);
+        ret.put("days", days);
         call.resolve(ret);
     }
 
@@ -532,32 +556,65 @@ public class TripTrackerCapPlugin extends Plugin {
         getContext().startActivity(intent);
     }
 
-    private void shareLogs(boolean allLogs) {
+    /**
+     * Share log files via share sheet (email, etc.)
+     * @param days  0 = today only, -1 = all, N = last N days
+     */
+    private void shareLogFiles(int days) {
         if (getActivity() == null) return;
-        File logDir = new File(getContext().getFilesDir(), "logs");
-        if (!logDir.exists()) return;
+
+        // Collect dates to include
+        java.util.Set<String> datesToInclude = new java.util.HashSet<>();
+        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US);
+        if (days >= 0) {
+            int count = (days == 0) ? 1 : days;
+            java.util.Calendar cal = java.util.Calendar.getInstance();
+            for (int i = 0; i < count; i++) {
+                datesToInclude.add(sdf.format(cal.getTime()));
+                cal.add(java.util.Calendar.DAY_OF_YEAR, -1);
+            }
+        }
+
+        // Get files from LogcatWriter (uses getCacheDir, prefix "triptracker_logcat_")
+        File[] logFiles = com.carmd.triptracking.util.LogcatWriter.getAllLogFiles(getContext());
+        if (logFiles == null || logFiles.length == 0) return;
 
         ArrayList<Uri> uris = new ArrayList<>();
-        File[] files = logDir.listFiles();
-        if (files == null) return;
-
-        String today = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
-                .format(new java.util.Date());
-
-        for (File f : files) {
-            if (!f.getName().endsWith(".log")) continue;
-            if (!allLogs && !f.getName().contains(today)) continue;
-            uris.add(FileProvider.getUriForFile(getContext(),
-                    getContext().getPackageName() + ".fileprovider", f));
+        for (File f : logFiles) {
+            if (days == -1) {
+                // All files
+                uris.add(getUriForFile(f));
+            } else {
+                // Filter by date
+                for (String date : datesToInclude) {
+                    if (f.getName().contains(date)) {
+                        uris.add(getUriForFile(f));
+                        break;
+                    }
+                }
+            }
         }
         if (uris.isEmpty()) return;
+
+        String subject;
+        if (days == 0) {
+            subject = "TripTracker Today's Log";
+        } else if (days == -1) {
+            subject = "TripTracker All Logs (" + logFiles.length + " files)";
+        } else {
+            subject = "TripTracker Logs — Last " + days + " days";
+        }
 
         Intent shareIntent = new Intent(Intent.ACTION_SEND_MULTIPLE);
         shareIntent.setType("text/plain");
         shareIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
-        shareIntent.putExtra(Intent.EXTRA_SUBJECT,
-                allLogs ? "TripTracker All Logs" : "TripTracker Today's Log");
+        shareIntent.putExtra(Intent.EXTRA_SUBJECT, subject);
         shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        getActivity().startActivity(Intent.createChooser(shareIntent, "Share Logs"));
+        getActivity().startActivity(Intent.createChooser(shareIntent, subject));
+    }
+
+    private Uri getUriForFile(File f) {
+        return FileProvider.getUriForFile(getContext(),
+                getContext().getPackageName() + ".fileprovider", f);
     }
 }

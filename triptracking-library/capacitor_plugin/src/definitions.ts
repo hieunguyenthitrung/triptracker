@@ -131,6 +131,12 @@ export interface TripTrackerPlugin {
 
   /** Share all log files via share sheet. */
   sendAllLogs(): Promise<{ shared: boolean; count: number }>;
+
+  /**
+   * Share the last N days of log files via system share sheet (email, AirDrop, etc.).
+   * Default: 3 days.
+   */
+  sendRecentLogs(options?: { days?: number }): Promise<{ shared: boolean; count?: number; days?: number }>;
 }
 
 // ── Types ──

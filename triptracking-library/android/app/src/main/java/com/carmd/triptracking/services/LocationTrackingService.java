@@ -2,8 +2,10 @@ package com.carmd.triptracking.services;
 
 import android.Manifest;
 import android.app.*;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.location.Location;
@@ -24,6 +26,12 @@ import com.carmd.triptracking.tracking.SensorBasedLocationTracker;
 import com.carmd.triptracking.api.TripTrackerAPIService;
 import com.carmd.triptracking.database.LocationDatabase;
 import com.carmd.triptracking.server.LocationWebServer;
+import com.google.android.gms.location.ActivityRecognition;
+import com.google.android.gms.location.ActivityTransition;
+import com.google.android.gms.location.ActivityTransitionEvent;
+import com.google.android.gms.location.ActivityTransitionRequest;
+import com.google.android.gms.location.ActivityTransitionResult;
+import com.google.android.gms.location.DetectedActivity;
 import android.app.AlarmManager;
 import android.content.SharedPreferences;
 import java.util.ArrayList;
@@ -173,6 +181,9 @@ public class LocationTrackingService extends Service implements
         instance = this;
         database = LocationDatabase.getInstance(this);
 
+        // Restore API config from SharedPreferences (survives app kill)
+        TripTrackerSDK.restoreAPIConfigFromPrefs(this);
+
         // ALWAYS start foreground — minimal notification WITHOUT location type
         // so it works even without location permission on Android 14+.
         try {
@@ -198,8 +209,6 @@ public class LocationTrackingService extends Service implements
             Log.w(TAG, "⚠️ No location permission — waiting…");
             startPermissionPoller();
         }
-
-        restoreAPIConfigFromPrefs(this);
     }
 
     /**
@@ -216,7 +225,7 @@ public class LocationTrackingService extends Service implements
     /**
      * Activate full location tracking. Only called when permission confirmed.
      */
-    private void activateLocationTracking() {
+    public void activateLocationTracking() {
         locationTrackingActive = true;
 
         // Upgrade to location-type foreground notification
@@ -236,6 +245,9 @@ public class LocationTrackingService extends Service implements
 
         // GPS runs continuously: calibration + vehicle-speed detection
         startGPSTracking();
+
+        // Activity Recognition — detect automotive/still (like iOS CMMotionActivity)
+        startActivityRecognition();
 
         // Single periodic save loop (always on, even outside a trip)
         startSaveLoop();
@@ -258,10 +270,10 @@ public class LocationTrackingService extends Service implements
         }
 
         // Schedule daily 6 AM reminder to check yesterday's route
-        scheduleDailyReminder();
+        // scheduleDailyReminder();
 
         // Schedule daily 12 PM auto-send of log file via email
-        scheduleDailyLogSender();
+        // scheduleDailyLogSender();
 
         // Re-register geofences (lost after reboot)
         if (com.carmd.triptracking.geofence.GeofenceManager.isEnabled(this)) {
@@ -309,6 +321,7 @@ public class LocationTrackingService extends Service implements
         super.onDestroy();
         try {
             stopPermissionPoller();
+            stopActivityRecognition();
             if (isTracking) {
                 saveCheckpoint();
                 scheduleWatchdog();
@@ -1454,10 +1467,164 @@ private void startMinimalForeground() {
     public android.location.Location getLastKnownLocation() { return lastGpsLocation; }
 
     // ═══════════════════════════════════════════════════════════════
+    // Activity Recognition — detect IN_VEHICLE / STILL (like iOS CMMotionActivity)
+    // ═══════════════════════════════════════════════════════════════
+
+    private static final String ACTIVITY_TRANSITION_ACTION = "com.carmd.triptracking.ACTIVITY_TRANSITION";
+    private PendingIntent activityTransitionPI;
+    private BroadcastReceiver activityTransitionReceiver;
+
+    /**
+     * Register for Activity Transition updates (IN_VEHICLE enter/exit, STILL enter).
+     * Similar to iOS CMMotionActivity detection.
+     */
+    public void startActivityRecognition() {
+        try {
+            // Define transitions we care about
+            java.util.List<ActivityTransition> transitions = new java.util.ArrayList<>();
+
+            // IN_VEHICLE enter → auto-start trip
+            transitions.add(new ActivityTransition.Builder()
+                    .setActivityType(DetectedActivity.IN_VEHICLE)
+                    .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
+                    .build());
+
+            // IN_VEHICLE exit
+            transitions.add(new ActivityTransition.Builder()
+                    .setActivityType(DetectedActivity.IN_VEHICLE)
+                    .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT)
+                    .build());
+
+            // STILL enter → start auto-end countdown
+            transitions.add(new ActivityTransition.Builder()
+                    .setActivityType(DetectedActivity.STILL)
+                    .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
+                    .build());
+
+            // ON_BICYCLE enter
+            transitions.add(new ActivityTransition.Builder()
+                    .setActivityType(DetectedActivity.ON_BICYCLE)
+                    .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
+                    .build());
+
+            ActivityTransitionRequest request = new ActivityTransitionRequest(transitions);
+
+            // Create PendingIntent for receiving transitions
+            Intent intent = new Intent(ACTIVITY_TRANSITION_ACTION);
+            intent.setPackage(getPackageName());
+            activityTransitionPI = PendingIntent.getBroadcast(this, 1001, intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
+
+            // Register BroadcastReceiver
+            activityTransitionReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    if (ActivityTransitionResult.hasResult(intent)) {
+                        ActivityTransitionResult result = ActivityTransitionResult.extractResult(intent);
+                        if (result != null) {
+                            for (ActivityTransitionEvent event : result.getTransitionEvents()) {
+                                onActivityTransition(event);
+                            }
+                        }
+                    }
+                }
+            };
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(activityTransitionReceiver,
+                        new IntentFilter(ACTIVITY_TRANSITION_ACTION),
+                        Context.RECEIVER_NOT_EXPORTED);
+            } else {
+                registerReceiver(activityTransitionReceiver,
+                        new IntentFilter(ACTIVITY_TRANSITION_ACTION));
+            }
+
+            // Request activity transitions
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACTIVITY_RECOGNITION)
+                    == PackageManager.PERMISSION_GRANTED) {
+                ActivityRecognition.getClient(this)
+                        .requestActivityTransitionUpdates(request, activityTransitionPI)
+                        .addOnSuccessListener(v ->
+                                Log.i(TAG, "✅ Activity Recognition started (IN_VEHICLE, STILL, ON_BICYCLE)"))
+                        .addOnFailureListener(e ->
+                                Log.w(TAG, "⚠️ Activity Recognition failed: " + e.getMessage()));
+            } else {
+                Log.w(TAG, "⚠️ ACTIVITY_RECOGNITION permission not granted — using speed-only detection");
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "Activity Recognition setup error: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Handle an activity transition event.
+     * Similar to iOS evaluateAutoTrip(from:to:).
+     */
+    public void onActivityTransition(ActivityTransitionEvent event) {
+        int activityType = event.getActivityType();
+        int transitionType = event.getTransitionType();
+        String activityName = getActivityName(activityType);
+        String transitionName = transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER ? "ENTER" : "EXIT";
+
+        Log.i(TAG, "🏃 Activity: " + activityName + " → " + transitionName);
+
+        if (activityType == DetectedActivity.IN_VEHICLE
+                && transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER) {
+            // Automotive detected → auto-start trip (like iOS .automotive case)
+            Log.i(TAG, "🚗 Activity Recognition: IN_VEHICLE detected — auto-starting trip");
+            if (!isTracking) {
+                Location loc = getCurrentLocation();
+                if (loc != null) {
+                    autoStartTrip(loc);
+                }
+            }
+            cancelAutoStopTimer();  // Cancel any pending auto-stop
+
+        } else if (activityType == DetectedActivity.STILL
+                && transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER) {
+            // Still detected → start auto-end countdown if trip is active
+            if (isTracking) {
+                Log.i(TAG, "⏸ Activity Recognition: STILL detected — starting auto-end countdown");
+                startAutoStopTimer();
+            }
+        }
+        // ON_BICYCLE, WALKING, RUNNING: logged but don't trigger auto-start/stop
+    }
+
+    public String getActivityName(int activityType) {
+        switch (activityType) {
+            case DetectedActivity.IN_VEHICLE: return "IN_VEHICLE";
+            case DetectedActivity.ON_BICYCLE: return "ON_BICYCLE";
+            case DetectedActivity.WALKING:    return "WALKING";
+            case DetectedActivity.RUNNING:    return "RUNNING";
+            case DetectedActivity.STILL:      return "STILL";
+            case DetectedActivity.ON_FOOT:    return "ON_FOOT";
+            default: return "UNKNOWN(" + activityType + ")";
+        }
+    }
+
+    public void stopActivityRecognition() {
+        try {
+            if (activityTransitionPI != null) {
+                ActivityRecognition.getClient(this)
+                        .removeActivityTransitionUpdates(activityTransitionPI);
+            }
+            if (activityTransitionReceiver != null) {
+                unregisterReceiver(activityTransitionReceiver);
+                activityTransitionReceiver = null;
+            }
+            Log.i(TAG, "⏹️ Activity Recognition stopped");
+        } catch (Exception e) {
+            Log.e(TAG, "Stop Activity Recognition error: " + e.getMessage());
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
     // Permission Poller — checks every 2s until permission granted
     // ═══════════════════════════════════════════════════════════════
 
-    private void startPermissionPoller() {
+    public void startPermissionPoller() {
         if (permissionHandler != null) return;
         permissionHandler = new android.os.Handler(Looper.getMainLooper());
         permissionRunnable = new Runnable() {
@@ -1478,7 +1645,7 @@ private void startMinimalForeground() {
         Log.i(TAG, "🔄 Started permission poller (every 2s)");
     }
 
-    private void stopPermissionPoller() {
+    public void stopPermissionPoller() {
         if (permissionHandler != null && permissionRunnable != null) {
             permissionHandler.removeCallbacks(permissionRunnable);
         }

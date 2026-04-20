@@ -36,7 +36,7 @@ public class NotificationManager: NSObject {
                 print("🔔 Notification permission denied: \(error?.localizedDescription ?? "–")")
             }
             // Schedule daily reminder regardless — it'll fire once permission is granted
-            self.scheduleDailyReminder()
+            // self.scheduleDailyReminder()
         }
     }
 
