@@ -41,7 +41,7 @@ public class LocationWebServer {
             let parameters = NWParameters.tcp
             parameters.allowLocalEndpointReuse = true
 
-            listener = try NWListener(using: parameters, on: port)
+            listener = try NWListener(using: parameters, on: NWEndpoint.Port(rawValue: port)!)
             
             listener?.stateUpdateHandler = { [weak self] state in
                 switch state {
