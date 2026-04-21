@@ -77,6 +77,7 @@ public final class TripTrackerSDK {
     public static func initialize(launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) {
         let status = CLLocationManager.authorizationStatus()
         print("📍TripTracker Location auth status: \(status.rawValue)")
+        
         initialize(config: TripTrackerConfig(), launchOptions: launchOptions)
     }
 
@@ -127,13 +128,18 @@ public final class TripTrackerSDK {
 
         _initialized = true
         // Web server
-        if UserDefaults.standard.bool(forKey: "tt_webMonitorEnabled") {
-            // Thêm delay nhỏ để port được release
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            webServer = LocationWebServer()
-            webServer?.start()
-            }
-        }
+        let isLocationRelaunch = launchOptions?[.location] != nil
+    let isBackground = UIApplication.shared.applicationState == .background
+
+    if UserDefaults.standard.bool(forKey: "tt_webMonitorEnabled")
+        && !isLocationRelaunch
+        && !isBackground {
+        webServer = LocationWebServer()
+        webServer?.start()
+    } else {
+        print("⏭️ WebServer skipped — background/location relaunch")
+    }
+        
         print("✅ TripTrackerSDK initialized")
     }
 
