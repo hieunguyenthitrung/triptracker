@@ -83,6 +83,9 @@ public final class TripTrackerSDK {
     // ── Initialize with config ──
     public static func initialize(config: TripTrackerConfig,
                                   launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) {
+        webServer?.stop()
+        webServer = nil
+
         guard !_initialized else {
             applyConfig(config)
             return
@@ -123,6 +126,14 @@ public final class TripTrackerSDK {
         }
 
         _initialized = true
+        // Web server
+        if UserDefaults.standard.bool(forKey: "tt_webMonitorEnabled") {
+            // Thêm delay nhỏ để port được release
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            webServer = LocationWebServer()
+            webServer?.start()
+            }
+        }
         print("✅ TripTrackerSDK initialized")
     }
 
@@ -247,7 +258,18 @@ public final class TripTrackerSDK {
     public static var lastKnownCoordinate: CLLocationCoordinate2D? { LocationTrackingService.shared.lastKnownCoordinate }
 
     // ── Web Monitor ──
-    public static func startWebMonitor() { UserDefaults.standard.set(true, forKey: "tt_webMonitorEnabled"); if webServer == nil { webServer = LocationWebServer() }; webServer?.start() }
+    public static func startWebMonitor() {
+         UserDefaults.standard.set(true, forKey: "tt_webMonitorEnabled"); 
+
+         webServer?.stop()
+        webServer = nil
+
+         // Delay để OS release port
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            webServer = LocationWebServer()
+            webServer?.start()
+        }
+    }
     public static func stopWebMonitor() { UserDefaults.standard.set(false, forKey: "tt_webMonitorEnabled"); webServer?.stop() }
 
     // ── Update vehicle_id at runtime ──

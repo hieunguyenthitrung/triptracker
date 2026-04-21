@@ -412,9 +412,13 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func startWebMonitor(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
+        TripTrackerSDK.stopWebMonitor()  // ← stop trước
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             TripTrackerSDK.startWebMonitor()
             call.resolve(["started": true])
         }
+    }
     }
 
     @objc func stopWebMonitor(_ call: CAPPluginCall) {

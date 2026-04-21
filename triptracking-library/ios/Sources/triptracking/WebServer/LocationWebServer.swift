@@ -12,17 +12,30 @@ import Network
 public class LocationWebServer {
     
     private var listener: NWListener?
-    private let port: NWEndpoint.Port = 8080
+    private var port: UInt16 = 8080
+    private let fallbackPorts: [UInt16] = [8080, 8081, 8082, 8083]
     private var connections: [NWConnection] = []
     
     public init() {}
 
     public func start() {
+        for tryPort in fallbackPorts {
+            if tryStartServer(on: tryPort) {
+                port = tryPort
+                print("✅ Web server started on port \(tryPort)")
+                return
+            }
+        }
+        print("❌ Web server failed on all ports")
+    }
+
+    public func tryStartServer(on port: UInt16) -> Bool {
         guard UserDefaults.standard.bool(forKey: "tt_webMonitorEnabled") else {
             print("🌐 Web monitor disabled — skip start")
-            return   // ← return ngay nếu disabled
+            return false  // ← return ngay nếu disabled
         }
         do {
+            stop()
             // Configure TCP parameters — allow port reuse so the server
             // can restart cleanly after an app backgrounding cycle.
             let parameters = NWParameters.tcp
@@ -55,9 +68,11 @@ public class LocationWebServer {
             }
             
             listener?.start(queue: .main)
+            return true
             
         } catch {
             print("❌ Failed to start web server: \(error)")
+            return false
         }
     }
     
