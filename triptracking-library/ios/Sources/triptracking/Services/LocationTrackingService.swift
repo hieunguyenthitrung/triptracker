@@ -303,12 +303,28 @@ public class LocationTrackingService: NSObject {
         // This avoids GPS drift when the app launches on a stationary device.
         DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
             guard let self = self else { return }
-            if self.lastMotionState == .still || self.lastMotionState == .unknown {
-                if !self.isTracking {
-                    self.adaptLocationAccuracy(for: self.lastMotionState)
-                }
-            }
+            self.adaptLocationAccuracy(for: self.lastMotionState)
         }
+    }
+
+    // ── Background Task Protection ──
+    private var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
+
+    /// Begin a background task to protect critical work (API calls, DB writes)
+    /// when the app transitions to background.
+    public func beginBackgroundTask() {
+        guard backgroundTaskID == .invalid else { return }
+        backgroundTaskID = UIApplication.shared.beginBackgroundTask(withName: "TripTrackerBG") { [weak self] in
+            // Expiration handler — clean up
+            self?.endBackgroundTask()
+        }
+        print("📡 Background task started (remaining: \(String(format: "%.0f", UIApplication.shared.backgroundTimeRemaining))s)")
+    }
+
+    public func endBackgroundTask() {
+        guard backgroundTaskID != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(backgroundTaskID)
+        backgroundTaskID = .invalid
     }
 
     public func startTrip(withInitialLocation initialLocation: CLLocation? = nil) {
@@ -487,6 +503,15 @@ public class LocationTrackingService: NSObject {
         let speed = Float(max(0, location.speed))
 
         print("📍 Significant location change relaunch — speed: \(String(format:"%.1f", speed)) m/s")
+
+        // Send a ping on every significant location change (even without trip)
+        let pt = LocationPoint(from: location, source: .gps)
+        sendAPIPing(location: pt, source: .gps)
+
+        // Save to cache database
+        DatabaseManager.shared.saveCachedLocation(location: pt)
+        lastKnownLocation = location
+        persistLastGPSTimestamp()
 
         if speed >= vehicleThreshold && !isTracking {
             autoStartTrip(reason: "Significant location change (speed \(String(format:"%.1f", speed)) m/s)")

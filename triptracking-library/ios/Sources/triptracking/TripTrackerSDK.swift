@@ -127,19 +127,19 @@ public final class TripTrackerSDK {
         }
 
         _initialized = true
-        // Web server
-        let isBackground = UIApplication.shared.applicationState == .background
 
+        // Web server — only start in foreground, not during background/location relaunch
+        let isBackground = UIApplication.shared.applicationState == .background
         if UserDefaults.standard.bool(forKey: "tt_webMonitorEnabled")
             && !isLocationRelaunch
             && !isBackground {
             webServer = LocationWebServer()
             webServer?.start()
-        } else {
+        } else if isLocationRelaunch || isBackground {
             print("⏭️ WebServer skipped — background/location relaunch")
         }
-        
-        print("✅ TripTrackerSDK initialized")
+
+        print("✅ TripTrackerSDK initialized\(isLocationRelaunch ? " (location relaunch)" : "")")
     }
 
     // ── Permission ──
@@ -232,7 +232,25 @@ public final class TripTrackerSDK {
 
     // ── Lifecycle ──
     public static func didEnterBackground() { LocationTrackingService.shared.ensureBackgroundTracking() }
-    public static func willTerminate() { DatabaseManager.shared.saveContext() }
+
+    public static func willTerminate() {
+        // Save database
+        DatabaseManager.shared.saveContext()
+
+        // Ensure significant location changes survive termination
+        // (iOS relaunches app when significant location change occurs)
+        let lm = LocationTrackingService.shared
+        lm.locationManager.startMonitoringSignificantLocationChanges()
+        lm.locationManager.startMonitoringVisits()
+
+        // If trip is active, save a checkpoint so we can resume on relaunch
+        if lm.isTracking {
+            print("⚠️ App terminating during active trip #\(lm.currentTripId) — saving checkpoint")
+            lm.persistLastGPSTimestamp()
+        }
+
+        print("🛑 TripTrackerSDK willTerminate — significant changes + visits will relaunch")
+    }
 
     // ── Scene Configuration ──
     public static func sceneConfiguration(for session: UISceneSession) -> UISceneConfiguration {

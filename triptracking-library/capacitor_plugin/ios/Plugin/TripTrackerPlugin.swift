@@ -50,6 +50,64 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "sendRecentLogs", returnType: CAPPluginReturnPromise),
     ]
 
+    // ═══════════════════════════════════════════════════════════════
+    // Lifecycle — auto-initialize on app launch (including background relaunch)
+    // ═══════════════════════════════════════════════════════════════
+
+    public override func load() {
+        // Auto-initialize SDK from saved config when app relaunches (including after termination).
+        // This ensures significant location change relaunches restore tracking.
+        if !TripTrackerSDK.isInitialized {
+            let hasSavedConfig = UserDefaults.standard.string(forKey: "tt_api_pingURL") != nil
+            if hasSavedConfig || CLLocationManager().authorizationStatus == .authorizedAlways {
+                print("🔄 TripTracker plugin load() — auto-initializing SDK from saved config")
+                TripTrackerSDK.initialize(config: TripTrackerConfig())
+            }
+        }
+
+        // Listen for app going to background/foreground
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAppDidBecomeActive),
+            name: UIApplication.didBecomeActiveNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAppDidEnterBackground),
+            name: UIApplication.didEnterBackgroundNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAppWillTerminate),
+            name: UIApplication.willTerminateNotification,
+            object: nil
+        )
+    }
+
+    @objc private func handleAppDidBecomeActive() {
+        // End background task when back in foreground
+        if TripTrackerSDK.isInitialized {
+            LocationTrackingService.shared.endBackgroundTask()
+            LocationTrackingService.shared.startBackgroundTracking()
+        }
+    }
+
+    @objc private func handleAppDidEnterBackground() {
+        if TripTrackerSDK.isInitialized {
+            // Begin background task to protect API calls + DB writes
+            LocationTrackingService.shared.beginBackgroundTask()
+            LocationTrackingService.shared.ensureBackgroundTracking()
+        }
+    }
+
+    @objc private func handleAppWillTerminate() {
+        if TripTrackerSDK.isInitialized {
+            TripTrackerSDK.willTerminate()
+        }
+    }
+
     // MARK: - Native Settings Pages
 
     /// Initialize SDK with custom config from JavaScript.
