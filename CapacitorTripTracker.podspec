@@ -20,9 +20,9 @@ Pod::Spec.new do |s|
 
   s.pod_target_xcconfig = {
     'DEFINES_MODULE' => 'YES',
-    'SWIFT_INCLUDE_PATHS' => '$(inherited) $(PODS_CONFIGURATION_BUILD_DIR)/triptracking'
-	'OTHER_LDFLAGS' => '-lsqlite3',
-  'OTHER_SWIFT_FLAGS' => '-Xcc -DSQLITE_CORE'
+    'SWIFT_INCLUDE_PATHS' => '$(inherited) $(PODS_CONFIGURATION_BUILD_DIR)/triptracking',
+    'OTHER_LDFLAGS' => '-lsqlite3',
+    'OTHER_SWIFT_FLAGS' => '-Xcc -DSQLITE_CORE'
   }
 
 end
