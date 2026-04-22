@@ -20,6 +20,8 @@ import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.ArrayList;
+import java.util.List;
 
 public final class TripTrackerAPIService {
     private static final String TAG = "TripTrackerAPI";
@@ -131,36 +133,39 @@ public final class TripTrackerAPIService {
 
     /** Flush all pending requests. Called when network becomes available. */
     public void flushQueue() {
-        if (isFlushing || pendingQueue.isEmpty()) return;
-        isFlushing = true;
+    if (isFlushing || pendingQueue.isEmpty()) return;
+    isFlushing = true;
 
-        executor.execute(() -> {
-            int sent = 0;
-            Log.i(TAG, "Flushing " + pendingQueue.size() + " pending requests…");
+    executor.execute(() -> {
+        int sent = 0;
+        Log.i(TAG, "Flushing " + pendingQueue.size() + " pending requests…");
 
-            Iterator<String> it = pendingQueue.iterator();
-            while (it.hasNext()) {
-                try {
-                    JSONObject item = new JSONObject(it.next());
-                    String url = item.getString("url");
-                    JSONObject body = new JSONObject(item.getString("body"));
+        List<String> toRemove = new ArrayList<>();
 
-                    boolean ok = post(url, body);
-                    if (ok) {
-                        it.remove();
-                        sent++;
-                    } else {
-                        break;  // Still offline — stop flushing
-                    }
-                } catch (Exception e) {
-                    it.remove();  // Corrupt entry — remove
+        for (String entry : pendingQueue) {
+            try {
+                JSONObject item = new JSONObject(entry);
+                String url = item.getString("url");
+                JSONObject body = new JSONObject(item.getString("body"));
+
+                boolean ok = post(url, body);
+                if (ok) {
+                    toRemove.add(entry);
+                    sent++;
+                } else {
+                    break;  // Still offline — stop flushing
                 }
+            } catch (Exception e) {
+                toRemove.add(entry);  // Corrupt entry — remove
             }
-            savePendingQueue();
-            isFlushing = false;
-            Log.i(TAG, "Flush done: " + sent + " sent, " + pendingQueue.size() + " remaining");
-        });
-    }
+        }
+
+        pendingQueue.removeAll(toRemove);
+        savePendingQueue();
+        isFlushing = false;
+        Log.i(TAG, "Flush done: " + sent + " sent, " + pendingQueue.size() + " remaining");
+    });
+}
 
     public int getPendingCount() { return pendingQueue.size(); }
 
