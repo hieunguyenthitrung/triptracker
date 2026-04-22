@@ -281,6 +281,9 @@ public final class TripTrackerAPIService {
                 if (includeVehicleId && !vehicleId.isEmpty()) {
                     body.put("vehicle_Id", vehicleId);
                     body.put("route_Id", routeId != null ? routeId : this.routeId);
+                    Log.d(TAG, "Ping route_Id: " + routeId != null ? routeId : this.routeId);
+                }else{
+                    Log.d(TAG, "Ping without vehicle_IdvehicleId: " + vehicleId);
                 }
 
                 boolean ok = post(pingURL, body);

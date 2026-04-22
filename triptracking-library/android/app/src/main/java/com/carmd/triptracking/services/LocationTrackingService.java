@@ -1504,7 +1504,7 @@ private void startMinimalForeground() {
 
             // ON_BICYCLE enter
             transitions.add(new ActivityTransition.Builder()
-                    .setActivityType(DetectedActivity.ON_BICYCLE)
+                    .setActivityType(DetectedActivity.IN_VEHICLE)
                     .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
                     .build());
 
