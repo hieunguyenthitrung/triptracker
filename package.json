@@ -10,7 +10,7 @@
     "android": { "src": "triptracking-library/capacitor_plugin/android" }
   },
   "unpkg": "dist/plugin.js",
-  "files": 
+  "files": [
 	"triptracking-library/capacitor_plugin/dist/", 
 	"triptracking-library/capacitor_plugin/ios/", 
 	"triptracking-library/capacitor_plugin/android/", 
