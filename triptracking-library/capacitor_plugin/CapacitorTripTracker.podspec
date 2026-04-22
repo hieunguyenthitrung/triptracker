@@ -17,7 +17,6 @@ Pod::Spec.new do |s|
   s.swift_version = '5.9'
   s.frameworks = 'UIKit', 'CoreLocation', 'CoreMotion', 'MapKit',
                  'AVFoundation', 'UserNotifications', 'Network'
-  s.libraries = 'sqlite3'
   s.weak_frameworks = 'CarPlay'
 
   s.pod_target_xcconfig = {
