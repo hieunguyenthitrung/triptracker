@@ -14,7 +14,7 @@ public class DatabaseManager {
     
     private var db: OpaquePointer?
     
-    private init() {}cd ..
+    private init() {}
     
     public func initializeDatabase() {
         let fileManager = FileManager.default
