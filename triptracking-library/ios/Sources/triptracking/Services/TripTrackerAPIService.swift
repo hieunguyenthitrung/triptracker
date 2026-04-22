@@ -271,8 +271,6 @@ public final class TripTrackerAPIService {
         }
     }
 
-    public func setRouteId(_ id: String) { config.routeId = id }
-
     private func post(url: String, body: [String: Any], completion: ((Bool) -> Void)?) {
         guard let url = URL(string: url) else { completion?(false); return }
         var req = URLRequest(url: url)
