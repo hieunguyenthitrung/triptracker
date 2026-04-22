@@ -24,7 +24,10 @@ Pod::Spec.new do |s|
   s.frameworks = 'UIKit', 'CoreLocation', 'CoreMotion', 'MapKit',
                  'AVFoundation', 'UserNotifications', 'Network'
 
-  s.libraries = 'sqlite3'
+  s.pod_target_xcconfig = {
+  'OTHER_LDFLAGS' => '-lsqlite3',
+  'OTHER_SWIFT_FLAGS' => '-Xcc -DSQLITE_CORE'
+}
 
   s.weak_frameworks = 'CarPlay'
 end
