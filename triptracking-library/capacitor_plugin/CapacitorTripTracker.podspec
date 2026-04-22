@@ -17,14 +17,13 @@ Pod::Spec.new do |s|
   s.swift_version = '5.9'
   s.frameworks = 'UIKit', 'CoreLocation', 'CoreMotion', 'MapKit',
                  'AVFoundation', 'UserNotifications', 'Network'
-s.pod_target_xcconfig = {
-  'OTHER_LDFLAGS' => '-lsqlite3',
-  'OTHER_SWIFT_FLAGS' => '-Xcc -DSQLITE_CORE'
-}
+
   s.weak_frameworks = 'CarPlay'
 
   s.pod_target_xcconfig = {
     'DEFINES_MODULE' => 'YES',
     'SWIFT_INCLUDE_PATHS' => '$(inherited) $(PODS_CONFIGURATION_BUILD_DIR)/triptracking'
+'OTHER_LDFLAGS' => '-lsqlite3',
+  'OTHER_SWIFT_FLAGS' => '-Xcc -DSQLITE_CORE'
   }
 end
