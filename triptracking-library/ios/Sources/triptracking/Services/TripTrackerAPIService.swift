@@ -201,6 +201,8 @@ public final class TripTrackerAPIService {
                 
             ]]
         ]
+        print("API ping route: \(body) (vehicleId included: \(includeVehicleId))")
+        
         // Only include vehicle_Id during active trip and if configured
         if includeVehicleId && !config.vehicleId.isEmpty {
             body["vehicle_Id"] = config.vehicleId
@@ -224,6 +226,7 @@ public final class TripTrackerAPIService {
              "latitude": loc.coordinate.latitude, "longitude": loc.coordinate.longitude,
              "speed": spd, "activityType": activity, "route_Id": includeVehicleId ? routeId ?? config.vehicleId : ""]
         }
+        print("API ping route: \(includeVehicleId ? routeId ?? config.vehicleId : "") (vehicleId included: \(includeVehicleId))")
         var body: [String: Any] = ["user_Id": config.userId, "os_Info": config.osInfo, "location": arr]
         if includeVehicleId && !config.vehicleId.isEmpty {
             body["vehicle_Id"] = config.vehicleId
