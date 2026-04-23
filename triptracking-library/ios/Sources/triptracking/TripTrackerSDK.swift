@@ -125,7 +125,14 @@ public final class TripTrackerSDK {
         _initialized = true
 
         // Web server — only start in foreground, not during background/location relaunch
-        let isBackground = UIApplication.shared.applicationState == .background
+        var isBackground = false
+        if Thread.isMainThread {
+            isBackground = UIApplication.shared.applicationState == .background
+        } else {
+            DispatchQueue.main.sync {
+                isBackground = UIApplication.shared.applicationState == .background
+            }
+        }
         if UserDefaults.standard.bool(forKey: "tt_webMonitorEnabled")
             && !isLocationRelaunch
             && !isBackground {

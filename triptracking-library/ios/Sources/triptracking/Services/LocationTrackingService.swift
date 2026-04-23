@@ -878,7 +878,7 @@ public class LocationTrackingService: NSObject {
         // ── Self-healing: ensure GPS never stops ──
         // If iOS silently stopped location updates, restart them.
         // This is the safety net that prevents the app from dying in background.
-        ensureGPSAlive()
+        //ensureGPSAlive()
 
         let speed  = effectiveSpeed()
         let source = resolveSource(speed: speed)
