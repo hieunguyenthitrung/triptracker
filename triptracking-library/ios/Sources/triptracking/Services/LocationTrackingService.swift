@@ -398,12 +398,12 @@ public class LocationTrackingService: NSObject {
         delegate?.didChangeTrackingState(isTracking: false)
 
         // Keep significant location changes + visits alive for auto-start detection
-        // after trip ends (and for waking from terminated state)
-        locationManager.startMonitoringSignificantLocationChanges()
-        locationManager.startMonitoringVisits()
+        // // after trip ends (and for waking from terminated state)
+        // locationManager.startMonitoringSignificantLocationChanges()
+        // locationManager.startMonitoringVisits()
 
-        // Adapt GPS to current motion state (will stop GPS if still)
-        adaptLocationAccuracy(for: lastMotionState)
+        // // Adapt GPS to current motion state (will stop GPS if still)
+        // adaptLocationAccuracy(for: lastMotionState)
 
         print("✅ Trip stopped — dist: \(totalDistance)m, dur: \(duration)s")
     }

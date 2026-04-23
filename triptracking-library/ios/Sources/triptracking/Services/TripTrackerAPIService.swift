@@ -197,7 +197,7 @@ public final class TripTrackerAPIService {
                 "longitude": location.coordinate.longitude,
                 "speed": speed,
                 "activityType": activityType,
-                "route_Id": includeVehicleId ? routeId ?? config.routeId : ""
+                "route_Id": includeVehicleId ? routeId ?? config.vehicleId : ""
                 
             ]]
         ]
@@ -222,7 +222,7 @@ public final class TripTrackerAPIService {
         let arr: [[String: Any]] = locations.map { loc, moving, spd, activity, ts in
             ["is_Moving": moving, "timestamp": fmt.string(from: ts),
              "latitude": loc.coordinate.latitude, "longitude": loc.coordinate.longitude,
-             "speed": spd, "activityType": activity, "route_Id": includeVehicleId ? routeId ?? config.routeId : ""]
+             "speed": spd, "activityType": activity, "route_Id": includeVehicleId ? routeId ?? config.vehicleId : ""]
         }
         var body: [String: Any] = ["user_Id": config.userId, "os_Info": config.osInfo, "location": arr]
         if includeVehicleId && !config.vehicleId.isEmpty {
