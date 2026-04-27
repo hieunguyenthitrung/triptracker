@@ -1,5 +1,6 @@
 import UIKit
 import CoreLocation
+import FakeRouteSimulator
 
 // MARK: - Configuration
 
@@ -249,10 +250,6 @@ public final class TripTrackerSDK {
             print("⚠️ App terminating during active trip #\(LocationTrackingService.shared.currentTripId) — saving checkpoint")
             UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "tt_lastGPSTimestamp")
         }
-
-        // 🧪 Enable fake route on terminate — will auto-start on next relaunch
-        // TODO: Remove this line before production release
-        FakeRouteSimulator.isEnabled = true
     
         print("🛑 TripTrackerSDK willTerminate — significant changes + visits will relaunch")
     }
