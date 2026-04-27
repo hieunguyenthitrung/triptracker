@@ -275,6 +275,9 @@ public class LocationTrackingService: NSObject {
                 // which wastes battery and triggers false geofence enter/exit.
                 // Significant location changes + visits still wake the app if needed.
                 locationManager.stopUpdatingLocation()
+                locationManager.startMonitoringSignificantLocationChanges()
+                locationManager.startMonitoringVisits()
+                print("📡 GPS STOPPED — still/unknown → sensors only, significant changes active")
                 print("📡 GPS STOPPED — device is still, no trip (significant changes + visits still active)")
             }
         case .walking, .running, .cycling:
