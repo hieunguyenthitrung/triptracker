@@ -108,32 +108,74 @@ public final class TripTrackerAPIService {
         guard !items.isEmpty else { return }
 
         isFlushing = true
-        print("📡 Flushing \(items.count) pending API requests…")
+        print("📡 Flushing \(items.count) pending requests…")
 
         DispatchQueue.global(qos: .utility).async { [weak self] in
-            var successCount = 0
+            guard let self = self else { return }
+
+            // Separate pings from endTrip requests
+            var pingLocations: [[String: Any]] = []
+            var endTripItems: [[String: Any]] = []
+            var pingTemplate: [String: Any]? = nil
+
             for item in items {
-                guard let urlStr = item["url"] as? String,
+                guard let url = item["url"] as? String,
                       let body = item["body"] as? [String: Any] else { continue }
 
-                let ok = self?.postSync(url: urlStr, body: body) ?? false
-                if ok {
-                    successCount += 1
-                    // Remove from queue
-                    self?.queueLock.lock()
-                    if let idx = self?.pendingQueue.firstIndex(where: { ($0["ts"] as? Double) == (item["ts"] as? Double) }) {
-                        self?.pendingQueue.remove(at: idx)
+                if url == self.config.pingURL {
+                    // Extract location array from ping body
+                    if let locs = body["location"] as? [[String: Any]] {
+                        pingLocations.append(contentsOf: locs)
                     }
-                    self?.queueLock.unlock()
+                    if pingTemplate == nil { pingTemplate = body }
                 } else {
-                    // Still offline — stop flushing
+                    endTripItems.append(item)
+                }
+            }
+
+            var allSuccess = true
+
+            // Batch all pings into ONE request
+            if !pingLocations.isEmpty, var template = pingTemplate {
+                template["location"] = pingLocations
+                let ok = self.postSync(url: self.config.pingURL, body: template)
+                if ok {
+                    print("📡 Batch flush: \(pingLocations.count) locations in 1 request ✅")
+                } else {
+                    allSuccess = false
+                    print("📡 Batch flush failed — keeping in queue")
+                }
+            }
+
+            // Send endTrip requests individually (usually just 1)
+            var endTripSuccess = true
+            for item in endTripItems {
+                guard let url = item["url"] as? String,
+                      let body = item["body"] as? [String: Any] else { continue }
+                if !self.postSync(url: url, body: body) {
+                    endTripSuccess = false
                     break
                 }
             }
-            self?.savePendingQueue()
-            self?.isFlushing = false
-            let remaining = self?.pendingQueue.count ?? 0
-            print("📡 Flush done: \(successCount) sent, \(remaining) remaining")
+
+            // Clear queue only if all succeeded
+            if allSuccess && endTripSuccess {
+                self.queueLock.lock()
+                self.pendingQueue.removeAll()
+                self.queueLock.unlock()
+            } else if allSuccess {
+                // Pings sent, keep only failed endTrips
+                self.queueLock.lock()
+                self.pendingQueue = endTripItems.filter { item in
+                    guard let url = item["url"] as? String else { return false }
+                    return url != self.config.pingURL
+                }
+                self.queueLock.unlock()
+            }
+
+            self.savePendingQueue()
+            self.isFlushing = false
+            print("📡 Flush done: queue=\(self.pendingQueue.count) remaining")
         }
     }
 

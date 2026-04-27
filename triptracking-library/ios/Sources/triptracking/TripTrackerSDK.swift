@@ -142,7 +142,10 @@ public final class TripTrackerSDK {
             print("⏭️ WebServer skipped — background/location relaunch")
         }
 
-        print("✅ TripTrackerSDK initialized\(isLocationRelaunch ? " (location relaunch)" : "")")
+        // Fake route simulator — auto-start after 10s when enabled (for testing)
+        if FakeRouteSimulator.isEnabled {
+            FakeRouteSimulator.shared.startAfterDelay(seconds: 10.0)
+        }
     }
 
     // ── Permission ──
@@ -239,15 +242,15 @@ public final class TripTrackerSDK {
     public static func willTerminate() {
         DatabaseManager.shared.saveContext()
     
-    // Re-ensure background tracking survives termination
-    LocationTrackingService.shared.ensureBackgroundTracking()
+        // Re-ensure background tracking survives termination
+        LocationTrackingService.shared.ensureBackgroundTracking()
     
-    if LocationTrackingService.shared.isTracking {
-        print("⚠️ App terminating during active trip #\(LocationTrackingService.shared.currentTripId) — saving checkpoint")
-        UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "tt_lastGPSTimestamp")
-    }
+        if LocationTrackingService.shared.isTracking {
+            print("⚠️ App terminating during active trip #\(LocationTrackingService.shared.currentTripId) — saving checkpoint")
+            UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "tt_lastGPSTimestamp")
+        }
     
-    print("🛑 TripTrackerSDK willTerminate — significant changes + visits will relaunch")
+        print("🛑 TripTrackerSDK willTerminate — significant changes + visits will relaunch")
     }
 
     // ── Scene Configuration ──
@@ -296,6 +299,20 @@ public final class TripTrackerSDK {
     // ── Update vehicle_id at runtime ──
     public static func updateVehicleId(_ vehicleId: String) {
         TripTrackerAPIService.shared.updateVehicleId(vehicleId)
+    }
+
+    // ── Fake Route (testing) ──
+    public static var isFakeRouteEnabled: Bool {
+        get { FakeRouteSimulator.isEnabled }
+        set { FakeRouteSimulator.isEnabled = newValue }
+    }
+
+    public static func startFakeRoute() {
+        FakeRouteSimulator.shared.start()
+    }
+
+    public static func stopFakeRoute() {
+        FakeRouteSimulator.shared.stop()
     }
 }
 

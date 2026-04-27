@@ -133,40 +133,87 @@ public final class TripTrackerAPIService {
 
     /** Flush all pending requests. Called when network becomes available. */
     public void flushQueue() {
-    if (isFlushing || pendingQueue.isEmpty()) return;
-    isFlushing = true;
+        if (isFlushing || pendingQueue.isEmpty()) return;
+        isFlushing = true;
 
-    executor.execute(() -> {
-        int sent = 0;
-        Log.i(TAG, "Flushing " + pendingQueue.size() + " pending requests…");
+        executor.execute(() -> {
+            Log.i(TAG, "Flushing " + pendingQueue.size() + " pending requests…");
 
-        List<String> toRemove = new ArrayList<>();
+            // Separate pings from endTrip
+            JSONArray allLocations = new JSONArray();
+            JSONObject pingTemplate = null;
+            List<String> endTripEntries = new ArrayList<>();
+            List<String> pingEntries = new ArrayList<>();
 
-        for (String entry : pendingQueue) {
-            try {
-                JSONObject item = new JSONObject(entry);
-                String url = item.getString("url");
-                JSONObject body = new JSONObject(item.getString("body"));
+            for (String entry : pendingQueue) {
+                try {
+                    JSONObject item = new JSONObject(entry);
+                    String url = item.getString("url");
+                    JSONObject body = new JSONObject(item.getString("body"));
 
-                Log.d(TAG, "Retrying: " + url + " with body: " + body.toString());
-                boolean ok = post(url, body);
-                if (ok) {
-                    toRemove.add(entry);
-                    sent++;
-                } else {
-                    break;  // Still offline — stop flushing
+                    if (url.equals(pingURL)) {
+                        // Extract locations from ping body
+                        JSONArray locs = body.optJSONArray("location");
+                        if (locs != null) {
+                            for (int i = 0; i < locs.length(); i++) {
+                                allLocations.put(locs.getJSONObject(i));
+                            }
+                        }
+                        if (pingTemplate == null) pingTemplate = body;
+                        pingEntries.add(entry);
+                    } else {
+                        endTripEntries.add(entry);
+                    }
+                } catch (Exception e) {
+                    // Corrupt — will be removed
+                    pingEntries.add(entry);
                 }
-            } catch (Exception e) {
-                toRemove.add(entry);  // Corrupt entry — remove
             }
-        }
 
-        pendingQueue.removeAll(toRemove);
-        savePendingQueue();
-        isFlushing = false;
-        Log.i(TAG, "Flush done: " + sent + " sent, " + pendingQueue.size() + " remaining");
-    });
-}
+            boolean allSuccess = true;
+
+            // Batch all pings into ONE request
+            if (allLocations.length() > 0 && pingTemplate != null) {
+                try {
+                    pingTemplate.put("location", allLocations);
+                    boolean ok = post(pingURL, pingTemplate);
+                    if (ok) {
+                        Log.i(TAG, "Batch flush: " + allLocations.length() + " locations in 1 request ✅");
+                        pendingQueue.removeAll(pingEntries);
+                    } else {
+                        allSuccess = false;
+                        Log.w(TAG, "Batch flush failed — keeping in queue");
+                    }
+                } catch (Exception e) {
+                    allSuccess = false;
+                }
+            }
+
+            // Send endTrip requests individually (usually just 1)
+            if (allSuccess) {
+                List<String> sentEndTrips = new ArrayList<>();
+                for (String entry : endTripEntries) {
+                    try {
+                        JSONObject item = new JSONObject(entry);
+                        String url = item.getString("url");
+                        JSONObject body = new JSONObject(item.getString("body"));
+                        if (post(url, body)) {
+                            sentEndTrips.add(entry);
+                        } else {
+                            break;
+                        }
+                    } catch (Exception e) {
+                        sentEndTrips.add(entry);
+                    }
+                }
+                pendingQueue.removeAll(sentEndTrips);
+            }
+
+            savePendingQueue();
+            isFlushing = false;
+            Log.i(TAG, "Flush done: " + pendingQueue.size() + " remaining");
+        });
+    }
 
     public int getPendingCount() { return pendingQueue.size(); }
 

@@ -13,7 +13,8 @@
     "pretty": true,
     "sourceMap": true,
     "strict": true,
-    "target": "es2017"
+    "target": "es2017",
+    "skipLibCheck": true    // ← THÊM DÒNG NÀY — bỏ qua lỗi trong node_modules
   },
   "files": ["src/index.ts", "src/definitions.ts", "src/web.ts"]
 }

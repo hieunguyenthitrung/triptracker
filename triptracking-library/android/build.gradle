@@ -6,7 +6,7 @@ plugins {
 android {
     namespace 'com.carmd.triptracking'
     compileSdk 34
-
+1.0.37
     sourceSets {
         main {
             java.srcDirs = ['app/src/main/java']
@@ -74,7 +74,7 @@ afterEvaluate {
                 from components.release  // ← không nested afterEvaluate nữa
                 groupId    = 'com.github.hieunguyentt'
                 artifactId = 'triptracking-android'
-                version    = '1.0.36'
+                version    = '1.0.37'
             }
         }
         repositories {

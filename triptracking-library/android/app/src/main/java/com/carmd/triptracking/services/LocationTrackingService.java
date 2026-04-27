@@ -109,6 +109,12 @@ public class LocationTrackingService extends Service implements
     private Handler  autoStopHandler  = null;
     private Runnable autoStopRunnable = null;
 
+    // ── Anti-drift: prevent false auto-start from GPS noise on stationary device ──
+    /** Number of consecutive GPS fixes at vehicle speed (need 3 to auto-start). */
+    private int consecutiveVehicleCount = 0;
+    /** True when Activity Recognition reports IN_VEHICLE — lowers GPS speed threshold. */
+    private boolean activityRecognitionVehicle = false;
+
     // ── GPS staleness ─────────────────────────────────────────────────────────
     private static final long GPS_STALE_MS = 10_000L; // speed starts decaying after this
     private static final long GPS_DEAD_MS  = 18_000L; // speed forced to 0 after this
@@ -518,6 +524,8 @@ public class LocationTrackingService extends Service implements
     /** Auto-stop a trip after being still for autoStopStillMs(). */
     private void autoStopTrip() {
         if (!isTracking) return;
+        consecutiveVehicleCount = 0;
+        activityRecognitionVehicle = false;
         long tripId = currentTripId;
         long duration = (System.currentTimeMillis() - tripStartTime) / 1000;
         double dist = totalDistance;
@@ -943,14 +951,30 @@ public class LocationTrackingService extends Service implements
             }
         }
 
-        if (speed < vehicleThreshold()) return;
+        if (speed < vehicleThreshold()) {
+            consecutiveVehicleCount = 0;
+            return;
+        }
 
         // ── Vehicle speed path ────────────────────────────────────────────────
-        // Auto-start trip if not already tracking
-        if (!isTracking && accuracy <= 50f) {
-            autoStartTrip(location);
+        // Anti-drift: require 3 CONSECUTIVE GPS fixes at vehicle speed + good accuracy
+        // + GPS hardware speed (Doppler). GPS drift on stationary Pixel 8 etc.
+        // produces position jumps but NOT Doppler speed.
+        float requiredSpeed = activityRecognitionVehicle
+                ? vehicleThreshold() * 0.5f   // 11 km/h if Activity Recognition confirms vehicle
+                : vehicleThreshold();          // 22 km/h normally
+
+        if (speed >= requiredSpeed && accuracy <= 30f && location.hasSpeed() && location.getSpeed() >= requiredSpeed) {
+            consecutiveVehicleCount++;
+            if (!isTracking && consecutiveVehicleCount >= 3) {
+                autoStartTrip(location);
+                consecutiveVehicleCount = 0;
+                activityRecognitionVehicle = false;
+            }
+        } else {
+            consecutiveVehicleCount = 0;
         }
-        if (accuracy > 50f) return; // don't save inaccurate fast fixes
+        if (accuracy > 30f) return; // don't save inaccurate fast fixes
 
         // Seed lastSavedGpsLocation on the first vehicle-speed fix so the
         // distance gate is measured from a real position, not null (which would
@@ -1504,7 +1528,7 @@ private void startMinimalForeground() {
 
             // ON_BICYCLE enter
             transitions.add(new ActivityTransition.Builder()
-                    .setActivityType(DetectedActivity.IN_VEHICLE)
+                    .setActivityType(DetectedActivity.ON_BICYCLE)
                     .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
                     .build());
 
@@ -1572,19 +1596,31 @@ private void startMinimalForeground() {
 
         if (activityType == DetectedActivity.IN_VEHICLE
                 && transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER) {
-            // Automotive detected → auto-start trip (like iOS .automotive case)
-            Log.i(TAG, "🚗 Activity Recognition: IN_VEHICLE detected — auto-starting trip");
+            // Don't auto-start from Activity Recognition alone — GPS drift/charger vibration
+            // can cause false IN_VEHICLE on Pixel 8 etc.
+            // Set flag → GPS speed check uses lower threshold (11 km/h instead of 22).
+            Log.i(TAG, "🚗 Activity Recognition: IN_VEHICLE detected — waiting for GPS speed confirmation");
             if (!isTracking) {
+                activityRecognitionVehicle = true;
+                // If GPS speed is already high enough, start now
                 Location loc = getCurrentLocation();
-                if (loc != null) {
+                if (loc != null && loc.hasSpeed() && loc.getSpeed() >= vehicleThreshold()) {
                     autoStartTrip(loc);
+                    activityRecognitionVehicle = false;
+                    consecutiveVehicleCount = 0;
                 }
             }
             cancelAutoStopTimer();  // Cancel any pending auto-stop
 
+        } else if (activityType == DetectedActivity.IN_VEHICLE
+                && transitionType == ActivityTransition.ACTIVITY_TRANSITION_EXIT) {
+            // Vehicle exited — reset the flag
+            activityRecognitionVehicle = false;
+
         } else if (activityType == DetectedActivity.STILL
                 && transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER) {
             // Still detected → start auto-end countdown if trip is active
+            activityRecognitionVehicle = false;
             if (isTracking) {
                 Log.i(TAG, "⏸ Activity Recognition: STILL detected — starting auto-end countdown");
                 startAutoStopTimer();

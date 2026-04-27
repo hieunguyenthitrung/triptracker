@@ -279,7 +279,7 @@ public class LocationTrackingService: NSObject {
             }
         case .walking, .running, .cycling:
             // GPS active for pedestrian movement
-            locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
+            locationManager.desiredAccuracy = kCLLocationAccuracyBest//kCLLocationAccuracyNearestTenMeters
             locationManager.distanceFilter  = 10.0
             locationManager.startUpdatingLocation()
             print("📡 GPS ON → \(state.rawValue): accuracy=10m filter=10m")
@@ -1294,9 +1294,9 @@ extension LocationTrackingService: CLLocationManagerDelegate {
         currentSource = source
 
         // Always calibrate sensor baseline when accuracy is good
-        if location.horizontalAccuracy > 0 && location.horizontalAccuracy <= 50 {
+        // if location.horizontalAccuracy > 0 && location.horizontalAccuracy <= 50 {
             if lastSensorLocation == nil { lastSensorLocation = location }
-        }
+        // }
 
         print("📍 GPS fix — acc:\(Int(location.horizontalAccuracy))m  spd:\(String(format:"%.1f", speed)) m/s  → \(source.rawValue)")
 
@@ -1433,7 +1433,8 @@ extension LocationTrackingService: CLLocationManagerDelegate {
             if speed < vehicleThreshold {
                 startAutoEndTimer()
             }
-        } else if isDeparture {
+        } else //if isDeparture 
+        {
             // User departed a location — check if we should auto-start
             if let loc = locationManager.location, Float(max(0, loc.speed)) >= vehicleThreshold {
                 autoStartTrip(reason: "Visit departure (speed \(String(format:"%.1f", loc.speed)) m/s)")
