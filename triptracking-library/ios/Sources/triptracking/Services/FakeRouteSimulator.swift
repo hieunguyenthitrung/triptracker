@@ -67,6 +67,10 @@ public final class FakeRouteSimulator {
 
         let service = LocationTrackingService.shared
         service.isFakeRouteActive = true
+        service.lastKnownLocation = nil
+        service.lastGPSLocation = nil
+        service.prevGpsSpeed = 0
+
 
         print("🧪 ═══════════════════════════════════════════════")
         print("🧪 FAKE ROUTE STARTED — \(route.count) points, ~5km motorbike")
