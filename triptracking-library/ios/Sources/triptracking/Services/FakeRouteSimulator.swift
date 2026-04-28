@@ -69,7 +69,7 @@ public final class FakeRouteSimulator {
         service.isFakeRouteActive = true
         service.lastKnownLocation = nil
         service.lastGPSLocation = nil
-        service.prevGpsSpeed = 0
+        service.lastGPSSpeed = 0
 
 
         print("🧪 ═══════════════════════════════════════════════")

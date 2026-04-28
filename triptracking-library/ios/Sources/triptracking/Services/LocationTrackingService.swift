@@ -74,10 +74,10 @@ public class LocationTrackingService: NSObject {
     private var stepCount: Int        = 0
 
     // MARK: - Location state
-    private var lastGPSLocation:      CLLocation?   // latest raw GPS fix
-    private var lastSensorLocation:   CLLocation?   // latest dead-reckoned position
+    public var lastGPSLocation:      CLLocation?   // latest raw GPS fix
+    public var lastSensorLocation:   CLLocation?   // latest dead-reckoned position
     public var lastKnownLocation:    CLLocation?   // best position available — exposed so UI can read it without creating a new CLLocationManager
-    private var lastSavedGPSLocation: CLLocation?   // last GPS point actually persisted
+    public var lastSavedGPSLocation: CLLocation?   // last GPS point actually persisted
     public private(set) var currentSource: TrackingSource = .sensors
 
     /// Convenience accessor for the fake-route injector in MainViewController.
@@ -107,7 +107,7 @@ public class LocationTrackingService: NSObject {
     private var lastStepTime:          Date   = .distantPast
 
     // MARK: - Speed / GPS staleness
-    private var lastGPSSpeed:      Float = 0.0
+    public var lastGPSSpeed:      Float = 0.0
     private var lastGPSUpdateTime: Date  = .distantPast
 
     /// Consecutive GPS fixes at vehicle speed. Must reach threshold before auto-start.
