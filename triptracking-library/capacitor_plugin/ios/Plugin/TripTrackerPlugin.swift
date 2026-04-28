@@ -549,34 +549,6 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    // MARK: - Fake Route (Testing)
-
-    /// Enable/disable fake route simulation.
-    /// When enabled, a ~5km motorbike route auto-starts 10s after SDK init.
-    @objc func setFakeRoute(_ call: CAPPluginCall) {
-        let enabled = call.getBool("enabled") ?? false
-        FakeRouteSimulator.isEnabled = enabled
-        call.resolve([
-            "enabled": enabled,
-            "message": enabled
-                ? "Fake route ENABLED — will auto-start 10s after next app launch"
-                : "Fake route DISABLED"
-        ])
-    }
-
-    /// Start fake route immediately.
-    @objc func startFakeRoute(_ call: CAPPluginCall) {
-        FakeRouteSimulator.isEnabled = true
-        FakeRouteSimulator.shared.start()
-        call.resolve(["started": true])
-    }
-
-    /// Stop fake route.
-    @objc func stopFakeRoute(_ call: CAPPluginCall) {
-        FakeRouteSimulator.shared.stop()
-        call.resolve(["stopped": true])
-    }
-
     private func shareFiles(_ files: [URL], subject: String) {
         var items: [Any] = [subject]
         items.append(contentsOf: files)

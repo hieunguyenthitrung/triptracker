@@ -141,11 +141,6 @@ public final class TripTrackerSDK {
         } else if isLocationRelaunch || isBackground {
             print("⏭️ WebServer skipped — background/location relaunch")
         }
-
-        // Fake route simulator — auto-start after 10s when enabled (for testing)
-        if FakeRouteSimulator.isEnabled {
-            FakeRouteSimulator.shared.startAfterDelay(seconds: 10.0)
-        }
     }
 
     // ── Permission ──
@@ -299,20 +294,6 @@ public final class TripTrackerSDK {
     // ── Update vehicle_id at runtime ──
     public static func updateVehicleId(_ vehicleId: String) {
         TripTrackerAPIService.shared.updateVehicleId(vehicleId)
-    }
-
-    // ── Fake Route (testing) ──
-    public static var isFakeRouteEnabled: Bool {
-        get { FakeRouteSimulator.isEnabled }
-        set { FakeRouteSimulator.isEnabled = newValue }
-    }
-
-    public static func startFakeRoute() {
-        FakeRouteSimulator.shared.start()
-    }
-
-    public static func stopFakeRoute() {
-        FakeRouteSimulator.shared.stop()
     }
 }
 
