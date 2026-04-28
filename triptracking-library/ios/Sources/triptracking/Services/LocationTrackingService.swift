@@ -1200,6 +1200,57 @@ public class LocationTrackingService: NSObject {
     }
 }
 
+// MARK: - Fake GPS injection (for simulation / testing)
+
+extension LocationTrackingService {
+    /// Injects a synthetic GPS fix at the given coordinate with the given speed.
+    /// Runs through the exact same pipeline as a real CLLocation update so that
+    /// distance accumulation, source switching, DB saves and UI updates all work.
+    ///
+    /// - Parameters:
+    ///   - coordinate: The road-snapped coordinate from MKDirections polyline.
+    ///   - speed: Must be > vehicleThreshold (6 m/s) to reliably trigger GPS mode.
+    ///            Use 10.0 m/s (36 km/h) for city driving simulation.
+    ///   - course: Optional compass bearing (0–360°). Computed from prev→current if omitted.
+    public func injectFakeGPS(coordinate: CLLocationCoordinate2D, speed: Double, course: Double = -1) {
+        // Compute course from previous location if not provided
+        let bearing: Double
+        if course >= 0 {
+            bearing = course
+        } else if let prev = lastKnownLocation {
+            bearing = Self.bearingBetween(prev.coordinate, and: coordinate)
+        } else {
+            bearing = 0
+        }
+
+        let fakeLocation = CLLocation(
+            coordinate:           coordinate,
+            altitude:             0,
+            horizontalAccuracy:   5.0,   // excellent accuracy — forces GPS mode
+            verticalAccuracy:     5.0,
+            course:               bearing,
+            speed:                speed,  // must be >= vehicleThreshold (6 m/s)
+            timestamp:            Date()
+        )
+        // Drive the same delegate callback used by real GPS hardware.
+        isProcessingFakeGPS = true
+        locationManager(locationManager, didUpdateLocations: [fakeLocation])
+        isProcessingFakeGPS = false
+    }
+
+    /// Compass bearing in degrees [0, 360) from `from` to `to`.
+    private static func bearingBetween(_ from: CLLocationCoordinate2D,
+                                        and to: CLLocationCoordinate2D) -> Double {
+        let lat1 = from.latitude  * .pi / 180
+        let lat2 = to.latitude    * .pi / 180
+        let dLon = (to.longitude - from.longitude) * .pi / 180
+        let y = sin(dLon) * cos(lat2)
+        let x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon)
+        let bearing = atan2(y, x) * 180 / .pi
+        return (bearing + 360).truncatingRemainder(dividingBy: 360)
+    }
+}
+
 // MARK: - CLLocationManagerDelegate
 
 extension LocationTrackingService: CLLocationManagerDelegate {
