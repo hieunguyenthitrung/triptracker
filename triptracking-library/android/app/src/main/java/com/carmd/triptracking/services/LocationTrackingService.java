@@ -903,22 +903,30 @@ public class LocationTrackingService extends Service implements
         // ── Compute speed from position delta ─────────────────────────────────
         // Deriving speed from consecutive positions is more reliable than
         // location.getSpeed() which can carry stale values from cached fixes.
-        // Formula: speed = distance / elapsed_time (m/s)
+        // BUT: only compute delta speed when BOTH fixes have good accuracy.
+        // GPS noise with 80-400m accuracy produces enormous position jumps → fake speed.
         float speed = 0f;
-        if (lastGpsLocation != null && lastGpsUpdateTime > 0) {
+        if (lastGpsLocation != null && lastGpsUpdateTime > 0 && accuracy <= 50f && lastGpsLocation.getAccuracy() <= 50f) {
             float  distM      = lastGpsLocation.distanceTo(location);
             long   elapsedMs  = System.currentTimeMillis() - lastGpsUpdateTime;
             float  elapsedSec = elapsedMs / 1000f;
             if (elapsedSec > 0 && distM >= 0) {
                 speed = distM / elapsedSec;
             }
-        } else if (location.hasSpeed()) {
-            // First fix — no previous position to diff against; fall back to GPS value
+        } else if (location.hasSpeed() && accuracy <= 50f) {
+            // Use GPS hardware Doppler speed — more reliable than delta
             speed = location.getSpeed();
         }
+        // If accuracy > 50m, speed stays 0 — we don't trust this fix
 
         float prevGpsSpeed = lastGpsSpeed; // capture BEFORE updating, for threshold crossing check
-        lastGpsSpeed      = speed;
+
+        // Only trust GPS speed when accuracy is reasonable.
+        // GPS noise with 80-400m accuracy produces wild speed spikes (50-300 m/s)
+        // that corrupt lastGpsSpeed → prevents auto-stop from working.
+        if (accuracy <= 50f) {
+            lastGpsSpeed      = speed;
+        }
         lastGpsUpdateTime = System.currentTimeMillis();
 
         Log.d(TAG, "GPS: speed=" + String.format("%.2f", speed) +
@@ -939,12 +947,18 @@ public class LocationTrackingService extends Service implements
 
         // Reschedule save loop when crossing the vehicle threshold in either direction
         // (walk→vehicle or vehicle→walk) so the interval snaps immediately.
-        boolean nowVehicle = speed >= vehicleThreshold();
-        boolean wasVehicle = prevGpsSpeed >= vehicleThreshold();
-        if (nowVehicle != wasVehicle) rescheduleSaveLoop();
+        // Only consider accurate GPS fixes — noise shouldn't trigger rescheduling.
+        if (accuracy <= 50f) {
+            boolean nowVehicle = speed >= vehicleThreshold();
+            boolean wasVehicle = prevGpsSpeed >= vehicleThreshold();
+            if (nowVehicle != wasVehicle) rescheduleSaveLoop();
+        }
 
         // ── Auto-trip: moving at vehicle speed resets still timer ──────────
-        if (speed >= STATIONARY_THRESHOLD) {
+        // Only cancel auto-stop if GPS is reliable (accuracy ≤ 30m).
+        // GPS drift with 80-400m accuracy produces fake speed that keeps
+        // cancelling the timer — device sits on table for 45+ min before trip ends.
+        if (speed >= STATIONARY_THRESHOLD && accuracy <= 30f) {
             if (stillSinceMs != 0L) {
                 stillSinceMs = 0L;
                 cancelAutoStopTimer();
