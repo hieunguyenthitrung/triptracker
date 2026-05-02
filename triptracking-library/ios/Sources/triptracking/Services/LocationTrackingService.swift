@@ -883,11 +883,6 @@ public class LocationTrackingService: NSObject {
     }
 
     private func periodicSaveTick() {
-        // ── Self-healing: ensure GPS never stops ──
-        // If iOS silently stopped location updates, restart them.
-        // This is the safety net that prevents the app from dying in background.
-        //ensureGPSAlive()
-
         let speed  = effectiveSpeed()
         let source = resolveSource(speed: speed)
         currentSource = source
@@ -975,7 +970,7 @@ public class LocationTrackingService: NSObject {
                 print("🚗 Automotive activity detected — waiting for GPS speed confirmation")
                 // If GPS speed is already high enough, start now
                 if let loc = locationManager.location,
-                   loc.speed >= 0, loc.horizontalAccuracy <= 30 {
+                   loc.speed >= 0, loc.horizontalAccuracy <= 50 {
                     let gpsSpeed = Float(loc.speed)
                     if gpsSpeed >= vehicleThreshold {
                         autoStartTrip(reason: "Automotive + GPS speed \(String(format:"%.1f", gpsSpeed)) m/s")
@@ -1024,9 +1019,11 @@ public class LocationTrackingService: NSObject {
 
         if speed >= requiredSpeed {
             // ── Vehicle speed detected ──
-            // But is this GPS fix trustworthy? Reject if accuracy > 30m.
+            // Reject if accuracy is too poor (> 50m). GPS noise with 80-400m accuracy
+            // produces fake speeds. But 25-50m is normal in urban areas (HCMC etc.)
+            // especially right after GPS cold start.
             let accuracy = lastGPSLocation?.horizontalAccuracy ?? 999
-            if accuracy > 30 {
+            if accuracy > 50 {
                 print("⚠️ Vehicle speed \(String(format:"%.1f", speed)) m/s IGNORED — poor accuracy \(Int(accuracy))m")
                 consecutiveVehicleSpeedCount = 0
                 return
