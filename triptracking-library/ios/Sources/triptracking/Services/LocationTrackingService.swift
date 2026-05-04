@@ -962,28 +962,10 @@ public class LocationTrackingService: NSObject {
 
         switch next {
         case .automotive:
-            // CMMotionActivity says vehicle — but DON'T auto-start immediately.
-            // CMMotionActivity produces false Automotive on stationary devices (vibration, phone movement).
-            // Set flag → GPS speed check uses lower threshold (50% of vehicleThreshold).
+            // CMMotionActivity says vehicle → cancel auto-end, auto-start if needed
+            cancelAutoEndTimer()
             if !isTracking {
-                motionActivityVehicle = true
-                print("🚗 Automotive activity detected — waiting for GPS speed confirmation")
-                // If GPS speed is already high enough, start now
-                if let loc = locationManager.location,
-                   loc.speed >= 0, loc.horizontalAccuracy <= 50 {
-                    let gpsSpeed = Float(loc.speed)
-                    if gpsSpeed >= vehicleThreshold {
-                        autoStartTrip(reason: "Automotive + GPS speed \(String(format:"%.1f", gpsSpeed)) m/s")
-                        motionActivityVehicle = false
-                        consecutiveVehicleSpeedCount = 0
-                    }
-                }
-            } else {
-                // Already tracking — only cancel auto-end if GPS confirms vehicle speed
-                let gpsSpeed = effectiveSpeed()
-                if gpsSpeed >= vehicleThreshold {
-                    cancelAutoEndTimer()
-                }
+                autoStartTrip(reason: "Automotive activity detected")
             }
 
         case .walking, .running, .cycling:
@@ -1011,19 +993,11 @@ public class LocationTrackingService: NSObject {
     /// GPS drift on a stationary device can produce phantom speeds of 0.5–2 m/s;
     /// these MUST NOT reset the countdown or the trip will never auto-end.
     private func evaluateAutoTripFromGPS(speed: Float) {
-        // When CMMotionActivity reports Automotive, lower the speed threshold to 50%
-        // (e.g. 3 m/s instead of 6 m/s) — motion sensor confirms vehicle, so less GPS proof needed.
-        let requiredSpeed = motionActivityVehicle
-            ? vehicleThreshold * 0.5   // 11 km/h if CMMotionActivity says vehicle
-            : vehicleThreshold          // 22 km/h normally
-
-        if speed >= requiredSpeed {
+        if speed >= vehicleThreshold {
             // ── Vehicle speed detected ──
-            // Reject if accuracy is too poor (> 50m). GPS noise with 80-400m accuracy
-            // produces fake speeds. But 25-50m is normal in urban areas (HCMC etc.)
-            // especially right after GPS cold start.
+            // But is this GPS fix trustworthy? Reject if accuracy > 20m.
             let accuracy = lastGPSLocation?.horizontalAccuracy ?? 999
-            if accuracy > 50 {
+            if accuracy > 20 {
                 print("⚠️ Vehicle speed \(String(format:"%.1f", speed)) m/s IGNORED — poor accuracy \(Int(accuracy))m")
                 consecutiveVehicleSpeedCount = 0
                 return
@@ -1036,9 +1010,8 @@ public class LocationTrackingService: NSObject {
 
             if !isTracking {
                 if consecutiveVehicleSpeedCount >= requiredConsecutiveVehicleFixes {
-                    autoStartTrip(reason: "GPS speed \(String(format:"%.1f", speed)) m/s (\(consecutiveVehicleSpeedCount) consecutive fixes\(motionActivityVehicle ? " + Automotive" : ""))")
+                    autoStartTrip(reason: "GPS speed \(String(format:"%.1f", speed)) m/s (\(consecutiveVehicleSpeedCount) consecutive fixes)")
                     consecutiveVehicleSpeedCount = 0
-                    motionActivityVehicle = false
                 } else {
                     print("🚗 Vehicle speed \(String(format:"%.1f", speed)) m/s — \(consecutiveVehicleSpeedCount)/\(requiredConsecutiveVehicleFixes) consecutive fixes, waiting...")
                 }
@@ -1313,14 +1286,10 @@ extension LocationTrackingService: CLLocationManagerDelegate {
             }
         }
 
-        // Only trust GPS data when accuracy is reasonable.
-        // GPS fixes with 80-400m accuracy produce wild position jumps → corrupt speed + location.
-        if location.horizontalAccuracy > 0 && location.horizontalAccuracy <= 50 {
-            lastGPSSpeed      = rawSpeed
-            lastGPSLocation   = location
-            lastKnownLocation = location
-        }
+        lastGPSSpeed      = rawSpeed
         lastGPSUpdateTime = now
+        lastGPSLocation   = location
+        lastKnownLocation = location
         persistLastGPSTimestamp()
 
         let speed  = effectiveSpeed()
@@ -1328,9 +1297,9 @@ extension LocationTrackingService: CLLocationManagerDelegate {
         currentSource = source
 
         // Always calibrate sensor baseline when accuracy is good
-        if location.horizontalAccuracy > 0 && location.horizontalAccuracy <= 50 {
+        // if location.horizontalAccuracy > 0 && location.horizontalAccuracy <= 50 {
             if lastSensorLocation == nil { lastSensorLocation = location }
-        }
+        // }
 
         print("📍 GPS fix — acc:\(Int(location.horizontalAccuracy))m  spd:\(String(format:"%.1f", speed)) m/s  → \(source.rawValue)")
 
@@ -1452,13 +1421,23 @@ extension LocationTrackingService: CLLocationManagerDelegate {
         let isArrival   = visit.arrivalDate   != .distantPast
         print("📍 Visit event — arrival:\(isArrival) departure:\(isDeparture) coord:(\(visit.coordinate.latitude), \(visit.coordinate.longitude))")
 
+        // Send a ping on every visit event (wakes from terminated)
+        if let loc = locationManager.location {
+            let pt = LocationPoint(from: loc, source: .gps)
+            sendAPIPing(location: pt, source: .gps)
+            DatabaseManager.shared.saveCachedLocation(location: pt)
+            lastKnownLocation = loc
+            persistLastGPSTimestamp()
+        }
+
         if isTracking {
             // Check if trip should auto-end (device arrived somewhere and stayed)
             let speed = effectiveSpeed()
             if speed < vehicleThreshold {
                 startAutoEndTimer()
             }
-        } else if isDeparture {
+        } else //if isDeparture 
+        {
             // User departed a location — check if we should auto-start
             if let loc = locationManager.location, Float(max(0, loc.speed)) >= vehicleThreshold {
                 autoStartTrip(reason: "Visit departure (speed \(String(format:"%.1f", loc.speed)) m/s)")
