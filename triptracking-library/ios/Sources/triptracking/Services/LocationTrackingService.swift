@@ -114,6 +114,9 @@ public class LocationTrackingService: NSObject {
     private var consecutiveVehicleSpeedCount: Int = 0
     /// Number of consecutive vehicle-speed readings required to auto-start a trip.
     private let requiredConsecutiveVehicleFixes: Int = 3
+    /// True when CMMotionActivity reports Automotive — lowers GPS speed threshold for auto-start.
+    /// Prevents false trips from vibration/phone movement while stationary.
+    private var motionActivityVehicle: Bool = false
 
     // Speed thresholds — internal so SettingsViewController can read/write
     public var vehicleThreshold:    Float = 6.0 {  // m/s — at or above → GPS saves
@@ -260,22 +263,24 @@ public class LocationTrackingService: NSObject {
 
         switch state {
         case .still, .unknown:
-            // Sensor handles positioning when still.
-            // GPS stays alive at minimal power — just enough to keep app running.
             if isTracking {
-                // Trip active — keep GPS running for auto-end detection
-                // but reduce accuracy to save battery while stationary
-                locationManager.desiredAccuracy = kCLLocationAccuracyThreeKilometers
-                locationManager.distanceFilter  = saveDistanceVehicleM
-                locationManager.startUpdatingLocation()  // ensure still running
-                print("📡 GPS MINIMAL — still/unknown → sensors active, GPS keepalive (3km/500m)")
+                // ACTIVE TRIP: Keep GPS alive at minimal accuracy.
+                // If we stop GPS → iOS suspends app → timers die → auto-end never fires
+                // → miss all driving when user resumes.
+                locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+                locationManager.distanceFilter  = 50.0
+                locationManager.startUpdatingLocation()
+                print("📡 GPS MINIMAL — still during active trip (keeping alive for auto-end timer)")
             } else {
-                // No trip — STOP GPS entirely.
-                // GPS on a stationary device produces only drift (30-50m jumps)
-                // which wastes battery and triggers false geofence enter/exit.
-                // Significant location changes + visits still wake the app if needed.
-                locationManager.stopUpdatingLocation()
-                print("📡 GPS STOPPED — device is still, no trip (significant changes + visits still active)")
+                // NO TRIP: Keep GPS alive at MINIMAL power to prevent iOS from killing the app.
+                // If we stop GPS → iOS terminates → only wakes on ~500m significant change.
+                // With GPS alive (even at 3km accuracy) → app survives → detects movement at 30m.
+                locationManager.desiredAccuracy = kCLLocationAccuracyThreeKilometers
+                locationManager.distanceFilter  = 30.0
+                locationManager.startUpdatingLocation()
+                locationManager.startMonitoringSignificantLocationChanges()
+                locationManager.startMonitoringVisits()
+                print("📡 GPS KEEPALIVE — still/no trip (3km accuracy, 30m filter) — prevents iOS termination")
             }
         case .walking, .running, .cycling:
             // GPS active for pedestrian movement
@@ -305,10 +310,12 @@ public class LocationTrackingService: NSObject {
         startActivityMonitor()
         print("✅ Background tracking started (GPS always-on + significant changes + visits)")
 
-        // After initial fix, adapt accuracy based on motion state.
-        // Still → GPS stays alive at minimal power (3km accuracy)
-        // Moving → GPS at full accuracy
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
+        // After initial fix period, adapt accuracy based on motion state.
+        // Use 30s delay (not 5s) — on terminated relaunch, CMMotionActivity needs
+        // time to detect driving. With only 5s, lastMotionState is .unknown,
+        // no trip is active → adaptLocationAccuracy may reduce GPS too early.
+        // 30s gives enough time for GPS to get speed readings + motion to classify activity.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 30.0) { [weak self] in
             guard let self = self else { return }
             self.adaptLocationAccuracy(for: self.lastMotionState)
         }
@@ -394,6 +401,8 @@ public class LocationTrackingService: NSObject {
         isTracking    = false
         currentTripId = -1
         tripStartTime = nil
+        motionActivityVehicle = false
+        consecutiveVehicleSpeedCount = 0
 
         delegate?.didChangeTrackingState(isTracking: false)
 
@@ -563,6 +572,23 @@ public class LocationTrackingService: NSObject {
 
         if speed >= vehicleThreshold && !isTracking {
             autoStartTrip(reason: "Significant location change (speed \(String(format:"%.1f", speed)) m/s)")
+        }
+
+        // CRITICAL: Keep GPS at full accuracy for 60s after relaunch.
+        // The first significant location change fix often has low accuracy + stale speed.
+        // We need GPS running to get real-time speed readings for auto-start.
+        // Without this: adaptLocationAccuracy(.unknown) reduces GPS → iOS suspends → drive missed.
+        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        locationManager.distanceFilter  = kCLDistanceFilterNone
+        locationManager.startUpdatingLocation()
+        print("📍 Relaunch: GPS at full accuracy for 60s to detect driving")
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 60.0) { [weak self] in
+            guard let self = self else { return }
+            if !self.isTracking {
+                self.adaptLocationAccuracy(for: self.lastMotionState)
+                print("📍 Relaunch: 60s elapsed, no trip — adapting to \(self.lastMotionState.rawValue)")
+            }
         }
     }
 
@@ -959,10 +985,28 @@ public class LocationTrackingService: NSObject {
 
         switch next {
         case .automotive:
-            // CMMotionActivity says vehicle → cancel auto-end, auto-start if needed
-            cancelAutoEndTimer()
+            // CMMotionActivity says vehicle — but DON'T auto-start immediately.
+            // CMMotionActivity produces false Automotive on stationary devices (vibration, phone movement).
+            // Set flag → GPS speed check uses lower threshold (50% of vehicleThreshold).
             if !isTracking {
-                autoStartTrip(reason: "Automotive activity detected")
+                motionActivityVehicle = true
+                print("🚗 Automotive activity detected — waiting for GPS speed confirmation")
+                // If GPS speed is already high enough, start now
+                if let loc = locationManager.location,
+                   loc.speed >= 0, loc.horizontalAccuracy <= 50 {
+                    let gpsSpeed = Float(loc.speed)
+                    if gpsSpeed >= vehicleThreshold {
+                        autoStartTrip(reason: "Automotive + GPS speed \(String(format:"%.1f", gpsSpeed)) m/s")
+                        motionActivityVehicle = false
+                        consecutiveVehicleSpeedCount = 0
+                    }
+                }
+            } else {
+                // Already tracking — only cancel auto-end if GPS confirms vehicle speed
+                let gpsSpeed = effectiveSpeed()
+                if gpsSpeed >= vehicleThreshold {
+                    cancelAutoEndTimer()
+                }
             }
 
         case .walking, .running, .cycling:
@@ -990,11 +1034,19 @@ public class LocationTrackingService: NSObject {
     /// GPS drift on a stationary device can produce phantom speeds of 0.5–2 m/s;
     /// these MUST NOT reset the countdown or the trip will never auto-end.
     private func evaluateAutoTripFromGPS(speed: Float) {
-        if speed >= vehicleThreshold {
+        // When CMMotionActivity reports Automotive, lower the speed threshold to 50%
+        // (e.g. 3 m/s instead of 6 m/s) — motion sensor confirms vehicle, so less GPS proof needed.
+        let requiredSpeed = motionActivityVehicle
+            ? vehicleThreshold * 0.5   // 11 km/h if CMMotionActivity says vehicle
+            : vehicleThreshold          // 22 km/h normally
+
+        if speed >= requiredSpeed {
             // ── Vehicle speed detected ──
-            // But is this GPS fix trustworthy? Reject if accuracy > 20m.
+            // Reject if accuracy is too poor (> 50m). GPS noise with 80-400m accuracy
+            // produces fake speeds. But 25-50m is normal in urban areas (HCMC etc.)
+            // especially right after GPS cold start.
             let accuracy = lastGPSLocation?.horizontalAccuracy ?? 999
-            if accuracy > 20 {
+            if accuracy > 50 {
                 print("⚠️ Vehicle speed \(String(format:"%.1f", speed)) m/s IGNORED — poor accuracy \(Int(accuracy))m")
                 consecutiveVehicleSpeedCount = 0
                 return
@@ -1007,8 +1059,9 @@ public class LocationTrackingService: NSObject {
 
             if !isTracking {
                 if consecutiveVehicleSpeedCount >= requiredConsecutiveVehicleFixes {
-                    autoStartTrip(reason: "GPS speed \(String(format:"%.1f", speed)) m/s (\(consecutiveVehicleSpeedCount) consecutive fixes)")
+                    autoStartTrip(reason: "GPS speed \(String(format:"%.1f", speed)) m/s (\(consecutiveVehicleSpeedCount) consecutive fixes\(motionActivityVehicle ? " + Automotive" : ""))")
                     consecutiveVehicleSpeedCount = 0
+                    motionActivityVehicle = false
                 } else {
                     print("🚗 Vehicle speed \(String(format:"%.1f", speed)) m/s — \(consecutiveVehicleSpeedCount)/\(requiredConsecutiveVehicleFixes) consecutive fixes, waiting...")
                 }
@@ -1019,7 +1072,6 @@ public class LocationTrackingService: NSObject {
 
             if isTracking && autoEndTimer == nil {
                 // Speed dropped while trip active → start auto-end countdown.
-                // This covers both speed == 0 and GPS-drift noise (0.5–2 m/s).
                 startAutoEndTimer()
             }
         }
@@ -1283,10 +1335,14 @@ extension LocationTrackingService: CLLocationManagerDelegate {
             }
         }
 
-        lastGPSSpeed      = rawSpeed
+        // Only trust GPS data when accuracy is reasonable.
+        // GPS fixes with 80-400m accuracy produce wild position jumps → corrupt speed + location.
+        if location.horizontalAccuracy > 0 && location.horizontalAccuracy <= 50 {
+            lastGPSSpeed      = rawSpeed
+            lastGPSLocation   = location
+            lastKnownLocation = location
+        }
         lastGPSUpdateTime = now
-        lastGPSLocation   = location
-        lastKnownLocation = location
         persistLastGPSTimestamp()
 
         let speed  = effectiveSpeed()
@@ -1434,9 +1490,22 @@ extension LocationTrackingService: CLLocationManagerDelegate {
                 startAutoEndTimer()
             }
         } else if isDeparture {
-            // User departed a location — check if we should auto-start
+            // User departed a location — keep GPS alive to detect driving
             if let loc = locationManager.location, Float(max(0, loc.speed)) >= vehicleThreshold {
                 autoStartTrip(reason: "Visit departure (speed \(String(format:"%.1f", loc.speed)) m/s)")
+            } else {
+                // Speed not high enough yet — keep GPS at full accuracy for 60s to detect
+                locationManager.desiredAccuracy = kCLLocationAccuracyBest
+                locationManager.distanceFilter  = kCLDistanceFilterNone
+                locationManager.startUpdatingLocation()
+                print("📍 Visit departure: GPS at full accuracy for 60s to detect driving")
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + 60.0) { [weak self] in
+                    guard let self = self else { return }
+                    if !self.isTracking {
+                        self.adaptLocationAccuracy(for: self.lastMotionState)
+                    }
+                }
             }
         }
     }
