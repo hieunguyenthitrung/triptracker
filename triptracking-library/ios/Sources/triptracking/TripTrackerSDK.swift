@@ -249,7 +249,7 @@ public final class TripTrackerSDK {
     public static var lastKnownCoordinate: CLLocationCoordinate2D? { LocationTrackingService.shared.lastKnownCoordinate }
 
     // ── Web Monitor ──
-    public static func startWebMonitor() { UserDefaults.standard.set(true, forKey: "tt_webMonitorEnabled"); if webServer == nil { webServer = LocationWebServer() }; webServer?.start() }
+    public static func startWebMonitor() { UserDefaults.standard.set(false, forKey: "tt_webMonitorEnabled"); if webServer == nil { webServer = LocationWebServer() }; webServer?.start() }
     public static func stopWebMonitor() { UserDefaults.standard.set(false, forKey: "tt_webMonitorEnabled"); webServer?.stop() }
 
     // ── Update vehicle_id at runtime ──
