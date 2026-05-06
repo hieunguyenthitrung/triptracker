@@ -81,6 +81,10 @@ public final class TripTrackerSDK {
     // ── Initialize with config ──
     public static func initialize(config: TripTrackerConfig,
                                   launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) {
+
+        webServer?.stop()
+        webServer = nil
+
         guard !_initialized else {
             applyConfig(config)
             return
@@ -105,9 +109,9 @@ public final class TripTrackerSDK {
             LocationTrackingService.shared.handleSignificantLocationRelaunch()
         }
 
-        if UserDefaults.standard.bool(forKey: "tt_webMonitorEnabled") {
-            webServer = LocationWebServer(); webServer?.start()
-        }
+        // if UserDefaults.standard.bool(forKey: "tt_webMonitorEnabled") {
+        //     webServer = LocationWebServer(); webServer?.start()
+        // }
 
         NotificationManager.shared.requestPermission()
         if GeofenceManager.shared.isEnabled { GeofenceManager.shared.startMonitoringAll() }
