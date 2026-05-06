@@ -779,8 +779,7 @@ public class LocationTrackingService: NSObject {
         VoiceFeedbackManager.shared.checkDistanceMilestone(totalDistance: totalDistance)
 
         if shouldSaveLocation(speed: Float(location.speed)) {
-            var pt = LocationPoint(from: location, source: .sensors)
-            pt.speed = speed  // use effectiveSpeed(), not raw CLLocation.speed 
+            let pt = LocationPoint(from: location, source: .sensors)
             if persistIfNew(pt, source: .sensors, tripId: currentTripId) {
                 delegate?.didUpdateLocation(pt, source: .sensors, totalDistance: totalDistance)
             }
@@ -1306,8 +1305,19 @@ extension LocationTrackingService: CLLocationManagerDelegate {
         // Voice: check distance milestones (every 1 km)
         VoiceFeedbackManager.shared.checkDistanceMilestone(totalDistance: totalDistance)
 
-        var pt = LocationPoint(from: location, source: .gps)
-        pt.speed = speed  // use effectiveSpeed(), not raw CLLocation.speed 
+        // let pt = LocationPoint(from: location, source: .gps)
+        let pt = LocationPoint(
+            tripId:    currentTripId != -1 ? currentTripId : nil,
+            latitude:  location.coordinate.latitude,
+            longitude: location.coordinate.longitude,
+            altitude:  location.altitude,
+            accuracy:  Float(location.horizontalAccuracy),
+            speed:     speed,
+            bearing:   Float(location.course >= 0 ? location.course : 0),
+            timestamp: Int64(now.timeIntervalSince1970 * 1000),
+            source:    .gps
+        )
+        
         if persistIfNew(pt, source: .gps, tripId: currentTripId) {
             delegate?.didUpdateLocation(pt, source: .gps, totalDistance: totalDistance)
         }
