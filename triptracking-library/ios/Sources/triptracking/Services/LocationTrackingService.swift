@@ -276,7 +276,9 @@ public class LocationTrackingService: NSObject {
                 // With GPS alive (even at 3km accuracy) → app survives → detects movement at 30m.
                 locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
                 locationManager.distanceFilter  = 30.0
-                //turnOnServiceInTime(seconds: 120.0)
+                locationManager.stopUpdatingLocation()
+                locationManager.startMonitoringSignificantLocationChanges()
+                locationManager.startMonitoringVisits()
                 print("📡 TripTracker GPS KEEPALIVE — still/no trip (3km accuracy, 30m filter) — prevents iOS termination")
             }
         case .walking, .running, .cycling:
@@ -1424,9 +1426,9 @@ extension LocationTrackingService: CLLocationManagerDelegate {
         }
         TripTrackerAPIService.shared.sendPing(
             location: clLoc,
-            isMoving: activityType != "still" ? true : false,
+            isMoving: speed > 0 ? true : false,
             speed: speed,
-            activityType: speed > 0 ? activityType : "still",
+            activityType: speed > 0 ? (activityType != "still" ? activityType : "in_vehicle") : "still",
         )
     }
 }
