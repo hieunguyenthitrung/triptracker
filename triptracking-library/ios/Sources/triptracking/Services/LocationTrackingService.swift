@@ -276,7 +276,7 @@ public class LocationTrackingService: NSObject {
                 // With GPS alive (even at 3km accuracy) → app survives → detects movement at 30m.
                 locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
                 locationManager.distanceFilter  = 30.0
-                turnOnServiceInTime(seconds: 30.0)
+                //turnOnServiceInTime(seconds: 120.0)
                 print("📡 TripTracker GPS KEEPALIVE — still/no trip (3km accuracy, 30m filter) — prevents iOS termination")
             }
         case .walking, .running, .cycling:
@@ -498,7 +498,7 @@ public class LocationTrackingService: NSObject {
 
         // Send a ping on every significant location change (even without trip)
         let pt = LocationPoint(from: location, source: .gps)
-        sendAPIPing(location: pt, source: .gps)
+        sendAPIPing(location: pt, source: .gps, speed: speed)
         print("📍 TripTracker handleSignificantLocationRelaunch — speed: \(String(format:"%.1f", pt.speed)) m/s")
 
         // Save to cache database
@@ -688,7 +688,7 @@ public class LocationTrackingService: NSObject {
             DatabaseManager.shared.saveLocation(tripId: currentTripId, location: pt)
         }
         // API: ping on EVERY save (trip AND no trip)
-        sendAPIPing(location: pt, source: source)
+        sendAPIPing(location: pt, source: source, speed: speed)
         print("📍 TripTracker onMotionStateChanged — speed: \(String(format:"%.1f", pt.speed)) m/s")
         delegate?.didUpdateLocation(pt, source: source, totalDistance: totalDistance)
 
@@ -878,7 +878,7 @@ public class LocationTrackingService: NSObject {
             DatabaseManager.shared.saveLocation(tripId: currentTripId, location: pt)
         }
         // API: ping on EVERY save (trip AND no trip)
-        sendAPIPing(location: pt, source: source)
+        sendAPIPing(location: pt, source: source, speed: speed)
         print("📍 TripTracker periodicSaveTick — speed: \(String(format:"%.1f", pt.speed)) m/s")
         delegate?.didUpdateLocation(pt, source: source, totalDistance: totalDistance)
 
@@ -1117,7 +1117,7 @@ public class LocationTrackingService: NSObject {
             DatabaseManager.shared.saveLocation(tripId: tripId, location: location)
         }
         // API: ping on EVERY save (trip AND no trip)
-        sendAPIPing(location: location, source: source)
+        sendAPIPing(location: location, source: source, speed: location.speed)
         print("📍 TripTracker persistIfNew — speed: \(String(format:"%.1f", location.speed)) m/s")
         return true
     }
@@ -1374,7 +1374,7 @@ extension LocationTrackingService: CLLocationManagerDelegate {
         // Send a ping on every visit event (wakes from terminated)
         if let loc = locationManager.location {
             let pt = LocationPoint(from: loc, source: .gps)
-            sendAPIPing(location: pt, source: .gps)
+            sendAPIPing(location: pt, source: .gps, speed: effectiveSpeed())
             print("📍 TripTracker locationManager — speed: \(String(format:"%.1f", pt.speed)) m/s")
             DatabaseManager.shared.saveCachedLocation(location: pt)
             lastKnownLocation = loc
@@ -1412,7 +1412,7 @@ extension LocationTrackingService: CLLocationManagerDelegate {
     // MARK: - API Ping Helper
 
     /// Send location ping to server during active trip.
-    private func sendAPIPing(location: LocationPoint, source: TrackingSource) {
+    private func sendAPIPing(location: LocationPoint, source: TrackingSource, speed: Float) {
         let clLoc = CLLocation(latitude: location.latitude, longitude: location.longitude)
         let activityType: String
         switch lastMotionState {
@@ -1424,9 +1424,9 @@ extension LocationTrackingService: CLLocationManagerDelegate {
         }
         TripTrackerAPIService.shared.sendPing(
             location: clLoc,
-            isMoving: isTracking,
-            speed: location.speed,
-            activityType: activityType,
+            isMoving: activityType != "still" ? true : false,
+            speed: speed,
+            activityType: speed > 0 ? activityType : "still",
         )
     }
 }
