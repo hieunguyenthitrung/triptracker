@@ -930,7 +930,7 @@ public class LocationTrackingService: NSObject {
 
             if !isTracking {
                 if consecutiveVehicleSpeedCount >= requiredConsecutiveVehicleFixes {
-                    autoStartTrip(reason: "GPS speed \(String(format:"%.1f", speed)) m/s (\(consecutiveVehicleSpeedCount) consecutive fixes\(motionActivityVehicle ? " + Automotive" : ""))")
+                    autoStartTrip(reason: "GPS speed \(String(format:"%.1f", speed)) m/s (\(consecutiveVehicleSpeedCount) consecutive fixes)")
                     consecutiveVehicleSpeedCount = 0
                 } else {
                     print("🚗 TripTracker Vehicle speed \(String(format:"%.1f", speed)) m/s — \(consecutiveVehicleSpeedCount)/\(requiredConsecutiveVehicleFixes) consecutive fixes, waiting...")
