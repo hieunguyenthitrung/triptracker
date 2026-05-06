@@ -416,7 +416,7 @@ public class LocationTrackingService: NSObject {
         autoEnsureServiceTimer?.invalidate()
         autoEnsureServiceTimer = Timer.scheduledTimer(withTimeInterval: seconds, repeats: false) { [weak self] _ in
             guard let self = self else { return }
-            self?.ensureBackgroundTracking()
+            self.ensureBackgroundTracking()
         }
 
         // Ensure timer fires even when the run loop is tracking scroll events
