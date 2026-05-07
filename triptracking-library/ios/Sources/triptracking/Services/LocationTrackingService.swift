@@ -278,7 +278,10 @@ public class LocationTrackingService: NSObject {
                 locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
                 locationManager.distanceFilter  = 10.0
                 locationManager.stopUpdatingLocation()
-                turnOnServiceInTime(seconds: 30.0)
+                locationManager.startMonitoringSignificantLocationChanges()
+                locationManager.startMonitoringVisits()  // relaunches app on arrival/departure
+                locationManager.allowsBackgroundLocationUpdates = true
+                locationManager.pausesLocationUpdatesAutomatically = false
                 print("📡 TripTracker GPS KEEPALIVE — still/no trip (3km accuracy, 30m filter) — prevents iOS termination")
             }
         case .walking, .running, .cycling:
