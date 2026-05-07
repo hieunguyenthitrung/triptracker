@@ -274,6 +274,8 @@ public class LocationTrackingService: NSObject {
             } else {
                 // NO TRIP + STILL: Stop GPS to save battery. No blue arrow.
                 // Significant location changes (~500m) + visits will relaunch app if user moves.
+                // locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+                // locationManager.distanceFilter  = 50.0
                 locationManager.stopUpdatingLocation()
                 locationManager.startMonitoringSignificantLocationChanges()
                 locationManager.startMonitoringVisits()
