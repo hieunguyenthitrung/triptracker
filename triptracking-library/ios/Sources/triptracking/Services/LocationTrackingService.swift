@@ -268,7 +268,7 @@ public class LocationTrackingService: NSObject {
                 // If we stop GPS → iOS suspends app → timers die → auto-end never fires
                 // → miss all driving when user resumes.
                 locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
-                locationManager.distanceFilter  = 50.0
+                locationManager.distanceFilter  = kCLDistanceFilterNone
                 locationManager.startUpdatingLocation()
                 print("📡 TripTracker GPS MINIMAL — still during active trip (keeping alive for auto-end timer)")
             } else {
@@ -288,8 +288,6 @@ public class LocationTrackingService: NSObject {
             locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
             locationManager.distanceFilter  = 10.0
             locationManager.startUpdatingLocation()
-            locationManager.startMonitoringSignificantLocationChanges()
-            locationManager.startMonitoringVisits()
             print("📡 TripTracker GPS ON → \(state.rawValue): accuracy=10m filter=10m (survives termination)")
 
         case .automotive:
@@ -297,8 +295,6 @@ public class LocationTrackingService: NSObject {
             locationManager.desiredAccuracy = kCLLocationAccuracyBest
             locationManager.distanceFilter  = kCLDistanceFilterNone
             locationManager.startUpdatingLocation()
-            locationManager.startMonitoringSignificantLocationChanges()
-            locationManager.startMonitoringVisits()
             print("📡 TripTracker GPS ON → automotive: accuracy=Best filter=none")
         }
     }
@@ -332,19 +328,44 @@ public class LocationTrackingService: NSObject {
         // API: mark trip start — vehicle_id will be included in pings
         TripTrackerAPIService.shared.onTripStart()
 
-        // Seed with best available position; always start in Sensors mode
-        if let seed = initialLocation ?? locationManager.location {
+        // Force GPS to best accuracy for fresh fix
+        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        locationManager.distanceFilter  = kCLDistanceFilterNone
+        locationManager.startUpdatingLocation()
+
+        // Seed with initial location if provided, or wait for fresh GPS
+        if let cached = locationManager.location,
+                  cached.horizontalAccuracy > 0,
+                  cached.horizontalAccuracy <= 50,
+                  abs(cached.timestamp.timeIntervalSinceNow) < 10 {
+            // Recent + accurate cached fix (less than 10 seconds old, accuracy ≤ 50m)
+            lastGPSLocation    = cached
+            lastSensorLocation = cached
+            lastKnownLocation  = cached
+            currentSource      = .gps
+
+            let pt = LocationPoint(from: cached, source: .gps)
+            persistIfNew(pt, source: .gps, tripId: currentTripId)
+            delegate?.didUpdateLocation(pt, source: .gps, totalDistance: totalDistance)
+            print("📍 Trip seeded with recent GPS: (\(cached.coordinate.latitude), \(cached.coordinate.longitude)) acc:\(Int(cached.horizontalAccuracy))m age:\(Int(-cached.timestamp.timeIntervalSinceNow))s")
+        } else if let seed = initialLocation {
+            // Caller provided a known-good location (e.g. from auto-start GPS fix)
             lastGPSLocation    = seed
             lastSensorLocation = seed
             lastKnownLocation  = seed
-            currentSource      = .sensors
+            currentSource      = .gps
 
-            let pt = LocationPoint(from: seed, source: .sensors)
-            persistIfNew(pt, source: .sensors, tripId: currentTripId)
-            delegate?.didUpdateLocation(pt, source: .sensors, totalDistance: totalDistance)
+            let pt = LocationPoint(from: seed, source: .gps)
+            persistIfNew(pt, source: .gps, tripId: currentTripId)
+            delegate?.didUpdateLocation(pt, source: .gps, totalDistance: totalDistance)
+            print("📍 Trip seeded with provided location: (\(seed.coordinate.latitude), \(seed.coordinate.longitude)) acc:\(Int(seed.horizontalAccuracy))m")
+        } 
+        else {
+            // No good fix available — wait for fresh GPS via didUpdateLocations
+            print("📍 Trip started — waiting for fresh GPS fix (cached too old or inaccurate)")
         }
 
-        startSensorTracking()
+        //startSensorTracking()
         startPedometer()
 
         delegate?.didChangeTrackingState(isTracking: true)
@@ -381,6 +402,9 @@ public class LocationTrackingService: NSObject {
 
         delegate?.didChangeTrackingState(isTracking: false)
         print("✅ TripTracker Trip stopped — dist: \(totalDistance)m, dur: \(duration)s")
+
+        // Stop GPS → removes blue arrow (Option A: still + no trip = GPS off)
+        adaptLocationAccuracy(for: .still)
     }
 
     /// Called on app relaunch when an active trip is found in the DB.
@@ -647,6 +671,16 @@ public class LocationTrackingService: NSObject {
     }
 
     private func onMotionStateChanged(from prev: MotionState, to next: MotionState, wasMoving: Bool) {
+        // ── When transitioning TO automotive, start GPS and wait for fresh fix ──
+        // GPS was likely stopped (still state). effectiveSpeed() is stale.
+        // Don't save now — let didUpdateLocations handle it with real GPS speed.
+        if next == .automotive && prev != .automotive {
+            adaptLocationAccuracy(for: .automotive)  // GPS ON → best accuracy
+            evaluateAutoTrip(from: prev, to: next)
+            print("📍 Motion → Automotive: GPS started, waiting for fresh GPS speed")
+            return  // Don't save with stale speed — didUpdateLocations will save with real speed
+        }
+
         let speed = effectiveSpeed()
 
         // Source rule:
@@ -1037,7 +1071,7 @@ public class LocationTrackingService: NSObject {
         stillSinceDate = Date()
         let timeout = autoEndStillnessSecs
 
-        print("⏱️ TripTracker Auto-end timer started — will stop trip after \(Int(timeout))s without vehicle speed")
+        print("⏱️ TripTracker Auto-end \(currentTripId) timer started — will stop trip after \(Int(timeout))s without vehicle speed")
 
         // Voice feedback
         VoiceFeedbackManager.shared.announceVehicleStopped()
@@ -1379,8 +1413,6 @@ extension LocationTrackingService: CLLocationManagerDelegate {
     }
 
     public func locationManager(_ manager: CLLocationManager, didVisit visit: CLVisit) {
-        // CLVisit fires when iOS detects the user arrived at or departed a location.
-        // This relaunches the app from terminated state — opportunity to check auto-end/start.
         let isDeparture = visit.departureDate != .distantFuture
         let isArrival   = visit.arrivalDate   != .distantPast
         print("📍 TripTracker Visit event — arrival:\(isArrival) departure:\(isDeparture) coord:(\(visit.coordinate.latitude), \(visit.coordinate.longitude))")
@@ -1388,7 +1420,7 @@ extension LocationTrackingService: CLLocationManagerDelegate {
         // Send a ping on every visit event (wakes from terminated)
         if let loc = locationManager.location {
             let pt = LocationPoint(from: loc, source: .gps)
-            sendAPIPing(location: pt, source: .gps, speed: effectiveSpeed())
+            sendAPIPing(location: pt, source: .gps, speed: max(0, effectiveSpeed()))
             print("📍 TripTracker locationManager — speed: \(String(format:"%.1f", pt.speed)) m/s")
             DatabaseManager.shared.saveCachedLocation(location: pt)
             lastKnownLocation = loc
@@ -1396,15 +1428,37 @@ extension LocationTrackingService: CLLocationManagerDelegate {
         }
 
         if isTracking {
-            // Check if trip should auto-end (device arrived somewhere and stayed)
             let speed = effectiveSpeed()
             if speed < vehicleThreshold {
                 startAutoEndTimer()
             }
         } else if isDeparture {
-            // User departed a location — keep GPS alive to detect driving
-            if let loc = locationManager.location, Float(max(0, loc.speed)) >= vehicleThreshold {
+            // User departed — GPS was likely stopped (Option A).
+            // loc.speed is stale/0. We MUST start GPS to get fresh speed.
+            // Check cached speed first, then start GPS for 60s.
+            if let loc = locationManager.location,
+               loc.horizontalAccuracy <= 50,
+               abs(loc.timestamp.timeIntervalSinceNow) < 10,
+               Float(max(0, loc.speed)) >= vehicleThreshold {
+                // Fresh accurate fix with vehicle speed — start trip now
                 autoStartTrip(reason: "Visit departure (speed \(String(format:"%.1f", loc.speed)) m/s)")
+            } else {
+                // No fresh speed — start GPS at full accuracy to detect driving
+                locationManager.desiredAccuracy = kCLLocationAccuracyBest
+                locationManager.distanceFilter  = kCLDistanceFilterNone
+                locationManager.startUpdatingLocation()
+                print("📍 TripTracker Visit departure: GPS started — waiting 60s for speed detection")
+
+                // GPS will deliver fixes → didUpdateLocations → evaluateAutoTripFromGPS
+                // If speed ≥ threshold × 3 consecutive fixes → auto-start trip
+                // After 60s, if no trip started, reduce GPS
+                DispatchQueue.main.asyncAfter(deadline: .now() + 60.0) { [weak self] in
+                    guard let self = self else { return }
+                    if !self.isTracking {
+                        self.adaptLocationAccuracy(for: self.lastMotionState)
+                        print("📍 TripTracker Visit departure: 60s elapsed, no trip — GPS adapted")
+                    }
+                }
             }
         }
     }
