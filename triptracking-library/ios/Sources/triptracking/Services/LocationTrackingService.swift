@@ -56,7 +56,7 @@ public class LocationTrackingService: NSObject {
     weak var delegate: LocationUpdateDelegate?
 
     // MARK: - Core managers
-    private let locationManager = CLLocationManager()
+    public let locationManager = CLLocationManager()
     
     /// Exposed for GeofenceManager to register region monitoring on this
     /// CLLocationManager — the one with "Always" auth + background modes.
