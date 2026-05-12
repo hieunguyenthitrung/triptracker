@@ -371,6 +371,7 @@ public final class TripTrackerAPIService {
         }
         req.httpBody = httpBody
 
+        print("📡 TripTracker postSyncWith to \(req)")
         let sem = DispatchSemaphore(value: 0)
         var success = false
         session.dataTask(with: req) { _, response, error in
