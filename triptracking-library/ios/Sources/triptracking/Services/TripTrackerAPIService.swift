@@ -310,6 +310,7 @@ public final class TripTrackerAPIService {
 
     /// Synchronous POST — used by flush queue on background thread
     private func postSync(url urlStr: String, body: [String: Any]) -> Bool {
+        print("📡 TripTracker Synchronous POST to \(urlStr)")   
         guard let url = URL(string: urlStr) else { return false }
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
