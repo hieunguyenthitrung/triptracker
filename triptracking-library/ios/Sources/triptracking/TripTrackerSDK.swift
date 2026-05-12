@@ -92,7 +92,12 @@ public final class TripTrackerSDK {
         // Restore API config from UserDefaults (in case app was killed + relaunched)
         restoreAPIConfigFromDefaults()
 
-        applyConfig(config)
+        if(!config.userId.isEmpty) {
+            applyConfig(config)
+            print("📡 TripTracker Initializing with provided config — pingURL: \(config.pingURL) userId: \(config.userId)")
+        } else {
+            print("📡 TripTracker Initializing with provided config — INCOMPLETE CONFIG")
+        }
         LogManager.shared.start()
 
         
@@ -213,7 +218,7 @@ public final class TripTrackerSDK {
         apiConfig.apiAuthKey = ud.string(forKey: "tt_api_apiAuthKey") ?? ""
         apiConfig.apiAuthToken = ud.string(forKey: "tt_api_apiAuthToken") ?? ""
         TripTrackerAPIService.shared.config = apiConfig
-        print("📡 TripTracker API config restored from UserDefaults — enabled=\(apiConfig.isConfigured) ping=\(apiConfig.pingURL)")
+        print("📡 TripTracker API config restored from UserDefaults — enabled=\(apiConfig.isConfigured) ping=\(apiConfig.pingURL) userId=\(apiConfig.userId)")
     }
 
     // ── Lifecycle ──
@@ -221,16 +226,6 @@ public final class TripTrackerSDK {
     public static func willTerminate() {
         // Save database checkpoint
         DatabaseManager.shared.saveContext()
-
-        // Re-register significant location changes + visits so iOS knows
-        // to relaunch us after termination. Without this, the app won't
-        // wake up for location events.
-        let svc = LocationTrackingService.shared
-        svc.locationManager.startMonitoringSignificantLocationChanges()
-        svc.locationManager.startMonitoringVisits()
-
-        // Persist last GPS timestamp for stale-trip detection on relaunch
-        UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "tt_lastGPSTimestamp")
 
         print("🛑 TripTracker willTerminate — DB saved, significant changes + visits re-registered")
     }

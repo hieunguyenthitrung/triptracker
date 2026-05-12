@@ -56,7 +56,7 @@ public class LocationTrackingService: NSObject {
     weak var delegate: LocationUpdateDelegate?
 
     // MARK: - Core managers
-    public let locationManager = CLLocationManager()
+    public let locationManager: CLLocationManager = CLLocationManager()
     
     /// Exposed for GeofenceManager to register region monitoring on this
     /// CLLocationManager — the one with "Always" auth + background modes.
@@ -279,6 +279,8 @@ public class LocationTrackingService: NSObject {
                 locationManager.stopUpdatingLocation()
                 locationManager.startMonitoringSignificantLocationChanges()
                 locationManager.startMonitoringVisits()
+                locationManager.allowsBackgroundLocationUpdates = true
+                locationManager.pausesLocationUpdatesAutomatically = false
                 print("📡 TripTracker GPS STOPPED — still/no trip (significant changes + visits will relaunch)")
             }
         case .walking, .running, .cycling:
@@ -405,12 +407,6 @@ public class LocationTrackingService: NSObject {
 
         // Stop GPS → removes blue arrow (Option A: still + no trip = GPS off)
         adaptLocationAccuracy(for: .still)
-
-        // Explicitly re-register significant changes + visits so iOS can
-        // relaunch us for the next trip even if the app is terminated.
-        locationManager.startMonitoringSignificantLocationChanges()
-        locationManager.startMonitoringVisits()
-        print("📡 TripTracker Post-trip: significant changes + visits re-registered for next relaunch")
     }
 
     /// Called on app relaunch when an active trip is found in the DB.
@@ -468,20 +464,8 @@ public class LocationTrackingService: NSObject {
     }
 
     public func ensureBackgroundTracking() {
-        // Always re-ensure: background updates, significant changes, visits.
-        // Even if a trip is active, these must be registered so iOS keeps
-        // the app alive and can relaunch after termination.
-        locationManager.allowsBackgroundLocationUpdates = true
-        locationManager.pausesLocationUpdatesAutomatically = false
-        locationManager.startMonitoringSignificantLocationChanges()
-        locationManager.startMonitoringVisits()
+        if !isTracking { startBackgroundTracking() }
 
-        if !isTracking {
-            startBackgroundTracking()
-        } else {
-            // Trip active — GPS is already running, just ensure it's not paused
-            locationManager.startUpdatingLocation()
-        }
         print("✅ TripTracker ensureBackgroundTracking — significant+visits registered, tracking=\(isTracking)")
     }
 
