@@ -1321,7 +1321,7 @@ extension LocationTrackingService: CLLocationManagerDelegate {
             timestamp: Int64(now.timeIntervalSince1970 * 1000),
             source:    source.rawValue
         )
-        sendAPIPing(location: livePt, source: source.rawValue, speed: speed)
+        sendAPIPing(location: livePt, source: .gps, speed: speed)
         delegate?.didUpdateLocation(livePt, source: source, totalDistance: totalDistance)
 
         if let start = tripStartTime {
