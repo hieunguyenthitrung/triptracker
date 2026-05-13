@@ -96,6 +96,11 @@ public final class TripTrackerAPIService {
     }
 
     private func enqueue(url: String, body: [String: Any]) {
+        // Never enqueue items with empty URL — they'll never flush successfully
+        guard !url.isEmpty, URL(string: url) != nil else {
+            print("📡  TripTracker API enqueue SKIPPED — invalid URL: '\(url)' (config not ready?)")
+            return
+        }
         queueLock.lock()
         pendingQueue.append(["url": url, "body": body, "ts": Date().timeIntervalSince1970])
         // Trim oldest if over limit
@@ -118,8 +123,8 @@ public final class TripTrackerAPIService {
 
         // Don't flush if API config isn't ready yet (AutoLauncher relaunch,
         // Capacitor hasn't loaded with real config)
-        guard !config.pingURL.isEmpty else {
-            print("📡  TripTracker API flush skipped — config.pingURL is empty (waiting for Capacitor)")
+        guard !config.pingURL.isEmpty, !config.userId.isEmpty else {
+            print("📡  TripTracker API flush skipped — config incomplete (pingURL='\(config.pingURL)' userId='\(config.userId)') — waiting for Capacitor")
             return
         }
 
@@ -144,7 +149,18 @@ public final class TripTrackerAPIService {
                     urlStr = self.config.pingURL
                 }
                 guard !urlStr.isEmpty, URL(string: urlStr) != nil,
-                      let body = item["body"] as? [String: Any] else { continue }
+                      var body = item["body"] as? [String: Any] else { continue }
+
+                // Fix stale queue items: inject current userId/osInfo if body has empty values
+                // (items queued when applyConfig hadn't loaded yet have user_Id: "")
+                let bodyUserId = body["user_Id"] as? String ?? ""
+                if bodyUserId.isEmpty {
+                    body["user_Id"] = self.config.userId
+                }
+                let bodyOsInfo = body["os_Info"] as? String ?? ""
+                if bodyOsInfo.isEmpty {
+                    body["os_Info"] = self.config.osInfo
+                }
 
                 let ok = self.postSyncWith(session: flushSession, url: urlStr, body: body)
                 if ok {
@@ -371,7 +387,6 @@ public final class TripTrackerAPIService {
         }
         req.httpBody = httpBody
 
-        print("📡 TripTracker postSyncWith from \(req.allHTTPHeaderFields)")
         let sem = DispatchSemaphore(value: 0)
         var success = false
         session.dataTask(with: req) { _, response, error in
