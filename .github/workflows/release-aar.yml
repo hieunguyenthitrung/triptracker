@@ -24,11 +24,14 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Build AAR
         run: |
-          cd triptracking-library/android
-          chmod +x ../gradlew
-          ../gradlew :app:assembleRelease
+          cd triptracking-library
+          chmod +x gradlew
+          ./gradlew :android:assembleRelease
 
       - name: Get version
         id: version
@@ -39,10 +42,11 @@ jobs:
             echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Rename AAR
+      - name: Find and rename AAR
         run: |
-          cp triptracking-library/android/app/build/outputs/aar/app-release.aar \
-             triptracking-android-${{ steps.version.outputs.VERSION }}.aar
+          AAR_FILE=$(find triptracking-library/android/build/outputs/aar -name "*.aar" | head -1)
+          echo "Found AAR: $AAR_FILE"
+          cp "$AAR_FILE" triptracking-android-${{ steps.version.outputs.VERSION }}.aar
 
       - name: Create GitHub Release & attach AAR
         uses: softprops/action-gh-release@v2
