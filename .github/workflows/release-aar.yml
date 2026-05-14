@@ -3,12 +3,18 @@ name: Build & Release AAR
 on:
   push:
     tags:
-      - 'v*'  # Triggers on: git tag v1.0.37 && git push origin v1.0.37
+      - '**'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Version tag (e.g. 1.0.42)'
+        required: true
 
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: write 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -19,32 +25,34 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Cache Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
 
       - name: Build AAR
         run: |
-          cd android
-          chmod +x ../gradlew
-          ../gradlew :app:assembleRelease
+          cd triptracking-library
+          chmod +x gradlew
+          ./gradlew :android:assembleRelease
 
-      - name: Get version from tag
+      - name: Get version
         id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-      - name: Rename AAR
         run: |
-          cp android/app/build/outputs/aar/app-release.aar \
-             triptracking-android-${{ steps.version.outputs.VERSION }}.aar
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Find and rename AAR
+        run: |
+          AAR_FILE=$(find triptracking-library/android/build/outputs/aar -name "*.aar" | head -1)
+          echo "Found AAR: $AAR_FILE"
+          cp "$AAR_FILE" triptracking-android-${{ steps.version.outputs.VERSION }}.aar
 
       - name: Create GitHub Release & attach AAR
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.version.outputs.VERSION }}
           files: triptracking-android-${{ steps.version.outputs.VERSION }}.aar
           generate_release_notes: true
         env:
