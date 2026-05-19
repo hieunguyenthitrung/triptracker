@@ -124,6 +124,7 @@ public class LocationTrackingService extends Service implements
         void onLocationUpdate(Location location, TrackingSource source, double distance);
         void onTrackingStateChanged(boolean isTracking);
         void onStatsUpdate(float speed, double distance, long duration);
+        void onActivityChange(String activity, String transition);
     }
 
     // ── Binder ────────────────────────────────────────────────────────────────
@@ -254,6 +255,7 @@ public class LocationTrackingService extends Service implements
         // If user is still (detected by sensors), GPS will be stopped automatically
         // in onMovementDetected() to save battery.
         startGPSTracking();
+        Log.d(TAG, "📡 GPS started — will auto-stop if device is still");
 
         // Activity Recognition — detect automotive/still (like iOS CMMotionActivity)
         startActivityRecognition();
@@ -905,8 +907,14 @@ public class LocationTrackingService extends Service implements
             startGPSTracking();
         }
         rescheduleSaveLoop();
-        Log.d(TAG, "Movement state → " + (isMoving ? "MOVING" : "STILL") +
+        String movementState = isMoving ? "MOVING" : "STILL";
+        Log.d(TAG, "Movement state → " + movementState +
                 " — save loop rescheduled to " + (nextSaveIntervalMs() / 1000) + "s");
+
+        // Notify Capacitor plugin listeners of movement change
+        for (LocationUpdateCallback cb : listeners) {
+            cb.onActivityChange(movementState, "SENSOR");
+        }
     }
 
     @Override public void onStepDetected(int stepCount, double distance) { notifyStatsUpdate(); }
@@ -1633,6 +1641,11 @@ private void startMinimalForeground() {
         String transitionName = transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER ? "ENTER" : "EXIT";
 
         Log.i(TAG, "🏃 Activity: " + activityName + " → " + transitionName);
+
+        // Notify Capacitor plugin listeners
+        for (LocationUpdateCallback cb : listeners) {
+            cb.onActivityChange(activityName, transitionName);
+        }
 
         if (activityType == DetectedActivity.IN_VEHICLE
                 && transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER) {

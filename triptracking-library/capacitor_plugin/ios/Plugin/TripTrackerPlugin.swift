@@ -19,7 +19,7 @@ import CoreLocation
 import triptracking
 
 @objc(TripTrackerPlugin)
-public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
+public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDelegate {
 
     public let identifier = "TripTrackerPlugin"
     public let jsName = "TripTracker"
@@ -58,6 +58,9 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
     // ═══════════════════════════════════════════════════════════════
 
     public override func load() {
+        // Register as delegate for location/activity/tracking events
+        LocationTrackingService.shared.delegate = self
+
         // Auto-initialize SDK from saved config when app relaunches
         if !TripTrackerSDK.isInitialized {
             let hasSavedConfig = UserDefaults.standard.string(forKey: "tt_api_pingURL") != nil
@@ -556,5 +559,44 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
             popover.sourceView = self.bridge?.viewController?.view
         }
         self.bridge?.viewController?.present(activityVC, animated: true)
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // LocationUpdateDelegate — events sent to Ionic via notifyListeners
+    // ═══════════════════════════════════════════════════════════════
+
+    public func didUpdateLocation(_ location: LocationPoint, source: TrackingSource, totalDistance: Double) {
+        notifyListeners("locationUpdate", data: [
+            "latitude": location.latitude,
+            "longitude": location.longitude,
+            "speed": location.speed,
+            "speedKmh": location.speed * 3.6,
+            "accuracy": location.accuracy,
+            "source": source == .gps ? "GPS" : "SENSORS",
+            "distance": totalDistance,
+            "timestamp": location.timestamp
+        ])
+    }
+
+    public func didUpdateStats(speed: Float, distance: Double, duration: Int64) {
+        notifyListeners("statsUpdate", data: [
+            "speed": speed,
+            "speedKmh": speed * 3.6,
+            "distance": distance,
+            "duration": duration
+        ])
+    }
+
+    public func didChangeTrackingState(isTracking: Bool) {
+        notifyListeners("trackingStateChange", data: [
+            "isTracking": isTracking
+        ])
+    }
+
+    public func didChangeActivity(activity: String, transition: String) {
+        notifyListeners("activityChange", data: [
+            "activity": activity,
+            "transition": transition
+        ])
     }
 }

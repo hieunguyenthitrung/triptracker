@@ -46,6 +46,7 @@ protocol LocationUpdateDelegate: AnyObject {
     func didUpdateLocation(_ location: LocationPoint, source: TrackingSource, totalDistance: Double)
     func didUpdateStats(speed: Float, distance: Double, duration: Int64)
     func didChangeTrackingState(isTracking: Bool)
+    func didChangeActivity(activity: String, transition: String)
 }
 
 public class LocationTrackingService: NSObject {
@@ -664,6 +665,11 @@ public class LocationTrackingService: NSObject {
         lastMotionState = newState
 
         print("🏃 TripTracker Motion changed: \(prevState.rawValue) → \(newState.rawValue)")
+
+        // Notify delegate of activity change
+        DispatchQueue.main.async { [weak self] in
+            self?.delegate?.didChangeActivity(activity: newState.rawValue, transition: "MOTION")
+        }
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }

@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
+import android.location.Location;
 import android.net.Uri;
 import android.os.IBinder;
 
@@ -41,7 +42,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 @CapacitorPlugin(name = "TripTracker")
-public class TripTrackerCapPlugin extends Plugin {
+public class TripTrackerCapPlugin extends Plugin
+        implements LocationTrackingService.LocationUpdateCallback {
 
     private LocationTrackingService trackingService;
     private boolean serviceBound = false;
@@ -53,9 +55,14 @@ public class TripTrackerCapPlugin extends Plugin {
                     (LocationTrackingService.LocalBinder) binder;
             trackingService = localBinder.getService();
             serviceBound = true;
+            // Register for callbacks (location, tracking state, activity changes)
+            trackingService.addLocationUpdateListener(TripTrackerCapPlugin.this);
         }
         @Override
         public void onServiceDisconnected(ComponentName name) {
+            if (trackingService != null) {
+                trackingService.removeLocationUpdateListener(TripTrackerCapPlugin.this);
+            }
             trackingService = null;
             serviceBound = false;
         }
@@ -616,5 +623,48 @@ public class TripTrackerCapPlugin extends Plugin {
     private Uri getUriForFile(File f) {
         return FileProvider.getUriForFile(getContext(),
                 getContext().getPackageName() + ".fileprovider", f);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // LocationUpdateCallback — events sent to Ionic via notifyListeners
+    // ═══════════════════════════════════════════════════════════════════
+
+    @Override
+    public void onLocationUpdate(android.location.Location location, LocationTrackingService.TrackingSource source, double distance) {
+        JSObject data = new JSObject();
+        data.put("latitude", location.getLatitude());
+        data.put("longitude", location.getLongitude());
+        data.put("speed", (double) location.getSpeed());
+        data.put("speedKmh", (double) location.getSpeed() * 3.6);
+        data.put("accuracy", (double) location.getAccuracy());
+        data.put("source", source.name());
+        data.put("distance", distance);
+        data.put("timestamp", location.getTime());
+        notifyListeners("locationUpdate", data);
+    }
+
+    @Override
+    public void onTrackingStateChanged(boolean isTracking) {
+        JSObject data = new JSObject();
+        data.put("isTracking", isTracking);
+        notifyListeners("trackingStateChange", data);
+    }
+
+    @Override
+    public void onStatsUpdate(float speed, double distance, long duration) {
+        JSObject data = new JSObject();
+        data.put("speed", (double) speed);
+        data.put("speedKmh", (double) speed * 3.6);
+        data.put("distance", distance);
+        data.put("duration", duration);
+        notifyListeners("statsUpdate", data);
+    }
+
+    @Override
+    public void onActivityChange(String activity, String transition) {
+        JSObject data = new JSObject();
+        data.put("activity", activity);
+        data.put("transition", transition);
+        notifyListeners("activityChange", data);
     }
 }
