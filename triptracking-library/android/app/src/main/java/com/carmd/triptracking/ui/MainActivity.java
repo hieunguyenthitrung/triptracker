@@ -319,7 +319,12 @@ public class MainActivity extends AppCompatActivity implements
         }
     }
 
-    private void focusOnCurrentLocation() {
+    @Override
+    public void onActivityChange(String activity, String transition) {  
+    // MainActivity doesn't need to handle this — plugin handles it
+    }
+
+    private void focusOnCurrentLocation() {     
         if (!hasLocationPermissions()) return;
 
         try {
