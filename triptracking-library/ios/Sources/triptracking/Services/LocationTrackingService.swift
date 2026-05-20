@@ -382,7 +382,9 @@ public class LocationTrackingService: NSObject {
         gpsSilenceTimer = nil
 
         let duration = Int64(Date().timeIntervalSince(tripStartTime ?? Date()))
-        stopSensorTracking()
+        // Only stop trip-specific sensors (pedometer, device motion).
+        // Keep CMMotionActivity alive — it detects the NEXT trip start.
+        stopTripSensors()
 
         DatabaseManager.shared.endTrip(
             id: currentTripId,
@@ -610,6 +612,17 @@ public class LocationTrackingService: NSObject {
         }
     }
 
+    /// Stop trip-specific sensors only (pedometer, device motion, altimeter).
+    /// Keeps CMMotionActivity alive for detecting the next trip start.
+    private func stopTripSensors() {
+        motionManager.stopDeviceMotionUpdates()
+        pedometer.stopUpdates()
+        altimeter.stopRelativeAltitudeUpdates()
+        print("🔋 TripTracker Trip sensors stopped — CMMotionActivity still active for next trip detection")
+    }
+
+    /// Stop ALL sensor tracking including CMMotionActivity.
+    /// Only call when fully shutting down (e.g., user manually stops service).
     private func stopSensorTracking() {
         motionManager.stopDeviceMotionUpdates()
         pedometer.stopUpdates()
