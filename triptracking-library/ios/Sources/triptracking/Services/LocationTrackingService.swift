@@ -279,6 +279,9 @@ public class LocationTrackingService: NSObject {
                 locationManager.stopUpdatingLocation()
                 locationManager.startMonitoringSignificantLocationChanges()
                 locationManager.startMonitoringVisits()
+                // Reset last GPS location — prevents computing speed from stale position
+                // when GPS restarts (cold start drift: old cached pos → new real pos = huge distance)
+                lastGPSLocation = nil
                 print("📡 TripTracker GPS STOPPED — still/no trip (significant changes + visits will relaunch)")
             }
         case .walking, .running, .cycling:
@@ -1270,18 +1273,26 @@ extension LocationTrackingService: CLLocationManagerDelegate {
         // If GPS reports speed <= 0, calculate it from position delta — BUT only if:
         //   1. Accuracy is good (≤ 15m) — poor accuracy means position jumps are noise
         //   2. Distance > combined accuracy of both fixes — otherwise it's just GPS drift
+        //   3. Computed speed is physically possible (≤ 50 m/s = 180 km/h)
+        //   4. Time interval is reasonable (≥ 1s) — sub-second fixes have unreliable positions
         var rawSpeed = Float(max(0, location.speed))
         let now = Date()
         if rawSpeed <= 0, let prev = lastGPSLocation {
             let dist = location.distance(from: prev)
             let dt   = now.timeIntervalSince(prev.timestamp)
             let combinedAccuracy = location.horizontalAccuracy + prev.horizontalAccuracy
-            if dt > 0 && dist > 0
+            if dt >= 1.0 && dist > 0
                 && location.horizontalAccuracy <= 15
                 && dist > combinedAccuracy {
                 let computedSpeed = Float(dist / dt)
-                rawSpeed = computedSpeed
-                print("📐  TripTracker Computed speed from delta: dist=\(String(format:"%.1f",dist))m dt=\(String(format:"%.1f",dt))s acc=\(Int(location.horizontalAccuracy))m → \(String(format:"%.2f",computedSpeed)) m/s")
+                // Reject impossible speed (> 50 m/s = 180 km/h) — GPS cold start drift
+                // e.g., cached location from 5km away + first real fix = huge distance / small dt
+                if computedSpeed <= 50.0 {
+                    rawSpeed = computedSpeed
+                    print("📐  TripTracker Computed speed from delta: dist=\(String(format:"%.1f",dist))m dt=\(String(format:"%.1f",dt))s acc=\(Int(location.horizontalAccuracy))m → \(String(format:"%.2f",computedSpeed)) m/s")
+                } else {
+                    print("📐  TripTracker Computed speed REJECTED: \(String(format:"%.1f",computedSpeed)) m/s — impossible speed (GPS cold start drift, dist=\(String(format:"%.0f",dist))m dt=\(String(format:"%.1f",dt))s)")
+                }
             } else if dist > 0 {
                 print("📐 TripTrackerComputed speed SKIPPED: dist=\(String(format:"%.1f",dist))m acc=\(Int(location.horizontalAccuracy))m combinedAcc=\(Int(combinedAccuracy))m — GPS drift, not real movement")
             }
