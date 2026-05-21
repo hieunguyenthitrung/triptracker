@@ -313,6 +313,19 @@ public class LocationTrackingService: NSObject {
 
     // MARK: - Public API
 
+    public func startTerminalTracking() {
+        // Start GPS — NEVER stops (keeps app alive in background)
+        locationManager.allowsBackgroundLocationUpdates = true
+        locationManager.pausesLocationUpdatesAutomatically = false
+        locationManager.stopUpdatingLocation()
+        locationManager.startMonitoringSignificantLocationChanges()
+        locationManager.startMonitoringVisits()  // relaunches app on arrival/departure
+        startPeriodicSaveTimer()
+        startPedometer()
+        startActivityMonitor()
+        print("✅ TripTracker Background tracking started (GPS always-on + significant changes + visits)")
+    }
+
     public func startBackgroundTracking() {
         // Start GPS — NEVER stops (keeps app alive in background)
         locationManager.allowsBackgroundLocationUpdates = true
@@ -480,6 +493,12 @@ public class LocationTrackingService: NSObject {
         if !isTracking { startBackgroundTracking() }
 
         print("✅ TripTracker ensureBackgroundTracking — significant+visits registered, tracking=\(isTracking)")
+    }
+
+    public func ensureTerminalTracking() {
+        if !isTracking { startTerminalTracking() }
+
+        print("✅ TripTracker ensureTerminalTracking — significant+visits registered, tracking=\(isTracking)")
     }
 
     // MARK: - Terminated App Relaunch Handling

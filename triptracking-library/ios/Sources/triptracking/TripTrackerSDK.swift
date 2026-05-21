@@ -226,7 +226,7 @@ public final class TripTrackerSDK {
     public static func willTerminate() {
         // Save database checkpoint
         DatabaseManager.shared.saveContext()
-
+        LocationTrackingService.shared.ensureTerminalTracking()
         print("🛑 TripTracker willTerminate — DB saved, significant changes + visits re-registered")
     }
 
