@@ -317,15 +317,10 @@ public class LocationTrackingService: NSObject {
 
     public func startTerminalTracking() {
         // Start GPS — NEVER stops (keeps app alive in background)
-        locationManager.allowsBackgroundLocationUpdates = true
-        locationManager.pausesLocationUpdatesAutomatically = false
         locationManager.stopUpdatingLocation()
         locationManager.startMonitoringSignificantLocationChanges()
         locationManager.startMonitoringVisits()  // relaunches app on arrival/departure
-        startPeriodicSaveTimer()
-        startPedometer()
-        startActivityMonitor()
-        print("✅ TripTracker Background tracking started (GPS always-on + significant changes + visits)")
+        print("✅ TripTracker Terminal tracking started (GPS always-on + significant changes + visits)")
     }
 
     public func startBackgroundTracking() {
