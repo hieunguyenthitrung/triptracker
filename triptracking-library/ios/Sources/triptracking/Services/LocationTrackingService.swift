@@ -1017,7 +1017,7 @@ public class LocationTrackingService: NSObject {
             // cancelAutoEndTimer()
             if !isTracking {
                 //autoStartTrip(reason: "Automotive activity detected")
-                adaptLocationAccuracy(for: .automotive)
+                autoStartTrip(reason: "Automotive activity detected")
                 print("🚗 TripTracker Automotive detected — GPS enabled, waiting for speed confirmation")
             }
 
