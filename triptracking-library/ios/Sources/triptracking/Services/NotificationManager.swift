@@ -43,11 +43,11 @@ public class NotificationManager: NSObject {
     // MARK: - Trip Notifications
 
     /// Notify when a trip auto-starts.
-    public func notifyTripStarted(tripId: Int64) {
+    public func notifyTripStarted(tripId: Int64, vehicle_id : String) {
         guard NotificationSettingsViewController.isTripStartEnabled else { return }
         let content = UNMutableNotificationContent()
         content.title = "🚗 Trip Started"
-        content.body = "Trip #\(tripId) auto-started — vehicle speed detected."
+        content.body = "Trip #\(tripId) - \(vehicle_id) auto-started — vehicle speed detected."
         content.sound = .default
         content.categoryIdentifier = "TRIP_EVENT"
 
@@ -67,7 +67,7 @@ public class NotificationManager: NSObject {
     }
 
     /// Notify when a trip auto-ends.
-    public func notifyTripEnded(tripId: Int64, reason: String, distance: Double, duration: Int64) {
+    public func notifyTripEnded(tripId: Int64, vehicle_id: String, reason: String, distance: Double, duration: Int64) {
         guard NotificationSettingsViewController.isTripEndEnabled else { return }
         let content = UNMutableNotificationContent()
         content.title = "🏁 Trip Ended"
@@ -79,7 +79,7 @@ public class NotificationManager: NSObject {
         let durSecs = duration % 60
         let durText = durMins > 0 ? "\(durMins)m \(durSecs)s" : "\(durSecs)s"
 
-        content.body = "Trip #\(tripId) ended · \(distText) · \(durText)\n\(reason)"
+        content.body = "Trip #\(tripId) - \(vehicle_id) ended · \(distText) · \(durText)\n\(reason)"
         content.sound = .default
         content.categoryIdentifier = "TRIP_EVENT"
 

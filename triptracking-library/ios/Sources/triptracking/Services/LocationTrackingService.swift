@@ -88,7 +88,7 @@ public class LocationTrackingService: NSObject {
     /// When true, real GPS fixes are ignored — only fake injected locations are processed.
     /// Set by MainViewController when a fake route simulation is running.
     public var isFakeRouteActive: Bool = false
-    public var appInactive: Bool = false
+    public var appTerminated: Bool = false
 
     /// Internal flag: true during injectFakeGPS() so didUpdateLocations knows it's fake.
     private var isProcessingFakeGPS: Bool = false
@@ -265,17 +265,17 @@ public class LocationTrackingService: NSObject {
         switch state {
         case .still, .unknown:
             print("TripTracker GPS State: \(UIApplication.shared.applicationState)")
-            print("TripTracker GPS State: \(appInactive ? "App is inactive" : "App is active")")
+            print("TripTracker GPS State: \(appTerminated ? "App is terminated" : "App is not terminated")")
 
             if isTracking {
                 // ACTIVE TRIP: Keep GPS alive at minimal accuracy.
                 // If we stop GPS → iOS suspends app → timers die → auto-end never fires
                 // → miss all driving when user resumes.
-                locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
-                locationManager.distanceFilter  = 30
+                locationManager.desiredAccuracy = kCLLocationAccuracyBest
+                locationManager.distanceFilter  = kCLDistanceFilterNone
                 locationManager.startUpdatingLocation()
                 print("📡 TripTracker GPS MINIMAL — still during active trip (keeping alive for auto-end timer)")
-            } else if appInactive{
+            } else if appTerminated {
                 // TERMINATED / SUSPENDED + NO TRIP: Stop GPS to save battery.
                 // Significant location changes (~500m) + visits will relaunch app.
                 locationManager.stopUpdatingLocation()
@@ -287,8 +287,8 @@ public class LocationTrackingService: NSObject {
                 // Keep GPS at minimal accuracy — don't stop.
                 // CMMotionActivity is alive and will upgrade to Best when automotive detected.
                 // Stopping GPS here causes delay on next trip start (cold start 5-30s).
-                locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
-                locationManager.distanceFilter  = 30.0
+                locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
+                locationManager.distanceFilter  = 10.0
                 locationManager.startUpdatingLocation()
                 // Register significant changes + visits as backup for terminated state
                 locationManager.startMonitoringSignificantLocationChanges()
@@ -307,7 +307,7 @@ public class LocationTrackingService: NSObject {
         case .automotive:
             // Best accuracy for driving — GPS always alive
             locationManager.desiredAccuracy = kCLLocationAccuracyBest
-            locationManager.distanceFilter  = 30.0
+            locationManager.distanceFilter  = kCLDistanceFilterNone
             locationManager.startUpdatingLocation()
             print("📡 TripTracker GPS ON → automotive: accuracy=Best filter=none")
         }
@@ -330,6 +330,7 @@ public class LocationTrackingService: NSObject {
         locationManager.startUpdatingLocation()
         locationManager.startMonitoringSignificantLocationChanges()
         locationManager.startMonitoringVisits()  // relaunches app on arrival/departure
+        locationManager.showsBackgroundLocationIndicator = false // no blue bar for background tracking
         startPeriodicSaveTimer()
         startPedometer()
         startActivityMonitor()
@@ -428,8 +429,21 @@ public class LocationTrackingService: NSObject {
         delegate?.didChangeTrackingState(isTracking: false)
         print("✅ TripTracker Trip stopped — dist: \(totalDistance)m, dur: \(duration)s")
 
-        // Stop GPS → removes blue arrow (Option A: still + no trip = GPS off)
-        adaptLocationAccuracy(for: .still)
+        // Stop GPS completely for 20s after trip end.
+        // Prevents: residual speed → immediate auto-start, and saves battery briefly.
+        // After 20s: switch to LOW-POWER GPS for fast next-trip detection.
+        locationManager.stopUpdatingLocation()
+        locationManager.startMonitoringSignificantLocationChanges()
+        locationManager.startMonitoringVisits()
+        lastGPSLocation = nil
+        print("📡 TripTracker GPS STOPPED — 20s cooldown after trip end")
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 20.0) { [weak self] in
+            guard let self = self, !self.isTracking else { return }
+            // Resume LOW-POWER GPS for next trip detection
+            self.adaptLocationAccuracy(for: .still)
+            print("📡 TripTracker GPS LOW-POWER resumed — cooldown complete, ready for next trip")
+        }
     }
 
     /// Called on app relaunch when an active trip is found in the DB.
@@ -691,7 +705,10 @@ public class LocationTrackingService: NSObject {
         } else if activity.stationary {
             newState = .still
         } else {
-            newState = .unknown
+            // Unknown state — ignore to prevent Still→Unknown→Still spam.
+            // CMMotionActivity often reports Unknown briefly between real states.
+            // Treating Unknown as a transition causes redundant GPS mode switches.
+            return
         }
 
         let wasMoving = isMovingByActivity
@@ -998,7 +1015,9 @@ public class LocationTrackingService: NSObject {
 
             // cancelAutoEndTimer()
             if !isTracking {
-                autoStartTrip(reason: "Automotive activity detected")
+                //autoStartTrip(reason: "Automotive activity detected")
+                adaptLocationAccuracy(for: .automotive)
+                print("🚗 TripTracker Automotive detected — GPS enabled, waiting for speed confirmation")
             }
 
         case .walking, .running, .cycling:
@@ -1326,9 +1345,9 @@ extension LocationTrackingService: CLLocationManagerDelegate {
         // Only trust GPS data when accuracy is reasonable.
         // GPS fixes with 80-400m accuracy produce wild position jumps → corrupt speed + location.
         lastGPSSpeed      = rawSpeed
-                lastGPSUpdateTime = now
-                lastGPSLocation   = location
-                lastKnownLocation = location
+        lastGPSUpdateTime = now
+        lastGPSLocation   = location
+        lastKnownLocation = location
         persistLastGPSTimestamp()
 
         let speed  = effectiveSpeed()

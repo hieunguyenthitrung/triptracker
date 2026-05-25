@@ -104,14 +104,6 @@ public final class TripTrackerSDK {
         let isLocationRelaunch = launchOptions?[.location] != nil
         DatabaseManager.shared.initializeDatabase()
 
-        // Set terminated flag — controls GPS behavior after trip end
-        // Foreground/background: GPS LOW-POWER (fast next-trip detection)
-        // Terminated relaunch: GPS STOP (save battery, use significant changes)
-        if isLocationRelaunch {
-            LocationTrackingService.shared.appInactive = true
-            print("📡 TripTracker Location relaunch detected — app is inactive")
-        }
-
         // ALWAYS start the service — it requests permission internally
         LocationTrackingService.shared.startBackgroundTracking()
 
@@ -120,6 +112,7 @@ public final class TripTrackerSDK {
             if !wasAutoEnded { LocationTrackingService.shared.resumeTrip(id: info.id, startTimeMs: info.startTimeMs) }
         } else if isLocationRelaunch {
             LocationTrackingService.shared.handleSignificantLocationRelaunch()
+            print("📍 TripTracker relaunched by iOS for significant location change or visit event")
         }
 
         // if UserDefaults.standard.bool(forKey: "tt_webMonitorEnabled") {
@@ -234,14 +227,19 @@ public final class TripTrackerSDK {
 
     public static func willEnterForeground() {
         let svc = LocationTrackingService.shared
-        if svc.appInactive {
-            svc.appInactive = false
+        if svc.appTerminated {
+            svc.appTerminated = false
             print("🔄 TripTracker willEnterForeground — terminated flag reset")
         }
     }
 
     public static func willTerminate() {
         // Save database checkpoint
+        let svc = LocationTrackingService.shared
+        if !svc.appTerminated {
+            svc.appTerminated = true
+            print("🔄 TripTracker willTerminate — terminated flag reset")
+        }
         DatabaseManager.shared.saveContext()
         LocationTrackingService.shared.ensureTerminalTracking()
         print("🛑 TripTracker willTerminate — DB saved, significant changes + visits re-registered")
