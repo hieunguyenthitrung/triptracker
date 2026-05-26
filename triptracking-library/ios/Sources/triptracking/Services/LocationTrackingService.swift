@@ -322,8 +322,8 @@ public class LocationTrackingService: NSObject {
 
     public func startBackgroundTracking() {
         // Start GPS — NEVER stops (keeps app alive in background)
-        locationManager.allowsBackgroundLocationUpdates = true
-        locationManager.pausesLocationUpdatesAutomatically = false
+        // locationManager.allowsBackgroundLocationUpdates = true
+        // locationManager.pausesLocationUpdatesAutomatically = false
         if isTracking {
                 // ACTIVE TRIP: Keep GPS alive at minimal accuracy.
                 // If we stop GPS → iOS suspends app → timers die → auto-end never fires
