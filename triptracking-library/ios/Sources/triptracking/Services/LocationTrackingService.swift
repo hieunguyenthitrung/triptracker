@@ -322,25 +322,25 @@ public class LocationTrackingService: NSObject {
 
     public func startBackgroundTracking() {
         // Start GPS — NEVER stops (keeps app alive in background)
-        // locationManager.allowsBackgroundLocationUpdates = true
-        // locationManager.pausesLocationUpdatesAutomatically = false
-        // if isTracking {
-        //         // ACTIVE TRIP: Keep GPS alive at minimal accuracy.
-        //         // If we stop GPS → iOS suspends app → timers die → auto-end never fires
-        //         // → miss all driving when user resumes.
-        //         locationManager.desiredAccuracy = kCLLocationAccuracyBest
-        //         locationManager.distanceFilter  = kCLDistanceFilterNone
-        //         locationManager.startUpdatingLocation()
-        //         print("📡 TripTracker GPS MINIMAL — still during active trip (keeping alive for auto-end timer)")
-        //     } else {
-        //         locationManager.stopUpdatingLocation()
-        //         locationManager.startMonitoringSignificantLocationChanges()
-        //         locationManager.startMonitoringVisits()
-        //         lastGPSLocation = nil
-        //     }
-        // startPeriodicSaveTimer()
-        // startPedometer()
-        // startActivityMonitor()
+        locationManager.allowsBackgroundLocationUpdates = true
+        locationManager.pausesLocationUpdatesAutomatically = false
+        if isTracking {
+                // ACTIVE TRIP: Keep GPS alive at minimal accuracy.
+                // If we stop GPS → iOS suspends app → timers die → auto-end never fires
+                // → miss all driving when user resumes.
+                locationManager.desiredAccuracy = kCLLocationAccuracyBest
+                locationManager.distanceFilter  = kCLDistanceFilterNone
+                locationManager.startUpdatingLocation()
+                print("📡 TripTracker GPS MINIMAL — still during active trip (keeping alive for auto-end timer)")
+            } else {
+                locationManager.stopUpdatingLocation()
+                locationManager.startMonitoringSignificantLocationChanges()
+                locationManager.startMonitoringVisits()
+                lastGPSLocation = nil
+            }
+        startPeriodicSaveTimer()
+        startPedometer()
+        startActivityMonitor()
         print("✅ TripTracker Background tracking started (GPS always-on + significant changes + visits)")
     }
 
