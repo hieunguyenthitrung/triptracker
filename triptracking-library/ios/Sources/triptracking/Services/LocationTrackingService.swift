@@ -275,11 +275,24 @@ public class LocationTrackingService: NSObject {
                 locationManager.distanceFilter  = kCLDistanceFilterNone
                 locationManager.startUpdatingLocation()
                 print("📡 TripTracker GPS BEST — still during active trip (keeping full accuracy)")
-            } else {
+            } else if appTerminated {
+                // TERMINATED RELAUNCH + NO TRIP: Stop GPS to save battery.
+                // Significant location changes (~500m) + visits will relaunch app.
                 locationManager.stopUpdatingLocation()
                 locationManager.startMonitoringSignificantLocationChanges()
                 locationManager.startMonitoringVisits()
+                lastGPSLocation = nil
                 print("📡 TripTracker GPS STOPPED — still/no trip/terminated (significant changes + visits will relaunch)")
+            } else {
+                // FOREGROUND/BACKGROUND + NO TRIP + STILL:
+                // Keep GPS at low-power — don't stop.
+                // CMMotionActivity will upgrade to Best when automotive detected.
+                locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+                locationManager.distanceFilter  = 100.0
+                locationManager.startUpdatingLocation()
+                locationManager.startMonitoringSignificantLocationChanges()
+                locationManager.startMonitoringVisits()
+                print("📡 TripTracker GPS LOW-POWER — still/no trip (ready for next trip)")
             }
         case .walking, .running, .cycling:
             // GPS active for pedestrian/cycling movement.
@@ -401,10 +414,9 @@ public class LocationTrackingService: NSObject {
         gpsSilenceTimer = nil
 
         let duration = Int64(Date().timeIntervalSince(tripStartTime ?? Date()))
-        stopSensorTracking()
         // Only stop trip-specific sensors (pedometer, device motion).
         // Keep CMMotionActivity alive — it detects the NEXT trip start.
-        // stopTripSensors()
+        stopTripSensors()
 
         DatabaseManager.shared.endTrip(
             id: currentTripId,
@@ -425,7 +437,20 @@ public class LocationTrackingService: NSObject {
         delegate?.didChangeTrackingState(isTracking: false)
         print("✅ TripTracker Trip stopped — dist: \(totalDistance)m, dur: \(duration)s")
 
-        self.adaptLocationAccuracy(for: .still)
+        // Stop GPS completely for 20s after trip end.
+        // Prevents: residual speed → immediate auto-start, and saves battery briefly.
+        // After 20s: switch to LOW-POWER GPS for fast next-trip detection.
+        locationManager.stopUpdatingLocation()
+        locationManager.startMonitoringSignificantLocationChanges()
+        locationManager.startMonitoringVisits()
+        lastGPSLocation = nil
+        print("📡 TripTracker GPS STOPPED — 20s cooldown after trip end")
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 20.0) { [weak self] in
+            guard let self = self, !self.isTracking else { return }
+            self.adaptLocationAccuracy(for: .still)
+            print("📡 TripTracker GPS resumed — cooldown complete, ready for next trip")
+        }
     }
 
     /// Called on app relaunch when an active trip is found in the DB.
