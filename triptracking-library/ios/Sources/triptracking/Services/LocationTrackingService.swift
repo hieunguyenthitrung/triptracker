@@ -232,7 +232,7 @@ public class LocationTrackingService: NSObject {
         locationManager.distanceFilter                     = 10.0
         locationManager.allowsBackgroundLocationUpdates    = true
         locationManager.pausesLocationUpdatesAutomatically = false
-        locationManager.showsBackgroundLocationIndicator   = false
+        locationManager.showsBackgroundLocationIndicator   = true
         locationManager.requestAlwaysAuthorization()
     }
 
@@ -279,7 +279,7 @@ public class LocationTrackingService: NSObject {
                 locationManager.stopUpdatingLocation()
                 locationManager.startMonitoringSignificantLocationChanges()
                 locationManager.startMonitoringVisits()
-                lastGPSLocation = nil
+                print("📡 TripTracker GPS STOPPED — still/no trip/terminated (significant changes + visits will relaunch)")
             }
         case .walking, .running, .cycling:
             // GPS active for pedestrian/cycling movement.
@@ -324,20 +324,9 @@ public class LocationTrackingService: NSObject {
         // Start GPS — NEVER stops (keeps app alive in background)
         locationManager.allowsBackgroundLocationUpdates = true
         locationManager.pausesLocationUpdatesAutomatically = false
-        if isTracking {
-                // ACTIVE TRIP: Keep GPS alive at minimal accuracy.
-                // If we stop GPS → iOS suspends app → timers die → auto-end never fires
-                // → miss all driving when user resumes.
-                locationManager.desiredAccuracy = kCLLocationAccuracyBest
-                locationManager.distanceFilter  = kCLDistanceFilterNone
-                locationManager.startUpdatingLocation()
-                print("📡 TripTracker GPS MINIMAL — still during active trip (keeping alive for auto-end timer)")
-            } else {
-                locationManager.stopUpdatingLocation()
-                locationManager.startMonitoringSignificantLocationChanges()
-                locationManager.startMonitoringVisits()
-                lastGPSLocation = nil
-            }
+        locationManager.startUpdatingLocation()
+        locationManager.startMonitoringSignificantLocationChanges()
+        locationManager.startMonitoringVisits()
         startPeriodicSaveTimer()
         startPedometer()
         startActivityMonitor()
