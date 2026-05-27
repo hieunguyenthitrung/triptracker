@@ -305,13 +305,13 @@ public class LocationTrackingService: NSObject {
 
                 // Start still timeout — if device stays still for 5 min, stop GPS completely
                 // to save battery overnight. CMMotionActivity will restart GPS when movement detected.
-                stillGpsTimer?.invalidate()
-                stillGpsTimer = Timer.scheduledTimer(withTimeInterval: stillGpsTimeoutSecs, repeats: false) { [weak self] _ in
-                    guard let self = self, !self.isTracking else { return }
-                    self.locationManager.stopUpdatingLocation()
-                    self.lastGPSLocation = nil
-                    print("📡 TripTracker GPS STOPPED — still for \(Int(self.stillGpsTimeoutSecs / 60)) min, saving battery (CMMotionActivity still active)")
-                }
+                // stillGpsTimer?.invalidate()
+                // stillGpsTimer = Timer.scheduledTimer(withTimeInterval: stillGpsTimeoutSecs, repeats: false) { [weak self] _ in
+                //     guard let self = self, !self.isTracking else { return }
+                //     self.locationManager.stopUpdatingLocation()
+                //     self.lastGPSLocation = nil
+                //     print("📡 TripTracker GPS STOPPED — still for \(Int(self.stillGpsTimeoutSecs / 60)) min, saving battery (CMMotionActivity still active)")
+                // }
             }
         case .walking, .running, .cycling:
             // GPS active for pedestrian/cycling movement.
