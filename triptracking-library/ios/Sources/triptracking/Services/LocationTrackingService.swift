@@ -78,6 +78,8 @@ public class LocationTrackingService: NSObject {
     private var lastSensorLocation:   CLLocation?   // latest dead-reckoned position
     public var lastKnownLocation:    CLLocation?   // best position available — exposed so UI can read it without creating a new CLLocationManager
     private var lastSavedGPSLocation: CLLocation?   // last GPS point actually persisted
+     /// Last location that was actually sent to API — used for 80m distance gate
+    private var lastPingedLocation: CLLocation?
     public private(set) var currentSource: TrackingSource = .sensors
 
     /// Convenience accessor for the fake-route injector in MainViewController.
@@ -1613,8 +1615,6 @@ extension LocationTrackingService: CLLocationManagerDelegate {
     // MARK: - API Ping Helper
 
     /// Send location ping to server during active trip.
-    /// Last location that was actually sent to API — used for 80m distance gate
-    private var lastPingedLocation: CLLocation?
 
     private func sendAPIPing(location: LocationPoint, source: TrackingSource, speed: Float) {
         // Only send pings during active trip — save bandwidth and battery when idle
