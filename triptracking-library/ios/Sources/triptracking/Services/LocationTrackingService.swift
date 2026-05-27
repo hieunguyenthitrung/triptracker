@@ -1257,9 +1257,9 @@ public class LocationTrackingService: NSObject {
                 latitude: finalLoc.coordinate.latitude,
                 longitude: finalLoc.coordinate.longitude,
                 altitude: finalLoc.altitude,
-                accuracy:  Float(location.horizontalAccuracy),
+                accuracy:  Float(finalLoc.horizontalAccuracy),
                 speed: 0,
-                course: finalLoc.course,
+                bearing:   Float(finalLoc.course >= 0 ? finalLoc.course : 0),
                 timestamp: Int64(Date().timeIntervalSince1970 * 1000),
             )
 
