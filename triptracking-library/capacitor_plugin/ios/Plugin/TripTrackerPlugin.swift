@@ -501,13 +501,19 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func sendAllLogs(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
-            let files = LogManager.shared.getAllLogFiles()
-            guard !files.isEmpty else {
-                call.reject("No log files found")
+            // let files = LogManager.shared.getAllLogFiles()
+            // guard !files.isEmpty else {
+            //     call.reject("No log files found")
+            //     return
+            // }
+            // self.shareFiles(files, subject: "TripTracker All Logs")
+            // call.resolve(["shared": true, "count": files.count])
+            guard let zipURL = LogManager.shared.getZippedLogs() else {
+                call.resolve(["shared": false])
                 return
             }
-            self.shareFiles(files, subject: "TripTracker All Logs")
-            call.resolve(["shared": true, "count": files.count])
+            shareFiles([zipURL], subject: "TripTracker Logs")
+            call.resolve(["shared": true])
         }
     }
 

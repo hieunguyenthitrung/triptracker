@@ -173,6 +173,69 @@ public final class LogcatWriter {
         cleanupOldLogs(context.getCacheDir(), retainDays);
     }
 
+    // ── Zip helpers ──────────────────────────────────────────────────────
+
+    /** Get recent log files (last N days). */
+    public static File[] getRecentLogFiles(Context context, int days) {
+        File[] all = getAllLogFiles(context);  // sorted oldest first
+        if (all.length <= days) return all;
+        // Return last N files (newest)
+        File[] recent = new File[days];
+        System.arraycopy(all, all.length - days, recent, 0, days);
+        return recent;
+    }
+
+    /**
+     * Zip all log files (or last N days) into a single .zip file.
+     * Returns the zip File, or null on failure.
+     * Caller can share this via Intent or email.
+     *
+     * @param context  App context
+     * @param days     Number of recent days to include (null = all files)
+     */
+    public static File getZippedLogs(Context context, Integer days) {
+        File[] files = (days != null) ? getRecentLogFiles(context, days) : getAllLogFiles(context);
+        if (files.length == 0) return null;
+
+        String deviceName = Build.MANUFACTURER + "_" + Build.MODEL;
+        deviceName = deviceName.replaceAll("[^a-zA-Z0-9_-]", "_");
+        String dateStr = new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(new Date());
+        String zipName = dateStr + "_" + deviceName + "_logs.zip";
+        File zipFile = new File(context.getCacheDir(), zipName);
+
+        // Remove old zip if exists
+        if (zipFile.exists()) zipFile.delete();
+
+        try (java.util.zip.ZipOutputStream zos = new java.util.zip.ZipOutputStream(
+                new FileOutputStream(zipFile))) {
+            byte[] buffer = new byte[4096];
+            for (File logFile : files) {
+                if (!logFile.exists() || logFile.length() == 0) continue;
+                java.util.zip.ZipEntry entry = new java.util.zip.ZipEntry(logFile.getName());
+                zos.putNextEntry(entry);
+                try (java.io.FileInputStream fis = new java.io.FileInputStream(logFile)) {
+                    int len;
+                    while ((len = fis.read(buffer)) > 0) {
+                        zos.write(buffer, 0, len);
+                    }
+                }
+                zos.closeEntry();
+            }
+            Log.i(TAG, "📦 Zipped " + files.length + " log files → " + zipFile.getName()
+                    + " (" + formatBytes(zipFile.length()) + ")");
+            return zipFile;
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to zip log files: " + e.getMessage());
+            if (zipFile.exists()) zipFile.delete();
+            return null;
+        }
+    }
+
+    /** Zip all log files. */
+    public static File getZippedLogs(Context context) {
+        return getZippedLogs(context, null);
+    }
+
     private static void cleanupOldLogs(File cacheDir, int retainDays) {
         Calendar cutoff = Calendar.getInstance();
         cutoff.add(Calendar.DAY_OF_YEAR, -retainDays);

@@ -530,10 +530,21 @@ public class TripTrackerCapPlugin extends Plugin {
 
     @PluginMethod
     public void sendAllLogs(PluginCall call) {
-        shareLogFiles(-1);  // -1 = all files
-        JSObject ret = new JSObject();
-        ret.put("shared", true);
-        call.resolve(ret);
+        // shareLogFiles(-1);  // -1 = all files
+        // JSObject ret = new JSObject();
+        // ret.put("shared", true);
+        // call.resolve(ret);
+        File zip = LogcatWriter.getZippedLogs(getContext());
+        if (zip != null) {
+            // Share via Intent
+            Uri uri = getUriForFile(zip);
+            Intent intent = new Intent(Intent.ACTION_SEND);
+            intent.setType("application/zip");
+            intent.putExtra(Intent.EXTRA_STREAM, uri);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            getActivity().startActivity(Intent.createChooser(intent, "Share Logs"));
+            call.resolve(new JSObject().put("shared", true));
+        }
     }
 
     @PluginMethod

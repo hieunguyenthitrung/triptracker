@@ -248,6 +248,82 @@ public class LogManager: NSObject {
         return String(format: "%.1f MB", Double(total) / (1024 * 1024))
     }
 
+    /// Get recent log files (last N days, default 3).
+    public func getRecentLogFiles(days: Int = 3) -> [URL] {
+        let allFiles = getAllLogFiles()  // sorted newest first
+        return Array(allFiles.prefix(days))
+    }
+
+    /// Create a zip file containing all log files. Returns the zip URL.
+    /// Caller is responsible for cleanup after sharing.
+    public func getZippedLogs(days: Int? = nil) -> URL? {
+        let files = days != nil ? getRecentLogFiles(days: days!) : getAllLogFiles()
+        guard !files.isEmpty, let dir = logsDirectory else { return nil }
+
+        let deviceName = UIDevice.current.name
+            .replacingOccurrences(of: " ", with: "_")
+            .replacingOccurrences(of: "'", with: "")
+        let dateStr = dateFormatter.string(from: Date())
+        let zipName = "\(dateStr)_\(deviceName)_logs.zip"
+        let zipURL = dir.appendingPathComponent(zipName)
+
+        // Remove old zip if exists
+        try? FileManager.default.removeItem(at: zipURL)
+
+        // Create zip using NSFileCoordinator (built-in, no 3rd party)
+        guard let archive = Archive(url: zipURL, accessMode: .create) else {
+            // Fallback: use shell zip via Process (not available on iOS)
+            // Instead, create zip manually using zlib
+            return createZipManually(files: files, zipURL: zipURL)
+        }
+        for file in files {
+            try? archive.addEntry(with: file.lastPathComponent, relativeTo: file.deletingLastPathComponent())
+        }
+        return FileManager.default.fileExists(atPath: zipURL.path) ? zipURL : nil
+    }
+
+    /// Manual zip creation using Foundation's built-in compression
+    private func createZipManually(files: [URL], zipURL: URL) -> URL? {
+        // Use a simple approach: copy files into a temp directory and use FileManager
+        let fm = FileManager.default
+        let tempDir = fm.temporaryDirectory.appendingPathComponent("triptracker_logs_\(UUID().uuidString)")
+
+        do {
+            try fm.createDirectory(at: tempDir, withIntermediateDirectories: true)
+            for file in files {
+                let dest = tempDir.appendingPathComponent(file.lastPathComponent)
+                try fm.copyItem(at: file, to: dest)
+            }
+
+            // Use NSFileCoordinator to create a zip of the directory
+            var error: NSError?
+            let coordinator = NSFileCoordinator()
+            var resultURL: URL?
+
+            coordinator.coordinate(readingItemAt: tempDir, options: .forUploading, error: &error) { zippedURL in
+                do {
+                    try fm.copyItem(at: zippedURL, to: zipURL)
+                    resultURL = zipURL
+                } catch {
+                    print("❌ LogManager zip copy failed: \(error)")
+                }
+            }
+
+            // Cleanup temp directory
+            try? fm.removeItem(at: tempDir)
+
+            if let err = error {
+                print("❌ LogManager zip failed: \(err)")
+                return nil
+            }
+            return resultURL
+        } catch {
+            print("❌ LogManager zip prep failed: \(error)")
+            try? fm.removeItem(at: tempDir)
+            return nil
+        }
+    }
+
     // MARK: - File Management
 
     private func openTodayLogFile() {
