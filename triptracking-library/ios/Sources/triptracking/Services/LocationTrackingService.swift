@@ -90,6 +90,12 @@ public class LocationTrackingService: NSObject {
     public var isFakeRouteActive: Bool = false
     public var appTerminated: Bool = false
 
+    /// Still timeout: after being still for this long (no trip), stop GPS completely.
+    /// GPS will restart when CMMotionActivity detects movement.
+    /// Default: 5 minutes (300 seconds)
+    private let stillGpsTimeoutSecs: TimeInterval = 300
+    private var stillGpsTimer: Timer?
+
     /// Internal flag: true during injectFakeGPS() so didUpdateLocations knows it's fake.
     private var isProcessingFakeGPS: Bool = false
 
@@ -232,7 +238,7 @@ public class LocationTrackingService: NSObject {
         locationManager.distanceFilter                     = 10.0
         locationManager.allowsBackgroundLocationUpdates    = true
         locationManager.pausesLocationUpdatesAutomatically = false
-        locationManager.showsBackgroundLocationIndicator   = true
+        locationManager.showsBackgroundLocationIndicator   = false
         locationManager.requestAlwaysAuthorization()
     }
 
@@ -292,12 +298,23 @@ public class LocationTrackingService: NSObject {
                 locationManager.startUpdatingLocation()
                 locationManager.startMonitoringSignificantLocationChanges()
                 locationManager.startMonitoringVisits()
+                locationManager.showsBackgroundLocationIndicator   = false
                 print("📡 TripTracker GPS LOW-POWER — still/no trip (ready for next trip)")
+
+                // Start still timeout — if device stays still for 5 min, stop GPS completely
+                // to save battery overnight. CMMotionActivity will restart GPS when movement detected.
+                stillGpsTimer?.invalidate()
+                stillGpsTimer = Timer.scheduledTimer(withTimeInterval: stillGpsTimeoutSecs, repeats: false) { [weak self] _ in
+                    guard let self = self, !self.isTracking else { return }
+                    self.locationManager.stopUpdatingLocation()
+                    self.lastGPSLocation = nil
+                    print("📡 TripTracker GPS STOPPED — still for \(Int(self.stillGpsTimeoutSecs / 60)) min, saving battery (CMMotionActivity still active)")
+                }
             }
         case .walking, .running, .cycling:
             // GPS active for pedestrian/cycling movement.
-            // MUST keep GPS alive — this prevents iOS from terminating the app.
-            // If terminated, significant changes + visits will relaunch.
+            stillGpsTimer?.invalidate()
+            stillGpsTimer = nil
             locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
             locationManager.distanceFilter  = 10.0
             locationManager.startUpdatingLocation()
@@ -305,6 +322,8 @@ public class LocationTrackingService: NSObject {
 
         case .automotive:
             // Best accuracy for driving — GPS always alive
+            stillGpsTimer?.invalidate()
+            stillGpsTimer = nil
             locationManager.desiredAccuracy = kCLLocationAccuracyBest
             locationManager.distanceFilter  = kCLDistanceFilterNone
             locationManager.startUpdatingLocation()
@@ -353,6 +372,7 @@ public class LocationTrackingService: NSObject {
         totalDistance        = 0.0
         stepCount            = 0
         lastLocationSaveTime = 0
+        lastPingedLocation   = nil  // Reset so first ping sends immediately
 
         currentTripId = DatabaseManager.shared.startTrip()
         print("💾 TripTracker Created trip: ID=\(currentTripId)")
@@ -416,7 +436,7 @@ public class LocationTrackingService: NSObject {
         let duration = Int64(Date().timeIntervalSince(tripStartTime ?? Date()))
         // Only stop trip-specific sensors (pedometer, device motion).
         // Keep CMMotionActivity alive — it detects the NEXT trip start.
-        stopTripSensors()
+        stopSensorTracking()
 
         DatabaseManager.shared.endTrip(
             id: currentTripId,
@@ -1052,11 +1072,12 @@ public class LocationTrackingService: NSObject {
             }
 
         case .walking, .running, .cycling:
-            // Low-speed movement — do NOT cancel auto-end timer.
-            // GPS drift on a stationary device often triggers brief "walking" reports.
-            // Only vehicle speed (>= 6 m/s) should cancel the countdown.
-            // Do NOT auto-start for walking/running/cycling.
-            break
+            // Low-speed movement — NOT vehicle speed.
+            // If trip is active, start auto-end countdown (same as still).
+            // User walking/holding device after parking = trip should end.
+            if isTracking {
+                startAutoEndTimer()
+            }
 
         case .still:
             // Device is still → start auto-end countdown if trip is active
@@ -1086,22 +1107,22 @@ public class LocationTrackingService: NSObject {
             //     return
             // }
 
-            // consecutiveVehicleSpeedCount += 1
+            consecutiveVehicleSpeedCount += 1
 
             // Cancel auto-end if already tracking
             cancelAutoEndTimer()
 
             if !isTracking {
-                // if consecutiveVehicleSpeedCount >= requiredConsecutiveVehicleFixes {
+                if consecutiveVehicleSpeedCount >= requiredConsecutiveVehicleFixes {
                     autoStartTrip(reason: "GPS speed \(String(format:"%.1f", speed)) m/s (\(consecutiveVehicleSpeedCount) consecutive fixes)")
-                //     consecutiveVehicleSpeedCount = 0
-                // } else {
-                //     print("🚗 TripTracker Vehicle speed \(String(format:"%.1f", speed)) m/s — \(consecutiveVehicleSpeedCount)/\(requiredConsecutiveVehicleFixes) consecutive fixes, waiting...")
-                // }
+                    consecutiveVehicleSpeedCount = 0
+                } else {
+                    print("🚗 TripTracker Vehicle speed \(String(format:"%.1f", speed)) m/s — \(consecutiveVehicleSpeedCount)/\(requiredConsecutiveVehicleFixes) consecutive fixes, waiting...")
+                }
             }
         } else {
             // ── Below vehicle threshold ──
-            // consecutiveVehicleSpeedCount = 0
+            consecutiveVehicleSpeedCount = 0
 
             if isTracking && autoEndTimer == nil {
                 // Speed dropped while trip active → start auto-end countdown.
@@ -1592,8 +1613,25 @@ extension LocationTrackingService: CLLocationManagerDelegate {
     // MARK: - API Ping Helper
 
     /// Send location ping to server during active trip.
+    /// Last location that was actually sent to API — used for 80m distance gate
+    private var lastPingedLocation: CLLocation?
+
     private func sendAPIPing(location: LocationPoint, source: TrackingSource, speed: Float) {
+        // Only send pings during active trip — save bandwidth and battery when idle
+        guard isTracking else { return }
+
         let clLoc = CLLocation(latitude: location.latitude, longitude: location.longitude)
+
+        // Distance gate: only send ping if moved >= saveDistanceVehicleM (80m) since last ping.
+        // This prevents excessive API calls while keeping GPS at full rate for speed detection.
+        if let lastPinged = lastPingedLocation {
+            let distSinceLastPing = clLoc.distance(from: lastPinged)
+            if distSinceLastPing < saveDistanceVehicleM {
+                return  // Too close to last ping — skip
+            }
+        }
+        lastPingedLocation = clLoc
+
         // Clamp speed — CLLocation.speed can be -1 when invalid
         let safeSpeed = max(0, speed)
         let activityType: String
@@ -1605,6 +1643,8 @@ extension LocationTrackingService: CLLocationManagerDelegate {
             case .automotive:         activityType = "in_vehicle"
         }
         
+        print("📡 TripTracker Sending ping — dist from last: \(String(format:"%.0f", lastPingedLocation.map { clLoc.distance(from: $0) } ?? 0))m")
+
         TripTrackerAPIService.shared.sendPing(
             location: clLoc,
             isMoving: safeSpeed > 0 ? true : false,

@@ -86,7 +86,12 @@ public final class TripTrackerSDK {
         webServer = nil
 
         guard !_initialized else {
-            applyConfig(config)
+            // Re-initialized — only apply if config has real API values
+            if !config.userId.isEmpty && !config.pingURL.isEmpty {
+                applyConfig(config)
+            } else {
+                print("📡 TripTracker Re-init skipped — incoming config has empty API values (restored config preserved)")
+            }
             return
         }
         // Restore API config from UserDefaults (in case app was killed + relaunched)
@@ -96,7 +101,7 @@ public final class TripTrackerSDK {
             applyConfig(config)
             print("📡 TripTracker Initializing with provided config — pingURL: \(config.pingURL) userId: \(config.userId)")
         } else {
-            print("📡 TripTracker Initializing with provided config — INCOMPLETE CONFIG")
+            print("📡 TripTracker Initializing — incoming config has empty userId, using restored config from UserDefaults")
         }
         LogManager.shared.start()
 
@@ -177,29 +182,35 @@ public final class TripTrackerSDK {
 
         if config.webMonitorEnabled { startWebMonitor() } else { stopWebMonitor() }
 
-        // API Service
-        var apiConfig = TripTrackerAPIConfig()
-        apiConfig.pingURL = config.pingURL
-        apiConfig.endURL = config.endURL
-        apiConfig.userId = config.userId
-        apiConfig.vehicleId = config.vehicleId
-        if !config.osInfo.isEmpty { apiConfig.osInfo = config.osInfo }
-        apiConfig.routeId = config.routeId
-        apiConfig.authorizationKey = config.authorizationKey
-        apiConfig.apiAuthKey = config.apiAuthKey
-        apiConfig.apiAuthToken = config.apiAuthToken
-        TripTrackerAPIService.shared.config = apiConfig
+        // API Service — only overwrite if incoming config has real values.
+        // When Capacitor hasn't loaded yet, config has empty pingURL/userId.
+        // We must NOT overwrite the restored config from UserDefaults.
+        if !config.pingURL.isEmpty && !config.userId.isEmpty {
+            var apiConfig = TripTrackerAPIConfig()
+            apiConfig.pingURL = config.pingURL
+            apiConfig.endURL = config.endURL
+            apiConfig.userId = config.userId
+            apiConfig.vehicleId = config.vehicleId
+            if !config.osInfo.isEmpty { apiConfig.osInfo = config.osInfo }
+            apiConfig.routeId = config.routeId
+            apiConfig.authorizationKey = config.authorizationKey
+            apiConfig.apiAuthKey = config.apiAuthKey
+            apiConfig.apiAuthToken = config.apiAuthToken
+            TripTrackerAPIService.shared.config = apiConfig
 
-        ud.set(config.pingURL, forKey: "tt_api_pingURL")
-        ud.set(config.endURL, forKey: "tt_api_endURL")
-        ud.set(config.userId, forKey: "tt_api_userId")
-        ud.set(config.vehicleId, forKey: "tt_api_vehicleId")
-        ud.set(config.osInfo, forKey: "tt_api_osInfo")
-        ud.set(apiConfig.routeId, forKey: "tt_api_routeId")
-        ud.set(config.authorizationKey, forKey: "tt_api_authorizationKey")
-        ud.set(config.apiAuthKey, forKey: "tt_api_apiAuthKey")
-        ud.set(config.apiAuthToken, forKey: "tt_api_apiAuthToken")
-        print("📡 API config saved to UserDefaults — userId=\(config.userId)")
+            ud.set(config.pingURL, forKey: "tt_api_pingURL")
+            ud.set(config.endURL, forKey: "tt_api_endURL")
+            ud.set(config.userId, forKey: "tt_api_userId")
+            ud.set(config.vehicleId, forKey: "tt_api_vehicleId")
+            ud.set(config.osInfo, forKey: "tt_api_osInfo")
+            ud.set(apiConfig.routeId, forKey: "tt_api_routeId")
+            ud.set(config.authorizationKey, forKey: "tt_api_authorizationKey")
+            ud.set(config.apiAuthKey, forKey: "tt_api_apiAuthKey")
+            ud.set(config.apiAuthToken, forKey: "tt_api_apiAuthToken")
+            print("📡 API config saved to UserDefaults — userId=\(config.userId)")
+        } else {
+            print("📡 API config NOT overwritten — incoming config has empty pingURL/userId (restored config preserved)")
+        }
 
         if config.geofenceEnabled { GeofenceManager.shared.startMonitoringAll() }
     }
@@ -207,10 +218,19 @@ public final class TripTrackerSDK {
     /// Restore API config from UserDefaults (after app kill + relaunch).
     public static func restoreAPIConfigFromDefaults() {
         let ud = UserDefaults.standard
+        let savedPing = ud.string(forKey: "tt_api_pingURL") ?? ""
+        let savedUser = ud.string(forKey: "tt_api_userId") ?? ""
+
+        // Guard: if UserDefaults has no saved config, skip restore
+        if savedPing.isEmpty || savedUser.isEmpty {
+            print("⚠️ TripTracker restoreAPIConfig — UserDefaults empty! pingURL='\(savedPing)' userId='\(savedUser)' — waiting for Capacitor to provide config")
+            return
+        }
+
         var apiConfig = TripTrackerAPIConfig()
-        apiConfig.pingURL = ud.string(forKey: "tt_api_pingURL") ?? ""
+        apiConfig.pingURL = savedPing
         apiConfig.endURL = ud.string(forKey: "tt_api_endURL") ?? ""
-        apiConfig.userId = ud.string(forKey: "tt_api_userId") ?? ""
+        apiConfig.userId = savedUser
         apiConfig.vehicleId = ud.string(forKey: "tt_api_vehicleId") ?? ""
         let osInfo = ud.string(forKey: "tt_api_osInfo") ?? ""
         if !osInfo.isEmpty { apiConfig.osInfo = osInfo }

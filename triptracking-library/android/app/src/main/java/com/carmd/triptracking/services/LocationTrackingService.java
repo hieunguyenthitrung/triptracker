@@ -513,6 +513,16 @@ public class LocationTrackingService extends Service implements
     /** Auto-start a trip when vehicle speed is detected. */
     private void autoStartTrip(Location triggerLocation) {
         if (isTracking) return;
+
+        // Only auto-start if vehicle_id or route_id is configured
+        String vehicleId = TripTrackerAPIService.getInstance().getVehicleId();
+        String routeId = TripTrackerAPIService.getInstance().hasRouteId()
+                ? "has_route" : "";
+        if ((vehicleId == null || vehicleId.isEmpty()) && routeId.isEmpty()) {
+            Log.d(TAG, "⏳ Auto-start SKIPPED — no vehicle_id or route_id configured");
+            return;
+        }
+
         Log.d(TAG, "🚗 Vehicle speed detected — auto-starting trip");
         startTracking(triggerLocation);
         if (AppSettings.isNotifTripStart(this))
@@ -626,12 +636,21 @@ public class LocationTrackingService extends Service implements
         }
 
         // Keep sensor tracker alive for motion detection (low power: ~1-2%/hr)
-        // BUT stop GPS to save battery — Activity Recognition will detect IN_VEHICLE
-        // and re-enable GPS for speed confirmation.
-        //stopGpsUpdates();
+        // Stop GPS for 20s to save battery and prevent immediate re-start.
+        // After 20s, resume GPS at low-power for next trip detection.
+        stopGpsUpdates();
         cancelWatchdog();
         startForegroundNotification("Trip Tracker", "Waiting for vehicle speed…");
         notifyTrackingStateChanged(false);
+
+        // Resume GPS at low-power after 20s cooldown
+        if (autoStopHandler == null) autoStopHandler = new Handler(Looper.getMainLooper());
+        autoStopHandler.postDelayed(() -> {
+            if (!isTracking) {
+                startGPSTracking();
+                Log.d(TAG, "📡 GPS LOW-POWER resumed — 20s cooldown complete, ready for next trip");
+            }
+        }, 20_000L);
     }
 
     // =========================================================================
@@ -888,6 +907,11 @@ public class LocationTrackingService extends Service implements
                 Log.d(TAG, "Still timer started");
                 startAutoStopTimer();
             }
+            // No active trip + still → stop GPS to save battery.
+            // Activity Recognition will re-enable GPS when IN_VEHICLE detected.
+            if (!isTracking) {
+                stopGpsUpdates();
+            }
         } else {
             // Device is moving — reset still timer and cancel auto-stop
             if (stillSinceMs != 0L) {
@@ -895,6 +919,8 @@ public class LocationTrackingService extends Service implements
                 cancelAutoStopTimer();
                 Log.d(TAG, "Still timer reset — device moving");
             }
+            // Re-enable GPS if it was stopped during still period
+            startGPSTracking();
         }
         rescheduleSaveLoop();
         Log.d(TAG, "Movement state → " + (isMoving ? "MOVING" : "STILL") +
