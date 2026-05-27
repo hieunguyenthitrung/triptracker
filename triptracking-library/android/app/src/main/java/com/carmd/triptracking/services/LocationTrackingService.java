@@ -269,6 +269,14 @@ public class LocationTrackingService extends Service implements
                 notifyListeners(initLoc, TrackingSource.GPS);
                 Log.d(TAG, "Initial location cached (5s delay): (" +
                         String.format("%.6f, %.6f", initLoc.getLatitude(), initLoc.getLongitude()) + ")");
+
+                // Send one initial ping so server knows device position on app open
+                if (initLoc.getAccuracy() <= 50) {
+                    TripTrackerAPIService.getInstance().sendPing(
+                            initLoc, false, 0f, "still", null);
+                    Log.d(TAG, "📡 Initial ping sent on app open — " +
+                            String.format("%.6f,%.6f", initLoc.getLatitude(), initLoc.getLongitude()));
+                }
             }
         }, 5000);
 

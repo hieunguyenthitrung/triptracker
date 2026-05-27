@@ -365,6 +365,23 @@ public class LocationTrackingService: NSObject {
         startPedometer()
         startActivityMonitor()
         print("✅ TripTracker Background tracking started (GPS always-on + significant changes + visits)")
+
+        // Send one initial ping with current GPS location when app opens
+        // so server knows device position even before a trip starts
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+            guard let self = self else { return }
+            if let loc = self.locationManager.location, loc.horizontalAccuracy <= 50 {
+                let clLoc = loc
+                let safeSpeed = max(0, Float(clLoc.speed))
+                TripTrackerAPIService.shared.sendPing(
+                    location: clLoc,
+                    isMoving: safeSpeed > 0,
+                    speed: safeSpeed,
+                    activityType: "still"
+                )
+                print("📡 TripTracker Initial ping sent on app open — \(clLoc.coordinate.latitude),\(clLoc.coordinate.longitude)")
+            }
+        }
     }
 
     public func startTrip(withInitialLocation initialLocation: CLLocation? = nil) {
