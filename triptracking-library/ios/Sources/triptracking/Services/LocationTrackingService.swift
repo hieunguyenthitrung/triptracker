@@ -1261,6 +1261,7 @@ public class LocationTrackingService: NSObject {
                 speed: 0,
                 bearing:   Float(finalLoc.course >= 0 ? finalLoc.course : 0),
                 timestamp: Int64(Date().timeIntervalSince1970 * 1000),
+                source:    TrackingSource.gps.rawValue  
             )
 
             // Temporarily clear lastPingedLocation so distance gate doesn't block
