@@ -1253,14 +1253,16 @@ public class LocationTrackingService: NSObject {
         // so server knows the exact stop position before trip ends
         if let finalLoc = lastGPSLocation ?? locationManager.location {
             let pt = LocationPoint(
+                tripId:    currentTripId != -1 ? currentTripId : nil,
                 latitude: finalLoc.coordinate.latitude,
                 longitude: finalLoc.coordinate.longitude,
                 altitude: finalLoc.altitude,
+                accuracy:  Float(location.horizontalAccuracy),
                 speed: 0,
                 course: finalLoc.course,
-                accuracy: Float(finalLoc.horizontalAccuracy),
-                timestamp: Date().timeIntervalSince1970
+                timestamp: Int64(Date().timeIntervalSince1970 * 1000),
             )
+
             // Temporarily clear lastPingedLocation so distance gate doesn't block
             lastPingedLocation = nil
             for i in 1...3 {
