@@ -233,7 +233,7 @@ public final class LogcatWriter {
 
     /** Zip all log files. */
     public static File getZippedLogs(Context context) {
-        return getZippedLogs(context, null);
+        return getZippedLogs(context, 3);
     }
 
     private static void cleanupOldLogs(File cacheDir, int retainDays) {

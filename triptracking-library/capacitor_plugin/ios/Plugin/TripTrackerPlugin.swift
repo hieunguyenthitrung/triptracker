@@ -512,7 +512,7 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
                 call.resolve(["shared": false])
                 return
             }
-            shareFiles([zipURL], subject: "TripTracker Logs")
+            self.shareFiles([zipURL], subject: "TripTracker Logs")
             call.resolve(["shared": true])
         }
     }

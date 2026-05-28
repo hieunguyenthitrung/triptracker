@@ -295,8 +295,8 @@ public class LocationTrackingService: NSObject {
                 // FOREGROUND/BACKGROUND + NO TRIP + STILL:
                 // Keep GPS at low-power — don't stop.
                 // CMMotionActivity will upgrade to Best when automotive detected.
-                locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
-                locationManager.distanceFilter  = 100.0
+                locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
+                locationManager.distanceFilter  = 30.0
                 locationManager.startUpdatingLocation()
                 locationManager.startMonitoringSignificantLocationChanges()
                 locationManager.startMonitoringVisits()
@@ -368,20 +368,20 @@ public class LocationTrackingService: NSObject {
 
         // Send one initial ping with current GPS location when app opens
         // so server knows device position even before a trip starts
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
-            guard let self = self else { return }
-            if let loc = self.locationManager.location, loc.horizontalAccuracy <= 50 {
-                let clLoc = loc
-                let safeSpeed = max(0, Float(clLoc.speed))
-                TripTrackerAPIService.shared.sendPing(
-                    location: clLoc,
-                    isMoving: safeSpeed > 0,
-                    speed: safeSpeed,
-                    activityType: "still"
-                )
-                print("📡 TripTracker Initial ping sent on app open — \(clLoc.coordinate.latitude),\(clLoc.coordinate.longitude)")
-            }
-        }
+        // DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+        //     guard let self = self else { return }
+        //     if let loc = self.locationManager.location, loc.horizontalAccuracy <= 50 {
+        //         let clLoc = loc
+        //         let safeSpeed = max(0, Float(clLoc.speed))
+        //         TripTrackerAPIService.shared.sendPing(
+        //             location: clLoc,
+        //             isMoving: safeSpeed > 0,
+        //             speed: safeSpeed,
+        //             activityType: "still"
+        //         )
+        //         print("📡 TripTracker Initial ping sent on app open — \(clLoc.coordinate.latitude),\(clLoc.coordinate.longitude)")
+        //     }
+        // }
     }
 
     public func startTrip(withInitialLocation initialLocation: CLLocation? = nil) {
@@ -479,17 +479,17 @@ public class LocationTrackingService: NSObject {
         // Stop GPS completely for 20s after trip end.
         // Prevents: residual speed → immediate auto-start, and saves battery briefly.
         // After 20s: switch to LOW-POWER GPS for fast next-trip detection.
-        locationManager.stopUpdatingLocation()
-        locationManager.startMonitoringSignificantLocationChanges()
-        locationManager.startMonitoringVisits()
-        lastGPSLocation = nil
-        print("📡 TripTracker GPS STOPPED — 20s cooldown after trip end")
+        // locationManager.stopUpdatingLocation()
+        // locationManager.startMonitoringSignificantLocationChanges()
+        // locationManager.startMonitoringVisits()
+        // lastGPSLocation = nil
+        // print("📡 TripTracker GPS STOPPED — 20s cooldown after trip end")
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 20.0) { [weak self] in
-            guard let self = self, !self.isTracking else { return }
+        // DispatchQueue.main.asyncAfter(deadline: .now() + 20.0) { [weak self] in
+        //     guard let self = self, !self.isTracking else { return }
             self.adaptLocationAccuracy(for: .still)
-            print("📡 TripTracker GPS resumed — cooldown complete, ready for next trip")
-        }
+            // print("📡 TripTracker GPS resumed — cooldown complete, ready for next trip")
+        // }
     }
 
     /// Called on app relaunch when an active trip is found in the DB.
@@ -1095,7 +1095,7 @@ public class LocationTrackingService: NSObject {
             // If trip is active, start auto-end countdown (same as still).
             // User walking/holding device after parking = trip should end.
             if isTracking {
-                startAutoEndTimer()
+                // startAutoEndTimer()
             }
 
         case .still:
@@ -1126,22 +1126,22 @@ public class LocationTrackingService: NSObject {
             //     return
             // }
 
-            consecutiveVehicleSpeedCount += 1
+            // consecutiveVehicleSpeedCount += 1
 
             // Cancel auto-end if already tracking
             cancelAutoEndTimer()
 
             if !isTracking {
-                if consecutiveVehicleSpeedCount >= requiredConsecutiveVehicleFixes {
+                // if consecutiveVehicleSpeedCount >= requiredConsecutiveVehicleFixes {
                     autoStartTrip(reason: "GPS speed \(String(format:"%.1f", speed)) m/s (\(consecutiveVehicleSpeedCount) consecutive fixes)")
-                    consecutiveVehicleSpeedCount = 0
-                } else {
+                    // consecutiveVehicleSpeedCount = 0
+                // } else {
                     print("🚗 TripTracker Vehicle speed \(String(format:"%.1f", speed)) m/s — \(consecutiveVehicleSpeedCount)/\(requiredConsecutiveVehicleFixes) consecutive fixes, waiting...")
-                }
+                // }
             }
         } else {
             // ── Below vehicle threshold ──
-            consecutiveVehicleSpeedCount = 0
+            // consecutiveVehicleSpeedCount = 0
 
             if isTracking && autoEndTimer == nil {
                 // Speed dropped while trip active → start auto-end countdown.
