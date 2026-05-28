@@ -90,8 +90,24 @@ public final class TripTrackerSDK {
     }
 
     public static void initialize(Context context, Config config) {
-        if (initialized) { applyConfig(context, config); return; }
+        if (initialized) {
+            // Re-initialized — only apply if config has real API values
+            boolean hasRealConfig = config.pingURL != null && !config.pingURL.isEmpty()
+                    && config.userId != null && !config.userId.isEmpty();
+            if (hasRealConfig) {
+                applyConfig(context, config);
+            } else {
+                Log.i(TAG, "📡 Re-init skipped — incoming config has empty API values (restored config preserved)");
+            }
+            return;
+        }
         appContext = context.getApplicationContext();
+
+        // FIRST: restore saved API config from SharedPreferences
+        // (in case app was killed + relaunched, Capacitor hasn't loaded yet)
+        restoreAPIConfigFromPrefs(appContext);
+
+        // THEN: only overwrite if incoming config has real values
         applyConfig(appContext, config);
         LogcatWriter.start(appContext);
         LocationDatabase.getInstance(appContext);
@@ -198,8 +214,16 @@ public final class TripTrackerSDK {
     public static void restoreAPIConfigFromPrefs(Context ctx) {
         SharedPreferences prefs = ctx.getSharedPreferences("triptracker_settings", Context.MODE_PRIVATE);
         String pingURL = prefs.getString("api_pingURL", "");
-        String endURL = prefs.getString("api_endURL", "");
         String userId = prefs.getString("api_userId", "");
+
+        // Guard: if SharedPreferences has no saved config, skip restore
+        if (pingURL.isEmpty() || userId.isEmpty()) {
+            Log.w(TAG, "⚠️ restoreAPIConfig — SharedPreferences empty! pingURL='" + pingURL + "' userId='" + userId + "' — waiting for Capacitor to provide config");
+            TripTrackerAPIService.getInstance().setContext(ctx);
+            return;
+        }
+
+        String endURL = prefs.getString("api_endURL", "");
         String vehicleId = prefs.getString("api_vehicleId", "");
         String osInfo = prefs.getString("api_osInfo", "");
         String routeId = prefs.getString("api_routeId", "");
