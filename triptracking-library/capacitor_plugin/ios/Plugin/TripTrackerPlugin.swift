@@ -490,30 +490,23 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func sendTodayLog(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
-            guard let todayFile = LogManager.shared.getTodayLogFile() else {
+            guard let zipURL = LogManager.shared.getZippedLogs(days: 1) else {
                 call.reject("No log file for today")
                 return
             }
-            self.shareFiles([todayFile], subject: "TripTracker Today's Log")
+            self.shareFiles([zipURL], subject: "TripTracker Today's Log")
             call.resolve(["shared": true])
         }
     }
 
     @objc func sendAllLogs(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
-            // let files = LogManager.shared.getAllLogFiles()
-            // guard !files.isEmpty else {
-            //     call.reject("No log files found")
-            //     return
-            // }
-            // self.shareFiles(files, subject: "TripTracker All Logs")
-            // call.resolve(["shared": true, "count": files.count])
             guard let zipURL = LogManager.shared.getZippedLogs() else {
-                call.resolve(["shared": false])
+                call.reject("No log files found or zip failed")
                 return
             }
-            self.shareFiles([zipURL], subject: "TripTracker Logs")
-            call.resolve(["shared": true])
+            self.shareFiles([zipURL], subject: "TripTracker All Logs")
+            call.resolve(["shared": true, "count": LogManager.shared.getAllLogFiles().count])
         }
     }
 
@@ -521,35 +514,12 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func sendRecentLogs(_ call: CAPPluginCall) {
         let days = call.getInt("days") ?? 3
         DispatchQueue.main.async {
-            let allFiles = LogManager.shared.getAllLogFiles()  // sorted newest first
-            guard !allFiles.isEmpty else {
-                call.reject("No log files found")
+            guard let zipURL = LogManager.shared.getZippedLogs(days: days) else {
+                call.reject("No log files found or zip failed")
                 return
             }
-
-            // Get date strings for the last N days
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyy-MM-dd"
-            var recentDates: Set<String> = []
-            for i in 0..<days {
-                let date = Calendar.current.date(byAdding: .day, value: -i, to: Date())!
-                recentDates.insert(formatter.string(from: date))
-            }
-
-            // Filter files matching recent dates
-            let recentFiles = allFiles.filter { file in
-                let name = file.lastPathComponent
-                return recentDates.contains(where: { name.contains($0) })
-            }
-
-            guard !recentFiles.isEmpty else {
-                call.reject("No log files for the last \(days) days")
-                return
-            }
-
-            let dateRange = "\(formatter.string(from: Calendar.current.date(byAdding: .day, value: -(days-1), to: Date())!)) to \(formatter.string(from: Date()))"
-            self.shareFiles(recentFiles, subject: "TripTracker Logs — \(dateRange)")
-            call.resolve(["shared": true, "count": recentFiles.count, "days": days])
+            self.shareFiles([zipURL], subject: "TripTracker Logs (last \(days) days)")
+            call.resolve(["shared": true, "count": days, "days": days])
         }
     }
 
