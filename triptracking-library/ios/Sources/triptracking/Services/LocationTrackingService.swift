@@ -1290,7 +1290,7 @@ public class LocationTrackingService: NSObject {
             // Temporarily clear lastPingedLocation so distance gate doesn't block
             lastPingedLocation = nil
             sendAPIPing(location: pt, source: .gps, speed: 0)
-            print("📡 TripTracker Final ping \(i)/3 before trip end — \(pt.latitude),\(pt.longitude)")
+            print("📡 TripTracker Final ping before trip end — \(pt.latitude),\(pt.longitude)")
         }
 
         stopTrip()
