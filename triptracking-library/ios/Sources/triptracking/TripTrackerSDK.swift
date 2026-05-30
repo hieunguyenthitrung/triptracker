@@ -176,14 +176,18 @@ public final class TripTrackerSDK {
         svc.saveDistanceVehicleM = config.saveDistanceMeters
         svc.saveIntervalMs = Int64(config.saveIntervalMinutes * 60 * 1000)
         svc.autoEndStillnessSecs = config.autoStopTimeoutMinutes * 60.0
+        print("🔧 TripTracker config applied VoiceFeedbackManager")
         VoiceFeedbackManager.shared.isEnabled = config.voiceFeedbackEnabled
 
         if config.webMonitorEnabled { startWebMonitor() } else { stopWebMonitor() }
 
+        print("🔧 TripTracker config applied vehicleId=\(config.vehicleId) routeId=\(config.routeId)")
+        print("🔧 TripTracker config applied pingURL=\(config.pingURL) userId=\(config.userId)")
         // API Service — only overwrite if incoming config has real values.
         // When Capacitor hasn't loaded yet, config has empty pingURL/userId.
         // We must NOT overwrite the restored config from UserDefaults.
         if !config.pingURL.isEmpty && !config.userId.isEmpty {
+            print("🔧 TripTracker config applied to TripTrackerAPIService")
             var apiConfig = TripTrackerAPIConfig()
             apiConfig.pingURL = config.pingURL
             apiConfig.endURL = config.endURL
