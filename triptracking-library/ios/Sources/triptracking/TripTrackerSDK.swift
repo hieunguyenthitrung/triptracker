@@ -209,9 +209,9 @@ public final class TripTrackerSDK {
             ud.set(config.authorizationKey, forKey: "tt_api_authorizationKey")
             ud.set(config.apiAuthKey, forKey: "tt_api_apiAuthKey")
             ud.set(config.apiAuthToken, forKey: "tt_api_apiAuthToken")
-            print("📡 API config saved to UserDefaults — userId=\(config.userId)")
+            print("📡 TripTracker API config saved to UserDefaults — userId=\(config.userId)")
         } else {
-            print("📡 API config NOT overwritten — incoming config has empty pingURL/userId (restored config preserved)")
+            print("📡 TripTracker API config NOT overwritten — incoming config has empty pingURL/userId (restored config preserved)")
         }
 
         if config.geofenceEnabled { GeofenceManager.shared.startMonitoringAll() }
