@@ -1649,7 +1649,6 @@ extension LocationTrackingService: CLLocationManagerDelegate {
             // Permission just granted (possibly from Ionic settings flow).
             // Must fully restart GPS — previous startUpdatingLocation() calls
             // were ignored by iOS because permission wasn't granted yet.
-            hasReceivedFirstGPSFix = false
             locationManager.desiredAccuracy = kCLLocationAccuracyBest
             locationManager.distanceFilter = kCLDistanceFilterNone
             locationManager.allowsBackgroundLocationUpdates = true
