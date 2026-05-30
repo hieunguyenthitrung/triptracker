@@ -91,8 +91,8 @@ public final class TripTrackerSDK {
                 applyConfig(config)
             } else {
                 print("📡 TripTracker Re-init skipped — incoming config has empty API values (restored config preserved)")
+                return
             }
-            return
         }
         // Restore API config from UserDefaults (in case app was killed + relaunched)
         restoreAPIConfigFromDefaults()
