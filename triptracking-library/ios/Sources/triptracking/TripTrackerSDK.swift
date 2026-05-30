@@ -93,13 +93,14 @@ public final class TripTrackerSDK {
             restoreAPIConfigFromDefaults()
             print("📡 TripTracker Initializing — applying config")
             if(!config.userId.isEmpty) {
-            applyConfig(config)
-            print("📡 TripTracker Initializing with provided config — pingURL: \(config.pingURL) userId: \(config.userId)")
-        } else {
-            print("📡 TripTracker Initializing — incoming config has empty userId, using restored config from UserDefaults")
+                applyConfig(config)
+                print("📡 TripTracker Initializing with provided config — pingURL: \(config.pingURL) userId: \(config.userId)")
+            } else {
+                print("📡 TripTracker Initializing — incoming config has empty userId, using restored config from UserDefaults")
+            }
         }
-        
         LogManager.shared.start()
+
 
         let isLocationRelaunch = launchOptions?[.location] != nil
         DatabaseManager.shared.initializeDatabase()
