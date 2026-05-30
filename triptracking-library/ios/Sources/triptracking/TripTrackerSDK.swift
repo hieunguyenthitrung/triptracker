@@ -85,15 +85,6 @@ public final class TripTrackerSDK {
         webServer?.stop()
         webServer = nil
 
-        guard !_initialized else {
-            // Re-initialized — only apply if config has real API values
-            if !config.userId.isEmpty && !config.pingURL.isEmpty {
-                applyConfig(config)
-            } else {
-                print("📡 TripTracker Re-init skipped — incoming config has empty API values (restored config preserved)")
-                return
-            }
-        }
         // Restore API config from UserDefaults (in case app was killed + relaunched)
         restoreAPIConfigFromDefaults()
 
