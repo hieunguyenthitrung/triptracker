@@ -266,6 +266,14 @@ public class LocationTrackingService: NSObject {
             return
         }
 
+        // Don't downgrade GPS until we've received at least one fix.
+        // First install or after terminated: GPS needs to warm up and deliver a fix
+        // before we can assess motion state. Only upgrading to .automotive is allowed.
+        if !hasReceivedFirstGPSFix && state != .automotive {
+            print("📡 TripTracker adaptLocationAccuracy(\(state.rawValue)) SKIPPED — waiting for first GPS fix")
+            return
+        }
+
         // ⚠️ CRITICAL: NEVER call stopUpdatingLocation().
         // GPS must always be running (even at low accuracy) so iOS keeps the
         // app alive in background. Stopping GPS = iOS kills the app.
@@ -293,14 +301,16 @@ public class LocationTrackingService: NSObject {
                 print("📡 TripTracker GPS STOPPED — still/no trip/terminated (significant changes + visits will relaunch)")
             } else {
                 // FOREGROUND/BACKGROUND + NO TRIP + STILL:
-                // Keep GPS at low-power — don't stop.
-                // CMMotionActivity will upgrade to Best when automotive detected.
+                // Keep GPS alive — MUST keep receiving callbacks.
+                // CMMotionActivity may fail to detect movement on some devices.
+                // Using kCLDistanceFilterNone ensures didUpdateLocations always fires
+                // so evaluateAutoTripFromGPS can detect vehicle speed.
                 locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
-                locationManager.distanceFilter  = 10
+                locationManager.distanceFilter  = kCLDistanceFilterNone
                 locationManager.startUpdatingLocation()
                 locationManager.startMonitoringSignificantLocationChanges()
                 locationManager.startMonitoringVisits()
-                locationManager.showsBackgroundLocationIndicator   = false
+                locationManager.showsBackgroundLocationIndicator = false
                 print("📡 TripTracker GPS LOW-POWER — still/no trip (ready for next trip)")
 
                 // Start still timeout — if device stays still for 5 min, stop GPS completely
@@ -354,12 +364,26 @@ public class LocationTrackingService: NSObject {
         print("✅ TripTracker Terminal tracking started (GPS always-on + significant changes + visits)")
     }
 
+    private var isBackgroundTrackingStarted = false
+    /// Set to true after first GPS fix is received. Until then, GPS stays at Best accuracy.
+    /// Reset on every startBackgroundTracking call (app launch / relaunch).
+    private var hasReceivedFirstGPSFix = false
+
     public func startBackgroundTracking() {
-        // Start GPS — NEVER stops (keeps app alive in background)
+        // Allow re-calling on app relaunch from terminated state
+        if isBackgroundTrackingStarted {
+            // Re-entry: just ensure GPS is running, don't re-register everything
+            locationManager.startUpdatingLocation()
+            print("⚠️ TripTracker startBackgroundTracking re-entry — GPS ensured")
+            return
+        }
+        isBackgroundTrackingStarted = true
+        hasReceivedFirstGPSFix = false
+        // Start GPS at BEST accuracy — need first fix before downgrading
         locationManager.allowsBackgroundLocationUpdates = true
         locationManager.pausesLocationUpdatesAutomatically = false
-        locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
-        locationManager.distanceFilter  = 10
+        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        locationManager.distanceFilter = kCLDistanceFilterNone
         locationManager.startUpdatingLocation()
         locationManager.startMonitoringSignificantLocationChanges()
         locationManager.startMonitoringVisits()
@@ -1470,6 +1494,16 @@ extension LocationTrackingService: CLLocationManagerDelegate {
         if lastSensorLocation == nil { lastSensorLocation = location }
 
         print("📍 TripTracker GPS fix — acc:\(Int(location.horizontalAccuracy))m  spd:\(String(format:"%.1f", speed)) m/s  → \(source.rawValue)")
+
+        // First GPS fix received — allow adaptLocationAccuracy to downgrade
+        if !hasReceivedFirstGPSFix {
+            hasReceivedFirstGPSFix = true
+            print("📡 TripTracker First GPS fix received — adaptLocationAccuracy now active")
+            // If not tracking and no vehicle speed, downgrade to low-power now
+            if !isTracking && speed < vehicleThreshold {
+                adaptLocationAccuracy(for: lastMotionState)
+            }
+        }
 
         // ── Auto-trip: evaluate start/end based on GPS speed ──
         evaluateAutoTripFromGPS(speed: speed)
