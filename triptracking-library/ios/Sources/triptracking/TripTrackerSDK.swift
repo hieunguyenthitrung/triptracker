@@ -107,7 +107,7 @@ public final class TripTrackerSDK {
         DatabaseManager.shared.initializeDatabase()
 
         // ALWAYS start the service — it requests permission internally
-        const perm = await TripTracker.hasLocationPermission();
+        let perm = await self.hasLocationPermission();
         if (perm.granted) {
             LocationTrackingService.shared.startBackgroundTracking()
             console.log('✅ TripTracker started location tracking');
