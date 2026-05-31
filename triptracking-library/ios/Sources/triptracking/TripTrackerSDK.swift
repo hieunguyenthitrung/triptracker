@@ -114,8 +114,6 @@ public final class TripTrackerSDK {
     }
 
     public static func initializeTripTrackerLocation(){
-        self.startLocationTracking()
-
         if let info = DatabaseManager.shared.getActiveTripInfo() {
             let wasAutoEnded = LocationTrackingService.shared.checkAndAutoEndStaleTrip()
             if !wasAutoEnded { LocationTrackingService.shared.resumeTrip(id: info.id, startTimeMs: info.startTimeMs) }
@@ -290,6 +288,7 @@ public final class TripTrackerSDK {
         svc.hasReceivedFirstGPSFix = false
         svc.startBackgroundTracking()
         print("✅ TripTracker startLocationTracking — GPS restarted after permission granted")
+        self.initializeTripTrackerLocation()
     }
 
     public static func willEnterForeground() {
