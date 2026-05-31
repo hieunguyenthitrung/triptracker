@@ -109,11 +109,6 @@ public final class TripTrackerSDK {
         // ALWAYS start the service — it requests permission internally
         self.stopLocationTracking()  // ensure any existing tracking is stopped before starting fresh
 
-        _initialized = true
-        print("✅ TripTracker TripTrackerSDK initialized")
-    }
-
-    public static func initializeTripTrackerLocation(){
         if let info = DatabaseManager.shared.getActiveTripInfo() {
             let wasAutoEnded = LocationTrackingService.shared.checkAndAutoEndStaleTrip()
             if !wasAutoEnded { LocationTrackingService.shared.resumeTrip(id: info.id, startTimeMs: info.startTimeMs) }
@@ -136,6 +131,8 @@ public final class TripTrackerSDK {
         } else {
             print("✅ TripTracker Location permission already granted — tracking active")
         }
+        _initialized = true
+        print("✅ TripTracker TripTrackerSDK initialized")
     }
 
     // ── Permission ──
@@ -264,8 +261,6 @@ public final class TripTrackerSDK {
         svc.locationManager.stopUpdatingLocation()
         svc.locationManager.stopMonitoringSignificantLocationChanges()
         svc.locationManager.stopMonitoringVisits()
-        svc.isBackgroundTrackingStarted = false
-        svc.hasReceivedFirstGPSFix = false
         print("🛑 TripTracker stopLocationTracking — all GPS updates stopped")
     }
 
@@ -284,8 +279,6 @@ public final class TripTrackerSDK {
 
         // Force clean restart: stop → reset → start
         svc.locationManager.stopUpdatingLocation()
-        svc.isBackgroundTrackingStarted = false
-        svc.hasReceivedFirstGPSFix = false
         svc.startBackgroundTracking()
         print("✅ TripTracker startLocationTracking — GPS restarted after permission granted")
         self.initializeTripTrackerLocation()
