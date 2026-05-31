@@ -134,8 +134,9 @@ public final class TripTrackerSDK {
         _initialized = true
         print("✅ TripTracker TripTrackerSDK initialized")
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 20.0) { [weak self] in
-            self?.startLocationTracking()
+        // Auto-start GPS after 10s — gives Ionic time to set config + permission
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) {
+            TripTrackerSDK.startLocationTracking()
         }
     }
 
