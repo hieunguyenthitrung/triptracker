@@ -110,7 +110,7 @@ public final class TripTrackerSDK {
         let perm = await self.hasLocationPermission();
         if (perm.granted) {
             LocationTrackingService.shared.startBackgroundTracking()
-            console.log('✅ TripTracker started location tracking');
+            print("✅ TripTracker started location tracking")
         }
         
 
