@@ -134,9 +134,10 @@ public final class TripTrackerSDK {
         _initialized = true
         print("✅ TripTracker TripTrackerSDK initialized")
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) { [weak self] in
-                    self.startLocationTracking()
-                }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 20.0) { [weak self] in
+            guard let self = self, !self.isTracking else { return }
+            self.startLocationTracking()
+        }
     }
 
     // ── Permission ──
