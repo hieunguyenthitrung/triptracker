@@ -281,7 +281,6 @@ public final class TripTrackerSDK {
         svc.locationManager.stopUpdatingLocation()
         svc.startBackgroundTracking()
         print("✅ TripTracker startLocationTracking — GPS restarted after permission granted")
-        self.initializeTripTrackerLocation()
     }
 
     public static func willEnterForeground() {
