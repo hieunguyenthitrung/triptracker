@@ -130,7 +130,7 @@ public final class TripTrackerSDK {
             permissionDelegate = LocationPermissionDelegate()
         } else {
             print("✅ TripTracker Location permission already granted — starting GPS")
-            LocationTrackingService.shared.startBackgroundTracking()
+            TripTrackerSDK.startLocationTracking()
         }
         _initialized = true
         print("✅ TripTracker TripTrackerSDK initialized")
@@ -139,9 +139,9 @@ public final class TripTrackerSDK {
         // Covers the case where Ionic grants permission after initialize
         for delay in [5.0, 15.0, 30.0] {
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                if TripTrackerSDK.hasLocationPermission {
+                if TripTrackerSDK.hasLocationPermission{
                     print("📡 TripTracker Permission check at \(Int(delay))s — granted but no GPS fix → starting GPS")
-                    LocationTrackingService.shared.startBackgroundTracking()
+                    TripTrackerSDK.startLocationTracking()
                 }
             }
         }
@@ -280,19 +280,27 @@ public final class TripTrackerSDK {
     /// Call this from Ionic after confirming permission is granted.
     /// Forces a clean GPS restart to ensure callbacks are delivered.
     public static func startLocationTracking() {
-        let svc = LocationTrackingService.shared
+        DispatchQueue.main.async {
+            let svc = LocationTrackingService.shared
 
-        // Verify permission
-        let status = svc.locationManager.authorizationStatus
-        guard status == .authorizedAlways || status == .authorizedWhenInUse else {
-            print("❌ TripTracker startLocationTracking — permission not granted (status: \(status.rawValue))")
-            return
+            // Verify permission
+            let status = svc.locationManager.authorizationStatus
+            guard status == .authorizedAlways || status == .authorizedWhenInUse else {
+                print("❌ TripTracker startLocationTracking — permission not granted (status: \(status.rawValue))")
+                return
+            }
+
+            // Force complete reset
+            svc.locationManager.stopUpdatingLocation()
+            svc.locationManager.stopMonitoringSignificantLocationChanges()
+            svc.locationManager.stopMonitoringVisits()
+
+            // Re-set delegate (in case it was lost or set from wrong thread)
+            svc.locationManager.delegate = svc
+
+            svc.startBackgroundTracking()
+            print("✅ TripTracker startLocationTracking — GPS force restarted on main thread")
         }
-
-        // Force clean restart: stop → reset → start
-        svc.locationManager.stopUpdatingLocation()
-        svc.startBackgroundTracking()
-        print("✅ TripTracker startLocationTracking — GPS restarted after permission granted")
     }
 
     public static func willEnterForeground() {
