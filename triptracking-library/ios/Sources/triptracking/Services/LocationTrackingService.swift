@@ -218,6 +218,25 @@ public class LocationTrackingService: NSObject {
         loadPersistedSettings()
         setupLocationManager()
         setupMotionManager()
+
+        // When app returns from Settings → check if permission changed → restart GPS
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appWillEnterForeground),
+            name: UIApplication.willEnterForegroundNotification,
+            object: nil
+        )
+    }
+
+    /// Called when app returns to foreground (e.g. after user changes permission in Settings)
+    @objc private func appWillEnterForeground() {
+        let status = locationManager.authorizationStatus
+        if (status == .authorizedAlways || status == .authorizedWhenInUse) && !hasReceivedFirstGPSFix {
+            print("📡 TripTracker appWillEnterForeground — permission granted but no GPS fix yet → restarting")
+            isBackgroundTrackingStarted = false
+            locationManager.stopUpdatingLocation()
+            startBackgroundTracking()
+        }
     }
 
     private func loadPersistedSettings() {
