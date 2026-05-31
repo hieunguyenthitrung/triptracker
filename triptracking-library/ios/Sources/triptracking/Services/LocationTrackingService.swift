@@ -1649,8 +1649,6 @@ extension LocationTrackingService: CLLocationManagerDelegate {
             // Permission just granted (possibly from Ionic requestLocationAuthorization).
             // Must force stop → restart to clear stale CLLocationManager state.
             // Previous startUpdatingLocation() calls were ignored when permission wasn't granted.
-            hasReceivedFirstGPSFix = false
-            isBackgroundTrackingStarted = false
             locationManager.stopUpdatingLocation()
             locationManager.stopMonitoringSignificantLocationChanges()
             locationManager.stopMonitoringVisits()
