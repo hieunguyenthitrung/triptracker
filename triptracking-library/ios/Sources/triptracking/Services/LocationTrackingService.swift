@@ -207,7 +207,7 @@ public class LocationTrackingService: NSObject {
 
     // MARK: - Motion state
 
-    enum MotionState: String {
+    public enum MotionState: String {
         case unknown    = "Unknown"
         case still      = "Still"       // device on table / stationary
         case walking    = "Walking"
