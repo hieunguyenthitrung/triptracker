@@ -31,4 +31,5 @@ CAP_PLUGIN(TripTrackerPlugin, "TripTracker",
     CAP_PLUGIN_METHOD(sendTodayLog, CAPPluginReturnPromise);
     CAP_PLUGIN_METHOD(sendAllLogs, CAPPluginReturnPromise);
     CAP_PLUGIN_METHOD(sendRecentLogs, CAPPluginReturnPromise);
+    CAP_PLUGIN_METHOD(writeLog, CAPPluginReturnPromise);
 )

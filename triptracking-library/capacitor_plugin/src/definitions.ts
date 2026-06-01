@@ -137,6 +137,9 @@ export interface TripTrackerPlugin {
    * Default: 3 days.
    */
   sendRecentLogs(options?: { days?: number }): Promise<{ shared: boolean; count?: number; days?: number }>;
+
+  /** Write a message to TripTracker native log file */
+  writeLog(options: { message: string }): Promise<void>;
 }
 
 // ── Types ──

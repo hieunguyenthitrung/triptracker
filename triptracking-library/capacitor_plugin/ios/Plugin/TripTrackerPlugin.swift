@@ -533,4 +533,10 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
         }
         self.bridge?.viewController?.present(activityVC, animated: true)
     }
+
+    @objc func writeLog(_ call: CAPPluginCall) {
+        let message = call.getString("message") ?? ""
+        LogManager.shared.log("⚡️ [Ionic] \(message)")
+        call.resolve()
+    }
 }
