@@ -127,7 +127,7 @@ public class LocationTrackingService: NSObject {
     /// Consecutive GPS fixes at vehicle speed. Must reach threshold before auto-start.
     private var consecutiveVehicleSpeedCount: Int = 0
     /// Number of consecutive vehicle-speed readings required to auto-start a trip.
-    private let requiredConsecutiveVehicleFixes: Int = 2
+    private let requiredConsecutiveVehicleFixes: Int = 1
 
     // Speed thresholds — internal so SettingsViewController can read/write
     public var vehicleThreshold:    Float = 3.0 {  // m/s — at or above → GPS saves
@@ -1147,22 +1147,22 @@ public class LocationTrackingService: NSObject {
             //     return
             // }
 
-            consecutiveVehicleSpeedCount += 1
+            // consecutiveVehicleSpeedCount += 1
 
             // Cancel auto-end if already tracking
             cancelAutoEndTimer()
 
             if !isTracking {
-                if consecutiveVehicleSpeedCount >= requiredConsecutiveVehicleFixes {
+                // if consecutiveVehicleSpeedCount >= requiredConsecutiveVehicleFixes {
                     autoStartTrip(reason: "GPS speed \(String(format:"%.1f", speed)) m/s (\(consecutiveVehicleSpeedCount) consecutive fixes)")
-                    consecutiveVehicleSpeedCount = 0
-                } else {
-                    print("🚗 TripTracker Vehicle speed \(String(format:"%.1f", speed)) m/s — \(consecutiveVehicleSpeedCount)/\(requiredConsecutiveVehicleFixes) consecutive fixes, waiting...")
-                }
+                    // consecutiveVehicleSpeedCount = 0
+                // } else {
+                //     print("🚗 TripTracker Vehicle speed \(String(format:"%.1f", speed)) m/s — \(consecutiveVehicleSpeedCount)/\(requiredConsecutiveVehicleFixes) consecutive fixes, waiting...")
+                // }
             }
         } else {
             // ── Below vehicle threshold ──
-            consecutiveVehicleSpeedCount = 0
+            // consecutiveVehicleSpeedCount = 0
 
             if isTracking && autoEndTimer == nil {
                 // Speed dropped while trip active → start auto-end countdown.
