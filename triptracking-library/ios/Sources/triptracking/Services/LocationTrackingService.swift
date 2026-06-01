@@ -394,8 +394,8 @@ public class LocationTrackingService: NSObject {
         // Start GPS at BEST accuracy — need first fix before downgrading
         locationManager.allowsBackgroundLocationUpdates = true
         locationManager.pausesLocationUpdatesAutomatically = false
-        locationManager.desiredAccuracy = kCLLocationAccuracyBest
-        locationManager.distanceFilter = kCLDistanceFilterNone
+        // locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        // locationManager.distanceFilter = kCLDistanceFilterNone
         locationManager.startUpdatingLocation()
         locationManager.startMonitoringSignificantLocationChanges()
         locationManager.startMonitoringVisits()
