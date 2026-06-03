@@ -898,7 +898,7 @@ public class LocationTrackingService: NSObject {
               sensorEstimatedSpeed > 0.1,    // pedometer confirms walking
               let base = lastKnownLocation else { return }
 
-        let now = Date()
+        let now: Date = Date()
         let dt  = now.timeIntervalSince(lastSensorUpdateTime)
         guard dt >= 1.0 else { return }   // apply at most every 1 s
         lastSensorUpdateTime = now
@@ -1454,7 +1454,7 @@ extension LocationTrackingService: CLLocationManagerDelegate {
         //   3. Computed speed is physically possible (≤ 50 m/s = 180 km/h)
         //   4. Time interval is reasonable (≥ 1s) — sub-second fixes have unreliable positions
         var rawSpeed = Float(max(0, location.speed))
-        let now = Date()
+        let now: Date = Date()
         if rawSpeed <= 0, let prev = lastGPSLocation {
             let dist = location.distance(from: prev)
             let dt   = now.timeIntervalSince(prev.timestamp)
@@ -1495,10 +1495,10 @@ extension LocationTrackingService: CLLocationManagerDelegate {
 
         // Periodically try to flush pending API queue from GPS callback (every 30s).
         // GPS callback fires even when app is background — NWPathMonitor may not.
-        let now = Date()
+        let nowAPI: Date = Date()
         if !TripTrackerAPIService.shared.pendingQueueIsEmpty 
-            && now.timeIntervalSince(lastFlushAttempt) > 30 {
-            lastFlushAttempt = now
+            && nowAPI.timeIntervalSince(lastFlushAttempt) > 30 {
+            lastFlushAttempt = nowAPI
             TripTrackerAPIService.shared.flushQueue()
         }
 
