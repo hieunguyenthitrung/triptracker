@@ -77,6 +77,8 @@ public class LocationTrackingService: NSObject {
     public var isBackgroundTrackingStarted = false
     /// Set to true after first GPS fix. Until then, GPS stays at Best accuracy.
     public var hasReceivedFirstGPSFix = false
+    /// Rate-limit flush attempts from GPS callback (every 30s)
+    private var lastFlushAttempt = Date.distantPast
 
     // MARK: - Location state
     private var lastGPSLocation:      CLLocation?   // latest raw GPS fix
@@ -500,20 +502,12 @@ public class LocationTrackingService: NSObject {
         delegate?.didChangeTrackingState(isTracking: false)
         print("✅ TripTracker Trip stopped — dist: \(totalDistance)m, dur: \(duration)s")
 
-        // Stop GPS completely for 20s after trip end.
-        // Prevents: residual speed → immediate auto-start, and saves battery briefly.
-        // After 20s: switch to LOW-POWER GPS for fast next-trip detection.
-        // locationManager.stopUpdatingLocation()
-        // locationManager.startMonitoringSignificantLocationChanges()
-        // locationManager.startMonitoringVisits()
-        // lastGPSLocation = nil
-        // print("📡 TripTracker GPS STOPPED — 20s cooldown after trip end")
+        // Flush any pending API pings NOW — before GPS downgrades.
+        // When GPS downgrades to low-power, iOS may suspend the app,
+        // and NWPathMonitor callbacks won't fire until app reopens.
+        TripTrackerAPIService.shared.flushQueue()
 
-        // DispatchQueue.main.asyncAfter(deadline: .now() + 20.0) { [weak self] in
-        //     guard let self = self, !self.isTracking else { return }
-            self.adaptLocationAccuracy(for: .still)
-            // print("📡 TripTracker GPS resumed — cooldown complete, ready for next trip")
-        // }
+        self.adaptLocationAccuracy(for: .still)
     }
 
     /// Called on app relaunch when an active trip is found in the DB.
@@ -1499,10 +1493,12 @@ extension LocationTrackingService: CLLocationManagerDelegate {
 
         print("📍 TripTracker GPS fix — acc:\(Int(location.horizontalAccuracy))m  spd:\(String(format:"%.1f", speed)) m/s  → \(source.rawValue)")
 
-        // Flush pending API queue on GPS fix — this is guaranteed to fire
-        // even when app is in background (GPS callback wakes app).
-        // NWPathMonitor callbacks may not fire if iOS suspended the queue.
-        if !TripTrackerAPIService.shared.pendingQueueIsEmpty {
+        // Periodically try to flush pending API queue from GPS callback (every 30s).
+        // GPS callback fires even when app is background — NWPathMonitor may not.
+        let now = Date()
+        if !TripTrackerAPIService.shared.pendingQueueIsEmpty 
+            && now.timeIntervalSince(lastFlushAttempt) > 30 {
+            lastFlushAttempt = now
             TripTrackerAPIService.shared.flushQueue()
         }
 
