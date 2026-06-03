@@ -114,6 +114,9 @@ public final class TripTrackerAPIService {
 
     /// Flush all pending requests. Called when network becomes available.
     /// Flush all pending requests. Called when network becomes available.
+    /// Check if there are pending pings to send
+    public var pendingQueueIsEmpty: Bool { pendingQueue.isEmpty }
+
     public func flushQueue() {
         guard !isFlushing else { return }
         queueLock.lock()
@@ -210,14 +213,16 @@ public final class TripTrackerAPIService {
             monitor.pathUpdateHandler = { [weak self] path in
                 if path.status == .satisfied && (self?.pendingQueue.isEmpty == false) {
                     print("📡  TripTracker API network restored — will flush in 3s")
-                    DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 3.0) { [weak self] in
+                    // Use main queue — background utility queues get suspended by iOS
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
                         guard self?.pendingQueue.isEmpty == false else { return }
                         print("📡  TripTracker API flushing pending queue")
                         self?.flushQueue()
                     }
                 }
             }
-            monitor.start(queue: DispatchQueue.global(qos: .utility))
+            // Run on main queue so callbacks fire when GPS wakes app in background
+            monitor.start(queue: DispatchQueue.main)
             networkMonitor = monitor
         }
     }

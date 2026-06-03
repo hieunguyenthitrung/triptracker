@@ -142,7 +142,7 @@ public class TripTrackerCapPlugin extends Plugin {
     @PluginMethod
     public void writeLog(PluginCall call) {
         String message = call.getString("message", "");
-        android.util.Log.i("TripTracker", "⚡️ [Ionic] " + message);
+        android.util.Log.i("⚡️ [Ionic] ", message);
         call.resolve();
     }
 

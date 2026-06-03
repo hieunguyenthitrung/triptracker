@@ -327,7 +327,9 @@ public class LocationTrackingService: NSObject {
                 locationManager.startMonitoringSignificantLocationChanges()
                 locationManager.startMonitoringVisits()
                 locationManager.showsBackgroundLocationIndicator = false
-                print("📡 TripTracker GPS LOW-POWER — still/no trip (ready for next trip)")
+                // Flush pending pings NOW — iOS may suspend app soon at low GPS rate
+                TripTrackerAPIService.shared.flushQueue()
+                print("📡 TripTracker GPS LOW-POWER — still/no trip (NearestTenMeters + 30m filter)")
 
                 // Start still timeout — if device stays still for 5 min, stop GPS completely
                 // to save battery overnight. CMMotionActivity will restart GPS when movement detected.
@@ -875,8 +877,10 @@ public class LocationTrackingService: NSObject {
         if isTracking && currentTripId != -1 {
             DatabaseManager.shared.saveLocation(tripId: currentTripId, location: pt)
         }
-        // API: ping on EVERY save (trip AND no trip)
-        sendAPIPing(location: pt, source: source, speed: speed)
+        // Don't send API ping from motion change during active trip — stale sensor location
+        if !isTracking {
+            sendAPIPing(location: pt, source: source, speed: speed)
+        }
         print("📍 TripTracker onMotionStateChanged — speed: \(String(format:"%.1f", pt.speed)) m/s")
         delegate?.didUpdateLocation(pt, source: source, totalDistance: totalDistance)
 
@@ -1078,8 +1082,12 @@ public class LocationTrackingService: NSObject {
         if isTracking && currentTripId != -1 {
             DatabaseManager.shared.saveLocation(tripId: currentTripId, location: pt)
         }
-        // API: ping on EVERY save (trip AND no trip)
-        sendAPIPing(location: pt, source: source, speed: speed)
+        // Don't send API ping from periodicSaveTick during active trip.
+        // Only didUpdateLocations should send pings (with fresh GPS location).
+        // periodicSaveTick uses sensor/cached location which can be stale.
+        if !isTracking {
+            sendAPIPing(location: pt, source: source, speed: speed)
+        }
         print("📍 TripTracker periodicSaveTick — speed: \(String(format:"%.1f", pt.speed)) m/s")
         delegate?.didUpdateLocation(pt, source: source, totalDistance: totalDistance)
 
@@ -1490,6 +1498,13 @@ extension LocationTrackingService: CLLocationManagerDelegate {
         if lastSensorLocation == nil { lastSensorLocation = location }
 
         print("📍 TripTracker GPS fix — acc:\(Int(location.horizontalAccuracy))m  spd:\(String(format:"%.1f", speed)) m/s  → \(source.rawValue)")
+
+        // Flush pending API queue on GPS fix — this is guaranteed to fire
+        // even when app is in background (GPS callback wakes app).
+        // NWPathMonitor callbacks may not fire if iOS suspended the queue.
+        if !TripTrackerAPIService.shared.pendingQueueIsEmpty {
+            TripTrackerAPIService.shared.flushQueue()
+        }
 
         // First GPS fix — allow adaptLocationAccuracy to downgrade
         if !hasReceivedFirstGPSFix {
