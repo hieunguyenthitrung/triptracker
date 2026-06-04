@@ -64,6 +64,27 @@ public class LocationTrackingService extends Service implements
     private static final String TAG = "LocationTrackingService";
     private static LocationTrackingService instance;
     public static LocationTrackingService getInstance() { return instance; }
+    public boolean isTracking() { return isTracking; }
+
+    /** End trip immediately — called from Capacitor plugin or external code (e.g. BLE disconnect) */
+    public void forceEndTrip() {
+        if (!isTracking) return;
+        Log.d(TAG, "🛑 forceEndTrip called — ending trip #" + currentTripId);
+
+        // Send 3 final pings at speed=0
+        Location finalLoc = getCurrentLocation();
+        if (finalLoc != null) {
+            for (int i = 1; i <= 3; i++) {
+                TripTrackerAPIService.getInstance().sendPing(
+                        finalLoc, false, 0f, "still", null);
+                Log.d(TAG, "📡 Final ping " + i + "/3 before forced trip end");
+            }
+        }
+
+        stopTracking();
+        TripTrackerAPIService.getInstance().flushQueue();
+        Log.d(TAG, "🛑 Trip force-ended");
+    }
     private static final int    NOTIFICATION_ID = 1001;
     private static final String CHANNEL_ID      = "location_tracking";
 
@@ -217,6 +238,7 @@ public class LocationTrackingService extends Service implements
             startPermissionPoller();
         }
     }
+    
 
     /**
      * Called when location permission is granted.
@@ -659,24 +681,6 @@ public class LocationTrackingService extends Service implements
                 Log.d(TAG, "📡 GPS LOW-POWER resumed — 20s cooldown complete, ready for next trip");
             }
         }, 20_000L);
-    }
-
-    /** End trip immediately — called from Capacitor plugin */
-    public void forceEndTrip() {
-        if (!isTracking) return;
-    
-        // Send 3 final pings at speed=0
-        Location finalLoc = getCurrentLocation();
-        if (finalLoc != null) {
-            for (int i = 1; i <= 3; i++) {
-                TripTrackerAPIService.getInstance().sendPing(
-                    finalLoc, false, 0f, "still", null);
-                Log.d(TAG, "📡 Final ping " + i + "/3 before forced trip end");
-            }
-        }
-    
-        stopTracking();
-        Log.d(TAG, "🛑 Trip force-ended from Ionic");
     }
 
     // =========================================================================
