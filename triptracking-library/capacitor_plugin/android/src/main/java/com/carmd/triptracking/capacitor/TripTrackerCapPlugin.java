@@ -40,6 +40,8 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import com.carmd.triptracking.util.LogcatWriter;
+import com.carmd.triptracking.api.TripTrackerAPIService;
+
 
 @CapacitorPlugin(name = "TripTracker")
 public class TripTrackerCapPlugin extends Plugin {
@@ -152,7 +154,7 @@ public class TripTrackerCapPlugin extends Plugin {
             call.resolve(new JSObject().put("ended", false).put("reason", "Service not bound"));
             return;
         }
-        if (!trackingService.isTracking()) {
+        if (!trackingService.isCurrentlyTracking()) {
             call.resolve(new JSObject().put("ended", false).put("reason", "No active trip"));
             return;
         }
