@@ -341,12 +341,15 @@ public final class TripTrackerAPIService {
     // ═══════════════════════════════════════════════════════════════
 
     private func postWithRetry(url: String, body: [String: Any], completion: ((Bool) -> Void)?) {
+        // If queue has old pings, flush them FIRST to maintain chronological order on server.
+        // Old pings must arrive before new ping.
+        if !pendingQueue.isEmpty {
+            flushQueue()
+        }
+        
         post(url: url, body: body) { [weak self] ok in
             if !ok {
                 self?.enqueue(url: url, body: body)
-            } else if self?.pendingQueue.isEmpty == false {
-                // Success — try flushing pending queue too
-                self?.flushQueue()
             }
             completion?(ok)
         }
