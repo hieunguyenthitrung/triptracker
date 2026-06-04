@@ -661,6 +661,24 @@ public class LocationTrackingService extends Service implements
         }, 20_000L);
     }
 
+    /** End trip immediately — called from Capacitor plugin */
+    public void forceEndTrip() {
+        if (!isTracking) return;
+    
+        // Send 3 final pings at speed=0
+        Location finalLoc = getCurrentLocation();
+        if (finalLoc != null) {
+            for (int i = 1; i <= 3; i++) {
+                TripTrackerAPIService.getInstance().sendPing(
+                    finalLoc, false, 0f, "still", null);
+                Log.d(TAG, "📡 Final ping " + i + "/3 before forced trip end");
+            }
+        }
+    
+        stopTracking();
+        Log.d(TAG, "🛑 Trip force-ended from Ionic");
+    }
+
     // =========================================================================
     //  GPS power management — stop/start GPS independently of trip state
     // =========================================================================

@@ -140,6 +140,11 @@ export interface TripTrackerPlugin {
 
   /** Write a message to TripTracker native log file */
   writeLog(options: { message: string }): Promise<void>;
+  /**
+   * End the current trip immediately.
+   * Sends 3 final pings at speed=0, calls trip-end API, and flushes queue.
+ */
+  endTrip(): Promise<{ ended: boolean; tripId?: number; reason?: string }>;
 }
 
 // ── Types ──

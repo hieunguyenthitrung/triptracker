@@ -146,6 +146,22 @@ public class TripTrackerCapPlugin extends Plugin {
         call.resolve();
     }
 
+    @PluginMethod
+    public void endTrip(PluginCall call) {
+        if (trackingService == null || !serviceBound) {
+            call.resolve(new JSObject().put("ended", false).put("reason", "Service not bound"));
+            return;
+        }
+        if (!trackingService.isTracking()) {
+            call.resolve(new JSObject().put("ended", false).put("reason", "No active trip"));
+            return;
+        }
+        long tripId = trackingService.getCurrentTripId();
+        trackingService.forceEndTrip();
+        TripTrackerAPIService.getInstance().flushQueue();
+        call.resolve(new JSObject().put("ended", true).put("tripId", tripId));
+    }
+
     // ═══════════════════════════════════════════════════════════════════
     // Native Pages
     // ═══════════════════════════════════════════════════════════════════

@@ -178,6 +178,18 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
         call.resolve(["stopped": true])
     }
 
+    @objc func endTrip(_ call: CAPPluginCall) {
+        let svc = LocationTrackingService.shared
+        guard svc.isTracking else {
+            call.resolve(["ended": false, "reason": "No active trip"])
+            return
+        }
+        let tripId = svc.currentTripId
+        svc.stopTrip()
+        TripTrackerAPIService.shared.flushQueue()
+        call.resolve(["ended": true, "tripId": tripId])
+    }
+
     private static func hasLocationPermissionNative() -> Bool {
         let status = CLLocationManager().authorizationStatus
         return status == .authorizedAlways || status == .authorizedWhenInUse
