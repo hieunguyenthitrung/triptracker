@@ -331,6 +331,7 @@ public final class TripTrackerAPIService {
                 locObj.put("speed", speed);
                 locObj.put("activityType", activityType);
                 locObj.put("route_Id", includeVehicleId ? (routeId != null ? routeId : this.routeId) : "");
+                locObj.put("tool_Id", toolId != null && !toolId.isEmpty() ? toolId : "");
                 
                 JSONArray locArr = new JSONArray();
                 locArr.put(locObj);
@@ -343,9 +344,6 @@ public final class TripTrackerAPIService {
                 // Only include vehicle_Id during active trip and if configured
                 if (includeVehicleId && !vehicleId.isEmpty()) {
                     body.put("vehicle_Id", vehicleId);
-                }
-                if (toolId != null && !toolId.isEmpty()) {
-                    body.put("tool_Id", toolId);
                 }
 
                 boolean ok = post(pingURL, body);
