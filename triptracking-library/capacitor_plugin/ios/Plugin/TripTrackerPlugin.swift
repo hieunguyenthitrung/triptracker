@@ -19,7 +19,7 @@ import CoreLocation
 import triptracking
 
 @objc(TripTrackerPlugin)
-public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
+public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDelegate {
 
     public let identifier = "TripTrackerPlugin"
     public let jsName = "TripTracker"

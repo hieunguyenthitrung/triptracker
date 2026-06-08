@@ -53,7 +53,7 @@ public class LocationTrackingService: NSObject {
     public static let shared = LocationTrackingService()
 
     // MARK: - Delegates
-    weak var delegate: LocationUpdateDelegate?
+    public var delegate: LocationUpdateDelegate?
 
     // MARK: - Core managers
     public var locationManager: CLLocationManager = CLLocationManager()
