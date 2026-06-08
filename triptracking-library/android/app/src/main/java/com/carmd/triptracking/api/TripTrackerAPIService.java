@@ -348,7 +348,7 @@ public final class TripTrackerAPIService {
 
                 boolean ok = post(pingURL, body);
                 if (ok) {
-                    Log.d(TAG, "Ping OK: " + location.getLatitude() + "," + location.getLongitude());
+                    Log.d(TAG, "Ping OK: " + body.toString());
                     // Success — try flushing pending queue too
                     if (!pendingQueue.isEmpty()) flushQueue();
                 } else {
