@@ -631,12 +631,6 @@ public class LocationTrackingService extends Service implements
         cancelWatchdog();
         startForegroundNotification("Tracking…", "Auto-trip #" + currentTripId + " in progress");
         notifyTrackingStateChanged(true);
-        // try {
-        //     Class<?> helperClass = Class.forName("com.megster.cordova.ble.central.TripTracker");
-        //     helperClass.getMethod("notifyTripStarted", long.class).invoke(null, currentTripId);
-        // } catch (Exception ignored) {
-        //     Log.e(TAG, "Error occurred while notifying trip start to Java", ignored);
-        // }
     }
 
     /** Auto-start a trip when vehicle speed is detected. */
@@ -663,6 +657,13 @@ public class LocationTrackingService extends Service implements
         // Voice announcement
         com.carmd.triptracking.util.VoiceFeedback.getInstance(this)
                 .announceTripStarted(currentTripId);
+
+        try {
+            Class<?> helperClass = Class.forName("com.megster.cordova.ble.central.TripTracker");
+            helperClass.getMethod("notifyTripStarted", long.class).invoke(null, currentTripId);
+        } catch (Exception ignored) {
+            Log.e(TAG, "Error occurred while notifying trip start to Java", ignored);
+        }
     }
 
     /** Auto-stop a trip after being still for autoStopStillMs(). */
