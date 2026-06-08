@@ -61,6 +61,9 @@ public final class TripTrackerAPIService {
     private let session: URLSession = {
         let cfg = URLSessionConfiguration.default
         cfg.timeoutIntervalForRequest = 15
+        if #available(iOS 11.0, *) {
+            cfg.waitsForConnectivity = true
+        }
         return URLSession(configuration: cfg)
     }()
 
@@ -124,20 +127,20 @@ public final class TripTrackerAPIService {
         queueLock.unlock()
         guard !items.isEmpty else { return }
 
-        // Don't flush if API config isn't ready yet (AutoLauncher relaunch,
-        // Capacitor hasn't loaded with real config)
         guard !config.pingURL.isEmpty, !config.userId.isEmpty else {
-            print("📡  TripTracker API flush skipped — config incomplete (pingURL='\(config.pingURL)' userId='\(config.userId)') — waiting for Capacitor")
+            print("📡  TripTracker API flush skipped — config incomplete")
             return
         }
 
         isFlushing = true
         print("📡  TripTracker API flushing \(items.count) pending requests…")
 
-        // Use a dedicated URLSession to avoid stale DNS cache from shared session
         let flushConfig = URLSessionConfiguration.default
         flushConfig.timeoutIntervalForRequest = 15
         flushConfig.requestCachePolicy = .reloadIgnoringLocalCacheData
+        if #available(iOS 11.0, *) {
+            flushConfig.waitsForConnectivity = true
+        }
         let flushSession = URLSession(configuration: flushConfig)
 
         DispatchQueue.global(qos: .utility).async { [weak self] in
@@ -145,35 +148,69 @@ public final class TripTrackerAPIService {
             var successCount = 0
             var consecutiveFailures = 0
 
+            // Separate ping items vs trip-end items
+            var pingItems: [[String: Any]] = []
+            var endItems: [[String: Any]] = []
             for item in items {
-                // Recover URL: use stored URL if valid, otherwise fall back to current config
-                var urlStr = item["url"] as? String ?? ""
-                if urlStr.isEmpty || URL(string: urlStr) == nil {
-                    urlStr = self.config.pingURL
+                let urlStr = item["url"] as? String ?? ""
+                if urlStr.contains("end") {
+                    endItems.append(item)
+                } else {
+                    pingItems.append(item)
                 }
-                guard !urlStr.isEmpty, URL(string: urlStr) != nil,
-                      var body = item["body"] as? [String: Any] else { continue }
+            }
 
-                // Fix stale queue items: inject current userId/osInfo if body has empty values
-                // (items queued when applyConfig hadn't loaded yet have user_Id: "")
-                let bodyUserId = body["user_Id"] as? String ?? ""
-                if bodyUserId.isEmpty {
-                    body["user_Id"] = self.config.userId
-                }
-                let bodyOsInfo = body["os_Info"] as? String ?? ""
-                if bodyOsInfo.isEmpty {
-                    body["os_Info"] = self.config.osInfo
+            // Batch ping items in chunks of 30
+            let batchSize = 30
+            let chunks = stride(from: 0, to: pingItems.count, by: batchSize).map {
+                Array(pingItems[$0..<min($0 + batchSize, pingItems.count)])
+            }
+
+            for chunk in chunks {
+                // Extract location array from each item's body
+                var locationArray: [[String: Any]] = []
+                var batchUrl = self.config.pingURL
+                var vehicleId = ""
+                var osInfo = self.config.osInfo
+                var userId = self.config.userId
+
+                for item in chunk {
+                    if let url = item["url"] as? String, !url.isEmpty { batchUrl = url }
+                    if let body = item["body"] as? [String: Any] {
+                        // Extract locations from body
+                        if let locs = body["location"] as? [[String: Any]] {
+                            locationArray.append(contentsOf: locs)
+                        }
+                        if let vid = body["vehicle_Id"] as? String, !vid.isEmpty { vehicleId = vid }
+                        if let uid = body["user_Id"] as? String, !uid.isEmpty { userId = uid }
+                        if let oi = body["os_Info"] as? String, !oi.isEmpty { osInfo = oi }
+                    }
                 }
 
-                let ok = self.postSyncWith(session: flushSession, url: urlStr, body: body)
+                guard !locationArray.isEmpty else { continue }
+
+                // Build batch body
+                var batchBody: [String: Any] = [
+                    "user_Id": userId,
+                    "os_Info": osInfo,
+                    "location": locationArray
+                ]
+                if !vehicleId.isEmpty { batchBody["vehicle_Id"] = vehicleId }
+
+                let ok = self.postSyncWith(session: flushSession, url: batchUrl, body: batchBody)
                 if ok {
-                    successCount += 1
+                    let count = chunk.count
+                    successCount += count
                     consecutiveFailures = 0
+                    // Remove flushed items from queue
                     self.queueLock.lock()
-                    if let idx = self.pendingQueue.firstIndex(where: { ($0["ts"] as? Double) == (item["ts"] as? Double) }) {
-                        self.pendingQueue.remove(at: idx)
+                    for item in chunk {
+                        if let idx = self.pendingQueue.firstIndex(where: { ($0["ts"] as? Double) == (item["ts"] as? Double) }) {
+                            self.pendingQueue.remove(at: idx)
+                        }
                     }
                     self.queueLock.unlock()
+                    print("📡  TripTracker API batch flush: \(locationArray.count) locations in 1 request — OK")
                 } else {
                     consecutiveFailures += 1
                     if consecutiveFailures >= 3 {
@@ -183,13 +220,31 @@ public final class TripTrackerAPIService {
                     Thread.sleep(forTimeInterval: 1.0)
                 }
             }
+
+            // Send trip-end items individually (different endpoint)
+            for item in endItems {
+                let urlStr = item["url"] as? String ?? self.config.endURL
+                guard var body = item["body"] as? [String: Any] else { continue }
+                let bodyUserId = body["user_Id"] as? String ?? ""
+                if bodyUserId.isEmpty { body["user_Id"] = self.config.userId }
+
+                let ok = self.postSyncWith(session: flushSession, url: urlStr, body: body)
+                if ok {
+                    successCount += 1
+                    self.queueLock.lock()
+                    if let idx = self.pendingQueue.firstIndex(where: { ($0["ts"] as? Double) == (item["ts"] as? Double) }) {
+                        self.pendingQueue.remove(at: idx)
+                    }
+                    self.queueLock.unlock()
+                }
+            }
+
             self.savePendingQueue()
             self.isFlushing = false
             flushSession.invalidateAndCancel()
             let remaining = self.pendingQueue.count
             print("📡  TripTracker API flush done: \(successCount) sent, \(remaining) remaining")
 
-            // If partially flushed, schedule another round
             if remaining > 0 && successCount > 0 {
                 DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 2.0) { [weak self] in
                     self?.flushQueue()
