@@ -84,14 +84,12 @@ public class LocationTrackingService extends Service implements
         // Send 3 final pings at speed=0
         Location finalLoc = getCurrentLocation();
         if (finalLoc != null) {
-            for (int i = 1; i <= 3; i++) {
-                TripTrackerAPIService.getInstance().sendPing(
+            TripTrackerAPIService.getInstance().sendPing(
                         finalLoc, false, 0f, "still", null);
                 Log.d(TAG, "📡 Final ping " + i + "/3 before forced trip end");
-            }
         }
 
-        stopTracking();
+        stopTracking();j
         TripTrackerAPIService.getInstance().flushQueue();
         Log.d(TAG, "🛑 Trip force-ended");
     }
@@ -331,10 +329,12 @@ public class LocationTrackingService extends Service implements
 
                 // Send one initial ping so server knows device position on app open
                 if (initLoc.getAccuracy() <= 50) {
-                    TripTrackerAPIService.getInstance().sendPing(
-                            initLoc, false, 0f, "still", null);
-                    Log.d(TAG, "📡 Initial ping sent on app open — " +
-                            String.format("%.6f,%.6f", initLoc.getLatitude(), initLoc.getLongitude()));
+                    if(isTracking) {
+                        TripTrackerAPIService.getInstance().sendPing(
+                                initLoc, false, 0f, "still", null);
+                        Log.d(TAG, "📡 Initial ping sent on app open — " +
+                                String.format("%.6f,%.6f", initLoc.getLatitude(), initLoc.getLongitude()));
+                    }
                 }
             }
         }, 5000);
@@ -631,12 +631,12 @@ public class LocationTrackingService extends Service implements
         cancelWatchdog();
         startForegroundNotification("Tracking…", "Auto-trip #" + currentTripId + " in progress");
         notifyTrackingStateChanged(true);
-        try {
-            Class<?> helperClass = Class.forName("com.megster.cordova.ble.central.TripTracker");
-            helperClass.getMethod("notifyTripStarted", long.class).invoke(null, currentTripId);
-        } catch (Exception ignored) {
-            Log.e(TAG, "Error occurred while notifying trip start to Java", ignored);
-        }
+        // try {
+        //     Class<?> helperClass = Class.forName("com.megster.cordova.ble.central.TripTracker");
+        //     helperClass.getMethod("notifyTripStarted", long.class).invoke(null, currentTripId);
+        // } catch (Exception ignored) {
+        //     Log.e(TAG, "Error occurred while notifying trip start to Java", ignored);
+        // }
     }
 
     /** Auto-start a trip when vehicle speed is detected. */
@@ -1283,7 +1283,9 @@ public class LocationTrackingService extends Service implements
             moving = false;
             activityType = "still";
         }
-        TripTrackerAPIService.getInstance().sendPing(location, moving, speed, activityType);
+        if(isTracking) {
+            TripTrackerAPIService.getInstance().sendPing(location, moving, speed, activityType);
+        }
 
         Log.d(TAG, "Saved: source=" + sourceStr +
                 " speed=" + String.format("%.1f", speed) + " m/s trip=" + currentTripId);
