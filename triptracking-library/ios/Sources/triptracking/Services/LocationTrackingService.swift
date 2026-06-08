@@ -42,7 +42,7 @@ protocol AutoTripDelegate: AnyObject {
     func autoTripDidEnd(tripId: Int64, reason: String)
 }
 
-protocol LocationUpdateDelegate: AnyObject {
+public protocol LocationUpdateDelegate: AnyObject {
     func didUpdateLocation(_ location: LocationPoint, source: TrackingSource, totalDistance: Double)
     func didUpdateStats(speed: Float, distance: Double, duration: Int64)
     func didChangeTrackingState(isTracking: Bool)
