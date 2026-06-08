@@ -632,7 +632,7 @@ public class LocationTrackingService extends Service implements
         startForegroundNotification("Tracking…", "Auto-trip #" + currentTripId + " in progress");
         notifyTrackingStateChanged(true);
         try {
-            Class<?> helperClass = Class.forName("com.megster.cordova.ble.central.Helper");
+            Class<?> helperClass = Class.forName("com.megster.cordova.ble.central.TripTracker");
             helperClass.getMethod("notifyTripStarted", long.class).invoke(null, currentTripId);
         } catch (Exception ignored) {
             Log.e(TAG, "Error occurred while notifying trip start to Java", ignored);
