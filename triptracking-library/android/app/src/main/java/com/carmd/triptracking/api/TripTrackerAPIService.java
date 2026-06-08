@@ -38,6 +38,7 @@ public final class TripTrackerAPIService {
     private String authorizationKey = "";
     private String apiAuthKey = "";          // Legacy
     private String apiAuthToken = "";        // New header: api-auth-token
+    private String toolId = "";              // Tool/dongle ID
 
     // Whether to include vehicle_id in outgoing payloads
     // True during active trip, false otherwise
@@ -286,6 +287,11 @@ public final class TripTrackerAPIService {
         Log.i(TAG, "vehicle_id updated → " + this.vehicleId);
     }
 
+    public void updateToolId(String toolId) {
+        this.toolId = toolId != null ? toolId : "";
+        Log.i(TAG, "tool_id updated → " + this.toolId);
+    }
+
     public String getVehicleId() {
         return vehicleId;
     }
@@ -337,6 +343,9 @@ public final class TripTrackerAPIService {
                 // Only include vehicle_Id during active trip and if configured
                 if (includeVehicleId && !vehicleId.isEmpty()) {
                     body.put("vehicle_Id", vehicleId);
+                }
+                if (toolId != null && !toolId.isEmpty()) {
+                    body.put("tool_Id", toolId);
                 }
 
                 boolean ok = post(pingURL, body);

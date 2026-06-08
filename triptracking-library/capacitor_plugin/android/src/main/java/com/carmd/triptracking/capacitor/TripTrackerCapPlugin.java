@@ -121,6 +121,20 @@ public class TripTrackerCapPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void updateToolId(PluginCall call) {
+        String toolId = call.getString("toolId");
+        if (toolId == null) {
+            call.reject("Missing 'toolId'");
+            return;
+        }
+        TripTrackerAPIService.getInstance().updateToolId(toolId);
+        JSObject ret = new JSObject();
+        ret.put("updated", true);
+        ret.put("toolId", toolId);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
     public void startTracking(PluginCall call) {
         if (!TripTrackerSDK.hasLocationPermission(getContext())) {
             call.reject("Location permission not granted. Grant permission first.");

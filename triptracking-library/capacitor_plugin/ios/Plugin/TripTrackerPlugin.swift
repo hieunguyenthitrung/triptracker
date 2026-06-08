@@ -19,13 +19,14 @@ import CoreLocation
 import triptracking
 
 @objc(TripTrackerPlugin)
-public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
+public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDelegate {
 
     public let identifier = "TripTrackerPlugin"
     public let jsName = "TripTracker"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "initializeWithConfig", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "updateVehicleId", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "updateToolId", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "hasLocationPermission", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "startTracking", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "stopTracking", returnType: CAPPluginReturnPromise),
@@ -58,6 +59,9 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
     // ═══════════════════════════════════════════════════════════════
 
     public override func load() {
+        // Register for location/tracking/activity events
+        LocationTrackingService.shared.delegate = self
+
         // Auto-initialize SDK from saved config when app relaunches
         if !TripTrackerSDK.isInitialized {
             let hasSavedConfig = UserDefaults.standard.string(forKey: "tt_api_pingURL") != nil
@@ -155,6 +159,15 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
         }
         TripTrackerSDK.updateVehicleId(vehicleId)
         call.resolve(["updated": true, "vehicleId": vehicleId])
+    }
+
+    @objc func updateToolId(_ call: CAPPluginCall) {
+        guard let toolId = call.getString("toolId") else {
+            call.reject("Missing 'toolId'")
+            return
+        }
+        TripTrackerSDK.updateToolId(toolId)
+        call.resolve(["updated": true, "toolId": toolId])
     }
 
     /// Check if location permission is granted.
@@ -550,5 +563,44 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin {
         let message = call.getString("message") ?? ""
         LogManager.shared.log("⚡️ [Ionic] \(message)")
         call.resolve()
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // LocationUpdateDelegate — events sent to Ionic
+    // ═══════════════════════════════════════════════════════════════
+
+    public func didUpdateLocation(_ location: LocationPoint, source: TrackingSource, totalDistance: Double) {
+        notifyListeners("locationUpdate", data: [
+            "latitude": location.latitude,
+            "longitude": location.longitude,
+            "speed": location.speed,
+            "speedKmh": location.speed * 3.6,
+            "accuracy": location.accuracy,
+            "source": source == .gps ? "GPS" : "SENSORS",
+            "distance": totalDistance,
+            "timestamp": location.timestamp
+        ])
+    }
+
+    public func didUpdateStats(speed: Float, distance: Double, duration: Int64) {
+        notifyListeners("statsUpdate", data: [
+            "speed": speed,
+            "speedKmh": speed * 3.6,
+            "distance": distance,
+            "duration": duration
+        ])
+    }
+
+    public func didChangeTrackingState(isTracking: Bool) {
+        notifyListeners("trackingStateChange", data: [
+            "isTracking": isTracking
+        ])
+    }
+
+    public func didChangeActivity(activity: String, transition: String) {
+        notifyListeners("activityChange", data: [
+            "activity": activity,
+            "transition": transition
+        ])
     }
 }

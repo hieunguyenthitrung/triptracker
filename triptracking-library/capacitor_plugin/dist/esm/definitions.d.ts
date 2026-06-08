@@ -152,6 +152,7 @@ export interface TripTrackerPlugin {
      * Sends 3 final pings at speed=0, calls trip-end API, and flushes queue.
      */
     endTrip(): Promise<{ ended: boolean; tripId?: number; reason?: string }>;
+    updateToolId(options: { toolId: string }): Promise<{ updated: boolean; toolId: string }>;
 }
 export interface TrackingStatus {
     isTracking: boolean;
@@ -268,4 +269,6 @@ export interface TripTrackerConfigOptions {
     apiAuthKey?: string;
     /** Value for api-auth-token header (new) */
     apiAuthToken?: string;
+    /** Tool/dongle ID sent with pings */
+    toolId?: string;
 }

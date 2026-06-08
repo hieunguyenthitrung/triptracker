@@ -28,6 +28,7 @@ public struct TripTrackerConfig {
     public var authorizationKey: String = ""
     public var apiAuthKey: String = ""
     public var apiAuthToken: String = ""    // NEW header: api-auth-token
+    public var toolId: String = ""          // Tool/dongle ID
 
     // Notifications
     public var notifyTripStart: Bool = false
@@ -57,6 +58,7 @@ public struct TripTrackerConfig {
         if let v = dict["authorizationKey"] as? String        { authorizationKey = v }
         if let v = dict["apiAuthKey"] as? String              { apiAuthKey = v }
         if let v = dict["apiAuthToken"] as? String            { apiAuthToken = v }
+        if let v = dict["toolId"] as? String                  { toolId = v }
         if let v = dict["notifyTripStart"] as? Bool          { notifyTripStart = v }
         if let v = dict["notifyTripEnd"] as? Bool            { notifyTripEnd = v }
         if let v = dict["notifyDistanceKm"] as? Bool         { notifyDistanceKm = v }
@@ -215,6 +217,7 @@ public final class TripTrackerSDK {
             apiConfig.authorizationKey = config.authorizationKey
             apiConfig.apiAuthKey = config.apiAuthKey
             apiConfig.apiAuthToken = config.apiAuthToken
+            apiConfig.toolId = config.toolId
             TripTrackerAPIService.shared.config = apiConfig
 
             ud.set(config.pingURL, forKey: "tt_api_pingURL")
@@ -226,6 +229,7 @@ public final class TripTrackerSDK {
             ud.set(config.authorizationKey, forKey: "tt_api_authorizationKey")
             ud.set(config.apiAuthKey, forKey: "tt_api_apiAuthKey")
             ud.set(config.apiAuthToken, forKey: "tt_api_apiAuthToken")
+            ud.set(config.toolId, forKey: "tt_api_toolId")
             print("📡 API config saved to UserDefaults — userId=\(config.userId)")
         } else {
             print("📡 API config NOT overwritten — incoming config has empty pingURL/userId (restored config preserved)")
@@ -257,6 +261,7 @@ public final class TripTrackerSDK {
         apiConfig.authorizationKey = ud.string(forKey: "tt_api_authorizationKey") ?? ""
         apiConfig.apiAuthKey = ud.string(forKey: "tt_api_apiAuthKey") ?? ""
         apiConfig.apiAuthToken = ud.string(forKey: "tt_api_apiAuthToken") ?? ""
+        apiConfig.toolId = ud.string(forKey: "tt_api_toolId") ?? ""
         TripTrackerAPIService.shared.config = apiConfig
         print("📡 TripTracker API config restored from UserDefaults — enabled=\(apiConfig.isConfigured) ping=\(apiConfig.pingURL) userId=\(apiConfig.userId)")
     }
@@ -385,6 +390,10 @@ public final class TripTrackerSDK {
     // ── Update vehicle_id at runtime ──
     public static func updateVehicleId(_ vehicleId: String) {
         TripTrackerAPIService.shared.updateVehicleId(vehicleId)
+    }
+
+    public static func updateToolId(_ toolId: String) {
+        TripTrackerAPIService.shared.updateToolId(toolId)
     }
 }
 

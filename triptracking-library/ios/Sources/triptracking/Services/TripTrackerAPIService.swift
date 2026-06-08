@@ -15,6 +15,7 @@ public struct TripTrackerAPIConfig {
     public var authorizationKey: String = ""
     public var apiAuthKey: String = ""        // Legacy — kept for backwards compat
     public var apiAuthToken: String = ""      // New header: api-auth-token
+    public var toolId: String = ""            // Tool/dongle ID sent with pings
 
     public var isConfigured: Bool { !pingURL.isEmpty && !endURL.isEmpty && !userId.isEmpty }
 
@@ -292,6 +293,11 @@ public final class TripTrackerAPIService {
         print("📡  TripTracker API vehicle_id updated → \(vehicleId)")
     }
 
+    public func updateToolId(_ toolId: String) {
+        config.toolId = toolId
+        print("📡  TripTracker API tool_id updated → \(toolId)")
+    }
+
     // ── Called on trip start to start including vehicle_id ──
     public func onTripStart() {
         includeVehicleId = true
@@ -336,6 +342,9 @@ public final class TripTrackerAPIService {
         if includeVehicleId && !config.vehicleId.isEmpty {
             body["vehicle_Id"] = config.vehicleId
         }
+        if !config.toolId.isEmpty {
+            body["tool_Id"] = config.toolId
+        }
         postWithRetry(url: config.pingURL, body: body) { ok in
             print("📡 TripTrackerAPI ping \(ok ? "OK" : "QUEUED"): \(location.coordinate.latitude),\(location.coordinate.longitude)")
         }
@@ -359,6 +368,9 @@ public final class TripTrackerAPIService {
         var body: [String: Any] = ["user_Id": config.userId, "os_Info": config.osInfo, "location": arr]
         if includeVehicleId && !config.vehicleId.isEmpty {
             body["vehicle_Id"] = config.vehicleId
+        }
+        if !config.toolId.isEmpty {
+            body["tool_Id"] = config.toolId
         }
         postWithRetry(url: config.pingURL, body: body) { ok in
             print("📡  TripTracker API batch (\(locations.count)): \(ok ? "OK" : "QUEUED")")

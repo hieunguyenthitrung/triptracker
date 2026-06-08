@@ -9,6 +9,7 @@
 CAP_PLUGIN(TripTrackerPlugin, "TripTracker",
     CAP_PLUGIN_METHOD(initializeWithConfig, CAPPluginReturnPromise);
     CAP_PLUGIN_METHOD(updateVehicleId, CAPPluginReturnPromise);
+    CAP_PLUGIN_METHOD(updateToolId, CAPPluginReturnPromise);
     CAP_PLUGIN_METHOD(hasLocationPermission, CAPPluginReturnPromise);
     CAP_PLUGIN_METHOD(startTracking, CAPPluginReturnPromise);
     CAP_PLUGIN_METHOD(stopTracking, CAPPluginReturnPromise);
