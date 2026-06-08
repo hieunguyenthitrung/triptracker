@@ -4,6 +4,9 @@
  * Bridges TripTracker iOS native code to Ionic/JavaScript.
  * Provides: tracking status, settings pages, geofencing, notifications, logs.
  */
+
+import type { PluginListenerHandle } from '@capacitor/core';
+
 export interface TripTrackerPlugin {
     /**
      * Initialize TripTracker SDK with custom config.
@@ -153,6 +156,25 @@ export interface TripTrackerPlugin {
      */
     endTrip(): Promise<{ ended: boolean; tripId?: number; reason?: string }>;
     updateToolId(options: { toolId: string }): Promise<{ updated: boolean; toolId: string }>;
+
+     // ═══════════════════════════════════════════════════════════════════
+    // Event Listeners
+    // ═══════════════════════════════════════════════════════════════════
+
+    /** Listen for activity/motion changes (IN_VEHICLE, STILL, MOVING, etc.) */
+    addListener(eventName: 'activityChange', listener: (event: ActivityChangeEvent) => void): Promise<PluginListenerHandle>;
+
+    /** Listen for location updates */
+    addListener(eventName: 'locationUpdate', listener: (event: LocationUpdateEvent) => void): Promise<PluginListenerHandle>;
+
+    /** Listen for tracking state changes (trip start/stop) */
+    addListener(eventName: 'trackingStateChange', listener: (event: TrackingStateChangeEvent) => void): Promise<PluginListenerHandle>;
+
+    /** Listen for stats updates (speed, distance, duration) */
+    addListener(eventName: 'statsUpdate', listener: (event: StatsUpdateEvent) => void): Promise<PluginListenerHandle>;
+
+    /** Remove all listeners for a given event */
+    removeAllListeners(): Promise<void>;
 }
 export interface TrackingStatus {
     isTracking: boolean;
@@ -272,3 +294,48 @@ export interface TripTrackerConfigOptions {
     /** Tool/dongle ID sent with pings */
     toolId?: string;
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// Event Interfaces
+// ═══════════════════════════════════════════════════════════════════
+
+/** Activity/motion change event from Activity Recognition or sensors. */
+export interface ActivityChangeEvent {
+    /** Activity type:
+     *  Android: "IN_VEHICLE", "STILL", "MOVING", "ON_BICYCLE"
+     *  iOS: "Automotive", "Still", "Walking", "Running", "Cycling"
+     */
+    activity: string;
+    /** Transition type:
+     *  Android Activity Recognition: "ENTER" | "EXIT"
+     *  Android Sensor: "SENSOR"
+     *  iOS CMMotionActivity: "MOTION"
+     */
+    transition: string;
+}
+
+/** Location update event — fired each time a new location is saved. */
+export interface LocationUpdateEvent {
+    latitude: number;
+    longitude: number;
+    speed: number;
+    speedKmh: number;
+    accuracy: number;
+    source: string;       // "GPS" | "SENSORS"
+    distance: number;     // total trip distance in meters
+    timestamp: number;
+}
+
+/** Tracking state change event — fired when a trip starts or stops. */
+export interface TrackingStateChangeEvent {
+    isTracking: boolean;
+}
+
+/** Stats update event — fired periodically with current trip metrics. */
+export interface StatsUpdateEvent {
+    speed: number;        // m/s
+    speedKmh: number;
+    distance: number;     // meters
+    duration: number;     // seconds
+}
+
