@@ -86,10 +86,10 @@ public class LocationTrackingService extends Service implements
         if (finalLoc != null) {
             TripTrackerAPIService.getInstance().sendPing(
                         finalLoc, false, 0f, "still", null);
-                Log.d(TAG, "📡 Final ping " + i + "/3 before forced trip end");
+                Log.d(TAG, "📡 Final ping before forced trip end");
         }
 
-        stopTracking();j
+        stopTracking();
         TripTrackerAPIService.getInstance().flushQueue();
         Log.d(TAG, "🛑 Trip force-ended");
     }
