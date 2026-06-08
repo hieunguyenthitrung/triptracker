@@ -127,17 +127,17 @@ public final class TripTrackerSDK {
         //     webServer = LocationWebServer(); webServer?.start()
         // }
 
-        // NotificationManager.shared.requestPermission()
-        // if GeofenceManager.shared.isEnabled { GeofenceManager.shared.startMonitoringAll() }
+        NotificationManager.shared.requestPermission()
+        if GeofenceManager.shared.isEnabled { GeofenceManager.shared.startMonitoringAll() }
 
-        // // If permission already granted, start GPS immediately
-        // if hasLocationPermission {
-        //     print("✅ TripTracker Location permission already granted — starting GPS")
-        //     TripTrackerSDK.startLocationTracking()
-        // } else {
-        //     print("⚠️ TripTracker Location permission not granted — waiting for Ionic to grant")
-        //     permissionDelegate = LocationPermissionDelegate()
-        // }
+        // If permission already granted, start GPS immediately
+        if hasLocationPermission {
+            print("✅ TripTracker Location permission already granted — starting GPS")
+            TripTrackerSDK.startLocationTracking()
+        } else {
+            print("⚠️ TripTracker Location permission not granted — waiting for Ionic to grant")
+            permissionDelegate = LocationPermissionDelegate()
+        }
 
         _initialized = true
         print("✅ TripTracker TripTrackerSDK initialized")
