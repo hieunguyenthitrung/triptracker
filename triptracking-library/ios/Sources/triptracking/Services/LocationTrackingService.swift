@@ -237,10 +237,15 @@ public class LocationTrackingService: NSObject {
 
     @objc private func appWillEnterForeground() {
         let status = locationManager.authorizationStatus
-        if (status == .authorizedAlways || status == .authorizedWhenInUse) && !hasReceivedFirstGPSFix {
-            print("📡 TripTracker appWillEnterForeground — permission granted but no GPS fix → restarting")
-            TripTrackerSDK.startLocationTracking()
-        }
+        guard status == .authorizedAlways || status == .authorizedWhenInUse else { return }
+
+        // Always restart GPS at Best when app returns to foreground.
+        // After overnight suspend, GPS is stale → need fresh fix for trip detection.
+        // hasReceivedFirstGPSFix may be true from yesterday → reset it.
+        hasReceivedFirstGPSFix = false
+        isBackgroundTrackingStarted = false
+        TripTrackerSDK.startLocationTracking()
+        print("📡 TripTracker appWillEnterForeground — GPS force restarted for fresh fix")
     }
 
     private func loadPersistedSettings() {
@@ -399,8 +404,8 @@ public class LocationTrackingService: NSObject {
         // Start GPS at BEST accuracy — need first fix before downgrading
         locationManager.allowsBackgroundLocationUpdates = true
         locationManager.pausesLocationUpdatesAutomatically = false
-        locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
-        locationManager.distanceFilter  = 10.0
+        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        locationManager.distanceFilter = kCLDistanceFilterNone
         locationManager.startUpdatingLocation()
         locationManager.startMonitoringSignificantLocationChanges()
         locationManager.startMonitoringVisits()
@@ -645,6 +650,11 @@ public class LocationTrackingService: NSObject {
         let speed = Float(max(0, location.speed))
 
         print("📍 TripTracker Significant location change relaunch — speed: \(String(format:"%.1f", speed)) m/s")
+
+        // Force GPS to Best — app just woke from suspended/terminated state
+        hasReceivedFirstGPSFix = false
+        isBackgroundTrackingStarted = false
+        startBackgroundTracking()
 
         // Send a ping on every significant location change (even without trip)
         let pt = LocationPoint(from: location, source: .gps)
@@ -1713,7 +1723,7 @@ extension LocationTrackingService: CLLocationManagerDelegate {
 
     private func sendAPIPing(location: LocationPoint, source: TrackingSource, speed: Float) {
         // Only send pings during active trip — save bandwidth and battery when idle
-        guard isTracking else { return }
+        // guard isTracking else { return }
 
         let clLoc = CLLocation(latitude: location.latitude, longitude: location.longitude)
 

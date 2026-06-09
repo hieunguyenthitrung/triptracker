@@ -329,12 +329,10 @@ public class LocationTrackingService extends Service implements
 
                 // Send one initial ping so server knows device position on app open
                 if (initLoc.getAccuracy() <= 50) {
-                    if(isTracking) {
-                        TripTrackerAPIService.getInstance().sendPing(
+                    TripTrackerAPIService.getInstance().sendPing(
                                 initLoc, false, 0f, "still", null);
                         Log.d(TAG, "📡 Initial ping sent on app open — " +
                                 String.format("%.6f,%.6f", initLoc.getLatitude(), initLoc.getLongitude()));
-                    }
                 }
             }
         }, 5000);
@@ -1284,9 +1282,7 @@ public class LocationTrackingService extends Service implements
             moving = false;
             activityType = "still";
         }
-        if(isTracking) {
-            TripTrackerAPIService.getInstance().sendPing(location, moving, speed, activityType);
-        }
+        TripTrackerAPIService.getInstance().sendPing(location, moving, speed, activityType);
 
         Log.d(TAG, "Saved: source=" + sourceStr +
                 " speed=" + String.format("%.1f", speed) + " m/s trip=" + currentTripId);
