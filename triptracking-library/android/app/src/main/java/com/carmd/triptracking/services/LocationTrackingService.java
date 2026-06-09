@@ -484,8 +484,8 @@ public class LocationTrackingService extends Service implements
 
     /** Current best location — with fallback to LocationManager cache. */
     public Location getCurrentLocation() {
-        if (lastSensorLocation != null)
-            return new Location(lastSensorLocation);
+        // if (lastSensorLocation != null)
+        //     return new Location(lastSensorLocation);
         if (lastGpsLocation != null)
             return new Location(lastGpsLocation);
         // Fallback: try LocationManager cached locations
