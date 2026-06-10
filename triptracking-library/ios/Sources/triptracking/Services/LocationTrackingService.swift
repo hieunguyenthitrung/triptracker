@@ -133,7 +133,7 @@ public class LocationTrackingService: NSObject {
     /// Consecutive GPS fixes at vehicle speed. Must reach threshold before auto-start.
     private var consecutiveVehicleSpeedCount: Int = 0
     /// Number of consecutive vehicle-speed readings required to auto-start a trip.
-    private let requiredConsecutiveVehicleFixes: Int = 1
+    private let requiredConsecutiveVehicleFixes: Int = 2
 
     // Speed thresholds — internal so SettingsViewController can read/write
     public var vehicleThreshold:    Float = 3.0 {  // m/s — at or above → GPS saves
