@@ -1120,7 +1120,7 @@ public class LocationTrackingService: NSObject {
             // cancelAutoEndTimer()
             if !isTracking {
                 adaptLocationAccuracy(for: .automotive)
-                autoStartTrip(reason: "Automotive activity detected")
+                // autoStartTrip(reason: "Automotive activity detected")
                 print("🚗 TripTracker Automotive detected — GPS enabled, waiting for speed confirmation")
             }
 
@@ -1723,7 +1723,7 @@ extension LocationTrackingService: CLLocationManagerDelegate {
 
     private func sendAPIPing(location: LocationPoint, source: TrackingSource, speed: Float) {
         // Only send pings during active trip — save bandwidth and battery when idle
-        // guard isTracking else { return }
+        guard isTracking else { return }
 
         let clLoc = CLLocation(latitude: location.latitude, longitude: location.longitude)
 
