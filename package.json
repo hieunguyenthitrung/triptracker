@@ -40,9 +40,12 @@
   },
   "devDependencies": {
     "@capacitor/core": "^6.0.0",
-    "typescript": "~5.0.0",
+    "@rollup/plugin-node-resolve": "^15.0.0",
     "rimraf": "^5.0.0",
     "rollup": "^4.0.0",
-    "@rollup/plugin-node-resolve": "^15.0.0"
+    "typescript": "~5.0.0"
+  },
+  "dependencies": {
+    "capacitor-trip-tracker": "github:hieunguyentt/TripTracker#2.0.80"
   }
 }
