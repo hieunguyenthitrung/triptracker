@@ -1243,9 +1243,6 @@ extension MainViewController: LocationUpdateDelegate {
     }
 
     public func didChangeActivity(activity: String, transition: String){
-            DispatchQueue.main.async { [weak self] in
-                self?.activityLabel.text = "Activity: \(activity) (\(transition))"
-            }
     }
 }
 
