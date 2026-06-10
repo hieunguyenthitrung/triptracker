@@ -1241,6 +1241,12 @@ extension MainViewController: LocationUpdateDelegate {
             self?.updateButtonStates(isTracking: isTracking)
         }
     }
+
+    public func didChangeActivity(activity: String, transition: String){
+            DispatchQueue.main.async { [weak self] in
+                self?.activityLabel.text = "Activity: \(activity) (\(transition))"
+            }
+    }
 }
 
 // MARK: - MKMapViewDelegate
