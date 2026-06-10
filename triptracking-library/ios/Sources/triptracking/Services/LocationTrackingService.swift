@@ -46,6 +46,10 @@ public protocol LocationUpdateDelegate: AnyObject {
     func didUpdateLocation(_ location: LocationPoint, source: TrackingSource, totalDistance: Double)
     func didUpdateStats(speed: Float, distance: Double, duration: Int64)
     func didChangeTrackingState(isTracking: Bool)
+    /// Called on every CMMotionActivity state transition.
+    /// activity:   "Still" | "Walking" | "Running" | "Cycling" | "Automotive"
+    /// transition: always "MOTION" on iOS (CMMotionActivity has no ENTER/EXIT)
+    func didChangeActivity(activity: String, transition: String)
 }
 
 public class LocationTrackingService: NSObject {
@@ -798,6 +802,9 @@ public class LocationTrackingService: NSObject {
         lastMotionState = newState
 
         print("🏃 TripTracker Motion changed: \(prevState.rawValue) → \(newState.rawValue)")
+
+        // Emit motionChange to Capacitor plugin (→ Ionic)
+        delegate?.didChangeActivity(activity: newState.rawValue, transition: "MOTION")
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }

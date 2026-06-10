@@ -1045,6 +1045,8 @@ public class LocationTrackingService extends Service implements
 
     @Override
     public void onMovementDetected(boolean isMoving, float speed) {
+        // Emit sensor-based motion change to Ionic
+        emitMotionChange(isMoving ? "MOVING" : "STILL", "SENSOR");
         if (!isMoving) {
             long silenceMs = System.currentTimeMillis() - lastGpsUpdateTime;
             if (silenceMs > GPS_STALE_MS) {
@@ -1903,6 +1905,9 @@ public class LocationTrackingService extends Service implements
 
         Log.i(TAG, "🏃 Activity: " + activityName + " → " + transitionName);
 
+        // Emit to Ionic via Capacitor bridge
+        emitMotionChange(activityName, transitionName);
+
         if (activityType == DetectedActivity.IN_VEHICLE
                 && transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER) {
             // Don't auto-start from Activity Recognition alone — GPS drift/charger
@@ -1992,6 +1997,26 @@ public class LocationTrackingService extends Service implements
             Log.i(TAG, "⏹️ Activity Recognition stopped");
         } catch (Exception e) {
             Log.e(TAG, "Stop Activity Recognition error: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Emit a motionChange event to the Capacitor plugin bridge → Ionic.
+     * Uses reflection so this service has no hard compile-time dependency on the plugin.
+     *
+     * @param activity   "IN_VEHICLE" | "STILL" | "WALKING" | "MOVING" | "ON_BICYCLE" etc.
+     * @param transition "ENTER" | "EXIT"  (Activity Recognition)
+     *                   "SENSOR"          (accelerometer / SensorBasedLocationTracker)
+     */
+    private void emitMotionChange(String activity, String transition) {
+        try {
+            Class<?> cls = Class.forName(
+                    "com.carmd.triptracking.capacitor.TripTrackerCapPlugin");
+            java.lang.reflect.Method m = cls.getMethod(
+                    "emitMotionChange", String.class, String.class);
+            m.invoke(null, activity, transition);
+        } catch (Exception ignored) {
+            // Plugin not attached (standalone Android app) — safe to ignore
         }
     }
 

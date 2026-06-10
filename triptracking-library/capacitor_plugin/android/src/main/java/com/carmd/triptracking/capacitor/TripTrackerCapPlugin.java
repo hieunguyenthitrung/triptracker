@@ -49,6 +49,31 @@ public class TripTrackerCapPlugin extends Plugin {
     private LocationTrackingService trackingService;
     private boolean serviceBound = false;
 
+    // Static self-reference so LocationTrackingService can call emitMotionChange via reflection
+    private static TripTrackerCapPlugin instance;
+
+    // ── Event name constants ──────────────────────────────────────────────────
+    private static final String EVENT_ACTIVITY_CHANGE     = "activityChange";
+    private static final String EVENT_LOCATION_UPDATE     = "locationUpdate";
+    private static final String EVENT_TRACKING_STATE      = "trackingStateChange";
+    private static final String EVENT_STATS_UPDATE        = "statsUpdate";
+
+    /**
+     * Called via reflection from LocationTrackingService.emitMotionChange().
+     * Must be public static — no hard compile-time dependency on this class from the service.
+     *
+     * @param activity   "IN_VEHICLE" | "STILL" | "MOVING" | "WALKING" | "ON_BICYCLE"
+     * @param transition "ENTER" | "EXIT"  (Activity Recognition)
+     *                   "SENSOR"          (SensorBasedLocationTracker accelerometer)
+     */
+    public static void emitMotionChange(String activity, String transition) {
+        if (instance == null) return;
+        JSObject data = new JSObject();
+        data.put("activity", activity);
+        data.put("transition", transition);
+        instance.notifyListeners(EVENT_ACTIVITY_CHANGE, data);
+    }
+
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder binder) {
@@ -66,6 +91,7 @@ public class TripTrackerCapPlugin extends Plugin {
 
     @Override
     public void load() {
+        instance = this;  // register static reference for emitMotionChange()
         // Service is always started by SDK. Bind to it.
         bindToServiceIfRunning();
     }
