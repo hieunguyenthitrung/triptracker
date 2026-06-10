@@ -168,6 +168,10 @@ public class LocationTrackingService extends Service implements
     private static final long GPS_STALE_MS = 10_000L; // speed starts decaying after this
     private static final long GPS_DEAD_MS = 18_000L; // speed forced to 0 after this
 
+    // ── GPS power mode ────────────────────────────────────────────────────────
+    /** True = high-accuracy 1s/3m (active trip or moving). False = network/passive only (still, no trip). */
+    private boolean isGpsHighAccuracy = false;
+
     // ── Callback interface ────────────────────────────────────────────────────
     public interface LocationUpdateCallback {
         void onLocationUpdate(Location location, TrackingSource source, double distance);
@@ -310,6 +314,7 @@ public class LocationTrackingService extends Service implements
         // Otherwise, Activity Recognition will detect IN_VEHICLE → start GPS for
         // confirmation.
         // GPS runs continuously: calibration + vehicle-speed detection
+        isGpsHighAccuracy = false; // reset so startGPSTracking() always runs fresh
         startGPSTracking();
 
         // Activity Recognition — detect automotive/still (like iOS CMMotionActivity)
@@ -785,8 +790,9 @@ public class LocationTrackingService extends Service implements
             autoStopHandler = new Handler(Looper.getMainLooper());
         autoStopHandler.postDelayed(() -> {
             if (!isTracking) {
+                isGpsHighAccuracy = false; // allow startGPSTracking() to re-register
                 startGPSTracking();
-                Log.d(TAG, "📡 GPS LOW-POWER resumed — 20s cooldown complete, ready for next trip");
+                Log.d(TAG, "📡 GPS HIGH-ACCURACY resumed — 20s cooldown complete, ready for next trip");
             }
         }, 20_000L);
     }
@@ -800,18 +806,8 @@ public class LocationTrackingService extends Service implements
      * alive.
      */
     private void stopGpsUpdates() {
-        try {
-            locationManager.removeUpdates(this);
-            // Immediately re-register at low rate — keeps GPS chip warm
-            locationManager.requestLocationUpdates(
-                    LocationManager.GPS_PROVIDER,
-                    30_000L, // 30 seconds interval
-                    100f, // 100 meters displacement
-                    this);
-            Log.d(TAG, "🔋 GPS LOW-POWER — 30s/100m (Activity Recognition + sensor still active)");
-        } catch (SecurityException e) {
-            Log.e(TAG, "stopGpsUpdates: no permission — " + e.getMessage());
-        }
+        // Switch to low-power network mode — removes GPS icon from status bar
+        startGPSLowPower();
     }
 
     // =========================================================================
@@ -1061,10 +1057,10 @@ public class LocationTrackingService extends Service implements
                 Log.d(TAG, "Still timer started");
                 startAutoStopTimer();
             }
-            // No active trip + still → stop GPS to save battery.
-            // Activity Recognition will re-enable GPS when IN_VEHICLE detected.
+            // No active trip + still → switch to low-power network (hides GPS icon).
+            // Activity Recognition will detect IN_VEHICLE and re-enable high-accuracy GPS.
             if (!isTracking) {
-                stopGpsUpdates();
+                startGPSLowPower();
             }
         } else {
             // Device is moving — reset still timer and cancel auto-stop
@@ -1410,15 +1406,56 @@ public class LocationTrackingService extends Service implements
         }
     }
 
+    /**
+     * Start GPS in HIGH-ACCURACY mode (1s / 3m) — used during active trips and when moving.
+     * Activates the GPS hardware chip → GPS icon appears in status bar.
+     */
     private void startGPSTracking() {
         if (!hasPermission(Manifest.permission.ACCESS_FINE_LOCATION))
             return;
+        if (isGpsHighAccuracy) return; // already in high-accuracy mode
         try {
             locationManager.removeUpdates(this);
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 3f, this);
-            Log.d(TAG, "GPS updates started (1s / 3m)");
+            isGpsHighAccuracy = true;
+            Log.d(TAG, "📡 GPS HIGH-ACCURACY started (1s / 3m) — GPS icon visible");
         } catch (SecurityException e) {
             Log.e(TAG, "Permission error starting GPS", e);
+        }
+    }
+
+    /**
+     * Switch GPS to LOW-POWER NETWORK mode — used when device is STILL and no trip is active.
+     * Uses NETWORK_PROVIDER (cell/WiFi) instead of GPS chip → GPS icon disappears from status bar.
+     * Activity Recognition stays active to detect IN_VEHICLE and re-enable high-accuracy GPS.
+     */
+    private void startGPSLowPower() {
+        if (!hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION))
+            return;
+        if (!isGpsHighAccuracy) return; // already in low-power mode
+        try {
+            locationManager.removeUpdates(this);
+            // Use NETWORK_PROVIDER: cell towers + WiFi — no GPS chip, no GPS icon
+            if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+                locationManager.requestLocationUpdates(
+                        LocationManager.NETWORK_PROVIDER,
+                        60_000L, // 60 seconds interval
+                        50f,     // 50 meters displacement
+                        this);
+                isGpsHighAccuracy = false;
+                Log.d(TAG, "🔋 GPS LOW-POWER (network) — GPS icon hidden, cell/WiFi only");
+            } else {
+                // Fallback: GPS at very low rate if network provider unavailable
+                locationManager.requestLocationUpdates(
+                        LocationManager.GPS_PROVIDER,
+                        60_000L, // 60 seconds
+                        100f,    // 100 meters
+                        this);
+                isGpsHighAccuracy = false;
+                Log.d(TAG, "🔋 GPS LOW-POWER fallback (60s/100m) — network provider unavailable");
+            }
+        } catch (SecurityException e) {
+            Log.e(TAG, "Permission error switching to low-power GPS", e);
         }
     }
 
