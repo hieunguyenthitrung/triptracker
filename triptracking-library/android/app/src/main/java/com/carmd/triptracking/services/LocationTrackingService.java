@@ -1073,8 +1073,9 @@ public class LocationTrackingService extends Service implements
                 cancelAutoStopTimer();
                 Log.d(TAG, "Still timer reset — device moving");
             }
+            Log.i(TAG, "SemitMotionChange: MOVING detected by sensors, speed=" + String.format("%.1f", speed) + " m/s");   
             // Emit sensor-based motion change to Ionic
-            emitMotionChange("automotive", "MOTION");
+            emitMotionChange("IN_VEHICLE", "ENTER");
             // Re-enable GPS if it was stopped during still period
             startGPSTracking();
         }
@@ -1916,6 +1917,7 @@ public class LocationTrackingService extends Service implements
         Log.i(TAG, "🏃 Activity: " + activityName + " → " + transitionName);
 
         // Emit to Ionic via Capacitor bridge
+        Log.i(TAG, "emitMotionChange - " + activityName + " " + transitionName);
         emitMotionChange(activityName, transitionName);
 
         if (activityType == DetectedActivity.IN_VEHICLE
@@ -2059,6 +2061,7 @@ public class LocationTrackingService extends Service implements
                 case "EXIT":
                     motion = "STILL";
             }
+            Log.i(TAG, "emitMotionChange - " + activityChangeString + " " + motion);
             Class<?> helperClass = Class.forName("com.megster.cordova.ble.central.TripTracker");
             helperClass.getMethod("notifyTripMotion", long.class).invoke(null, activityChangeString, motion);
         } catch (Exception ignored) {
