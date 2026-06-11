@@ -2002,21 +2002,27 @@ public class LocationTrackingService extends Service implements
 
     /**
      * Emit a motionChange event to the Capacitor plugin bridge → Ionic.
-     * Uses reflection so this service has no hard compile-time dependency on the plugin.
+     * Uses reflection so LocationTrackingService has no hard dependency on the plugin.
      *
      * @param activity   "IN_VEHICLE" | "STILL" | "WALKING" | "MOVING" | "ON_BICYCLE" etc.
+     * @param transition "ENTER" | "EXIT" (Activity Recognition) | "SENSOR" (accelerometer)
+     */
+    /**
+     * Emit a motionChange event — calls TripTracker.notifyTripMotion() directly.
+     * Mirrors the same pattern as notifyTripStarted / notifyTripEnded.
+     * TripTracker forwards to MotionListener (BLE plugin) and Capacitor plugin (Ionic).
+     *
+     * @param activity   "IN_VEHICLE" | "STILL" | "MOVING" | "WALKING" | "RUNNING" | "ON_BICYCLE"
      * @param transition "ENTER" | "EXIT"  (Activity Recognition)
-     *                   "SENSOR"          (accelerometer / SensorBasedLocationTracker)
+     *                   "SENSOR"          (accelerometer)
      */
     private void emitMotionChange(String activity, String transition) {
         try {
-            Class<?> cls = Class.forName(
-                    "com.carmd.triptracking.capacitor.TripTrackerCapPlugin");
-            java.lang.reflect.Method m = cls.getMethod(
-                    "emitMotionChange", String.class, String.class);
-            m.invoke(null, activity, transition);
+            Class<?> cls = Class.forName("com.megster.cordova.ble.central.TripTracker");
+            cls.getMethod("notifyTripMotion", String.class, String.class)
+               .invsoke(null, activity, transition);
         } catch (Exception ignored) {
-            // Plugin not attached (standalone Android app) — safe to ignore
+            // TripTracker BLE plugin not attached — safe to ignore
         }
     }
 
