@@ -1194,7 +1194,7 @@ public class LocationTrackingService extends Service implements
         if (speed >= requiredSpeed && accuracy <= 30f && location.hasSpeed() && location.getSpeed() >= requiredSpeed) {
             consecutiveVehicleCount++;
             if (!isTracking && consecutiveVehicleCount >= 3) {
-                
+
                 autoStartTrip(location);
                 consecutiveVehicleCount = 0;
                 activityRecognitionVehicle = false;
@@ -1233,6 +1233,7 @@ public class LocationTrackingService extends Service implements
                         String.format(java.util.Locale.US, "%.0f km traveled", km));
         }
 
+        emitMotionChange("IN_VEHICLE", "ENTER");
         lastSavedGpsLocation = new Location(location);
         Log.d(TAG, "GPS SAVE (vehicle): speed=" + String.format("%.1f", speed) +
                 " m/s dist=" + String.format("%.1f", distFromAnchor) + "m");
