@@ -59,8 +59,6 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
     // ═══════════════════════════════════════════════════════════════
 
     public override func load() {
-        // Register for location/tracking/activity events
-        // LocationTrackingService.shared.delegate = self
 
         // Auto-initialize SDK from saved config when app relaunches
         if !TripTrackerSDK.isInitialized {
@@ -116,6 +114,9 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
 
     /// Initialize SDK with custom config from JavaScript.
     @objc func initializeWithConfig(_ call: CAPPluginCall) {
+        // Register for location/tracking/activity events
+        LocationTrackingService.shared.delegate = self
+        
         var config = TripTrackerConfig()
         if let v = call.getDouble("saveIntervalMinutes")   { config.saveIntervalMinutes = v }
         if let v = call.getDouble("saveDistanceMeters")    { config.saveDistanceMeters = v }
