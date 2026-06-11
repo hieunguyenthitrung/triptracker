@@ -1355,6 +1355,7 @@ public class LocationTrackingService extends Service implements
         }
         try {
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0L, 0f, oneShot);
+            Log.d(TAG, "📡 GPS HIGH-ACCURACY started (1s / 3m) — GPS icon visible");
         } catch (SecurityException e) {
             Log.e(TAG, "Permission error requesting one-shot fix", e);
         }

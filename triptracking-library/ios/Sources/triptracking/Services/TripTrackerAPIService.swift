@@ -40,16 +40,16 @@ public struct TripTrackerAPIConfig {
 public final class TripTrackerAPIService {
     public static let shared = TripTrackerAPIService()
     private init() {
-        loadPendingQueue()
-        startNetworkMonitor()
+        // loadPendingQueue()
+        // startNetworkMonitor()
 
-        // Attempt flush on startup — covers case where app was killed offline,
-        // then relaunched with network available
-        if !pendingQueue.isEmpty {
-            DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 2.0) { [weak self] in
-                self?.flushQueue()
-            }
-        }
+        // // Attempt flush on startup — covers case where app was killed offline,
+        // // then relaunched with network available
+        // if !pendingQueue.isEmpty {
+        //     DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 2.0) { [weak self] in
+        //         self?.flushQueue()
+        //     }
+        // }
     }
 
     public var config = TripTrackerAPIConfig()
