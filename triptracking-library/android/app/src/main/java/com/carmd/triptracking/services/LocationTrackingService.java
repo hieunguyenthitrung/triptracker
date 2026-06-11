@@ -174,6 +174,8 @@ public class LocationTrackingService extends Service implements
      * only (still, no trip).
      */
     private boolean isGpsHighAccuracy = false;
+    /** true = low-power provider already registered — prevents double registration on first call */
+    private boolean isLowPowerRegistered = false;
 
     // ── Callback interface ────────────────────────────────────────────────────
     public interface LocationUpdateCallback {
@@ -313,12 +315,14 @@ public class LocationTrackingService extends Service implements
         // Seed sensor tracker with best available cached location
         startSensorTracking();
 
-        // GPS: only start if restoring an active trip.
-        // Otherwise, Activity Recognition will detect IN_VEHICLE → start GPS for
-        // confirmation.
-        // GPS runs continuously: calibration + vehicle-speed detection
-        isGpsHighAccuracy = false; // reset so startGPSTracking() always runs fresh
-        startGPSTracking();
+        // Start GPS in LOW-POWER (network) mode — no GPS chip, no icon.
+        // Will switch to HIGH-ACCURACY only when:
+        //   • Activity Recognition detects IN_VEHICLE
+        //   • Sensor detects MOVING
+        //   • An active trip is restored
+        // This prevents the GPS icon from appearing immediately on app open
+        // when the device is sitting still on a table.
+        startGPSLowPower();
 
         // Activity Recognition — detect automotive/still (like iOS CMMotionActivity)
         startActivityRecognition();
@@ -1430,6 +1434,7 @@ public class LocationTrackingService extends Service implements
             locationManager.removeUpdates(this);
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 3f, this);
             isGpsHighAccuracy = true;
+            isLowPowerRegistered = false; // reset so startGPSLowPower() can re-register later
             Log.d(TAG, "📡 GPS HIGH-ACCURACY started (1s / 3m) — GPS icon visible");
         } catch (SecurityException e) {
             Log.e(TAG, "Permission error starting GPS", e);
@@ -1447,8 +1452,14 @@ public class LocationTrackingService extends Service implements
     private void startGPSLowPower() {
         if (!hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION))
             return;
-        if (!isGpsHighAccuracy)
-            return; // already in low-power mode
+        // Skip only if already confirmed in low-power AND locationManager has updates registered.
+        // Don't skip on first call (isGpsHighAccuracy=false but nothing registered yet).
+        if (!isGpsHighAccuracy && locationManager != null) {
+            // Check if we are already registered — if locationManager has us, skip
+            // We detect this by checking if removeUpdates would be a no-op (can't query directly)
+            // So: only skip if we explicitly set low-power before (not on first call)
+            if (isLowPowerRegistered) return;
+        }
         try {
             locationManager.removeUpdates(this);
             // Use NETWORK_PROVIDER: cell towers + WiFi — no GPS chip, no GPS icon
@@ -1459,6 +1470,7 @@ public class LocationTrackingService extends Service implements
                         50f, // 50 meters displacement
                         this);
                 isGpsHighAccuracy = false;
+                isLowPowerRegistered = true;
                 Log.d(TAG, "🔋 GPS LOW-POWER (network) — GPS icon hidden, cell/WiFi only");
             } else {
                 // Fallback: GPS at very low rate if network provider unavailable
@@ -1468,6 +1480,7 @@ public class LocationTrackingService extends Service implements
                         100f, // 100 meters
                         this);
                 isGpsHighAccuracy = false;
+                isLowPowerRegistered = true;
                 Log.d(TAG, "🔋 GPS LOW-POWER fallback (60s/100m) — network provider unavailable");
             }
         } catch (SecurityException e) {
