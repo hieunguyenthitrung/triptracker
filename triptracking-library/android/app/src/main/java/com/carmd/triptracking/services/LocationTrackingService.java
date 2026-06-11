@@ -1194,6 +1194,7 @@ public class LocationTrackingService extends Service implements
         if (speed >= requiredSpeed && accuracy <= 30f && location.hasSpeed() && location.getSpeed() >= requiredSpeed) {
             consecutiveVehicleCount++;
             if (!isTracking && consecutiveVehicleCount >= 3) {
+                
                 autoStartTrip(location);
                 consecutiveVehicleCount = 0;
                 activityRecognitionVehicle = false;
@@ -1849,10 +1850,36 @@ public class LocationTrackingService extends Service implements
                     .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
                     .build());
 
+            // STILL exit → device started moving again
+            transitions.add(new ActivityTransition.Builder()
+                    .setActivityType(DetectedActivity.STILL)
+                    .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT)
+                    .build());
+
             // ON_BICYCLE enter
             transitions.add(new ActivityTransition.Builder()
                     .setActivityType(DetectedActivity.ON_BICYCLE)
                     .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
+                    .build());
+
+            // WALKING enter/exit — needed for onMotionChange
+            transitions.add(new ActivityTransition.Builder()
+                    .setActivityType(DetectedActivity.WALKING)
+                    .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
+                    .build());
+            transitions.add(new ActivityTransition.Builder()
+                    .setActivityType(DetectedActivity.WALKING)
+                    .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT)
+                    .build());
+
+            // RUNNING enter/exit
+            transitions.add(new ActivityTransition.Builder()
+                    .setActivityType(DetectedActivity.RUNNING)
+                    .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
+                    .build());
+            transitions.add(new ActivityTransition.Builder()
+                    .setActivityType(DetectedActivity.RUNNING)
+                    .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT)
                     .build());
 
             ActivityTransitionRequest request = new ActivityTransitionRequest(transitions);
