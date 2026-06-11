@@ -115,8 +115,9 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
     /// Initialize SDK with custom config from JavaScript.
     @objc func initializeWithConfig(_ call: CAPPluginCall) {
         // Register for location/tracking/activity events
+        print("🚀 TripTrackerPlugin initializing with config from JS")
         LocationTrackingService.shared.delegate = self
-        
+
         var config = TripTrackerConfig()
         if let v = call.getDouble("saveIntervalMinutes")   { config.saveIntervalMinutes = v }
         if let v = call.getDouble("saveDistanceMeters")    { config.saveDistanceMeters = v }
