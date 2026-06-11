@@ -1232,6 +1232,7 @@ public class LocationTrackingService extends Service implements
                 showTripNotification(NOTIF_DISTANCE, "📏 Distance Milestone",
                         String.format(java.util.Locale.US, "%.0f km traveled", km));
         }
+        Log.i(TAG, "MotionChange: emitMotionChange ");
 
         emitMotionChange("IN_VEHICLE", "ENTER");
         lastSavedGpsLocation = new Location(location);
@@ -2063,21 +2064,27 @@ public class LocationTrackingService extends Service implements
      */
     private void emitMotionChange(String activity, String transition) {
         try {
-            Log.e(TAG, "emitMotionChange");
+            Log.i(TAG, "emitMotionChange: " + activity + " - " + transition);
             String activityChangeString = "";
             switch (activity) {
                 case "IN_VEHICLE":
                     activityChangeString = "Automotive";
+                    break;
                 case "ON_BICYCLE":
                     activityChangeString = "Cycling";
+                    break;
                 case "WALKING":
                     activityChangeString = "Walking";
+                    break;
                 case "RUNNING":
                     activityChangeString = "Running";
+                    break;
                 case "STILL":
                     activityChangeString = "Still";
+                    break;
                 case "ON_FOOT":
                     activityChangeString = "Walking";
+                    break;
                 default:
                     activityChangeString = "Unknown";
             }
@@ -2086,8 +2093,10 @@ public class LocationTrackingService extends Service implements
             switch (transition) {
                 case "ENTER":
                     motion = "MOTION";
+                    break;
                 case "EXIT":
                     motion = "STILL";
+                    break;
             }
             Log.i(TAG, "emitMotionChange - " + activityChangeString + " " + motion);
             Class<?> helperClass = Class.forName("com.megster.cordova.ble.central.TripTracker");
