@@ -60,7 +60,7 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
 
     public override func load() {
         // Register for location/tracking/activity events
-        LocationTrackingService.shared.delegate = self
+        // LocationTrackingService.shared.delegate = self
 
         // Auto-initialize SDK from saved config when app relaunches
         if !TripTrackerSDK.isInitialized {
