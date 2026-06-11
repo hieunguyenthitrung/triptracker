@@ -1442,49 +1442,26 @@ public class LocationTrackingService extends Service implements
     }
 
     /**
-     * Switch GPS to LOW-POWER NETWORK mode — used when device is STILL and no trip
-     * is active.
-     * Uses NETWORK_PROVIDER (cell/WiFi) instead of GPS chip → GPS icon disappears
-     * from status bar.
-     * Activity Recognition stays active to detect IN_VEHICLE and re-enable
-     * high-accuracy GPS.
+     * Stop all location updates — fully removes GPS icon from status bar.
+     *
+     * IMPORTANT: Both GPS_PROVIDER and NETWORK_PROVIDER trigger the location icon
+     * on Android 10+. The ONLY way to hide the icon is removeUpdates() with nothing
+     * re-registered.
+     *
+     * Motion detection continues via:
+     *   • Activity Recognition (IN_VEHICLE, STILL, WALKING) — no location needed
+     *   • SensorBasedLocationTracker (accelerometer) — no location needed
+     * GPS restarts when IN_VEHICLE or MOVING is detected.
      */
     private void startGPSLowPower() {
-        if (!hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION))
-            return;
-        // Skip only if already confirmed in low-power AND locationManager has updates registered.
-        // Don't skip on first call (isGpsHighAccuracy=false but nothing registered yet).
-        if (!isGpsHighAccuracy && locationManager != null) {
-            // Check if we are already registered — if locationManager has us, skip
-            // We detect this by checking if removeUpdates would be a no-op (can't query directly)
-            // So: only skip if we explicitly set low-power before (not on first call)
-            if (isLowPowerRegistered) return;
-        }
+        if (!isGpsHighAccuracy && isLowPowerRegistered) return; // already stopped
         try {
-            locationManager.removeUpdates(this);
-            // Use NETWORK_PROVIDER: cell towers + WiFi — no GPS chip, no GPS icon
-            if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
-                locationManager.requestLocationUpdates(
-                        LocationManager.NETWORK_PROVIDER,
-                        60_000L, // 60 seconds interval
-                        50f, // 50 meters displacement
-                        this);
-                isGpsHighAccuracy = false;
-                isLowPowerRegistered = true;
-                Log.d(TAG, "🔋 GPS LOW-POWER (network) — GPS icon hidden, cell/WiFi only");
-            } else {
-                // Fallback: GPS at very low rate if network provider unavailable
-                locationManager.requestLocationUpdates(
-                        LocationManager.GPS_PROVIDER,
-                        60_000L, // 60 seconds
-                        100f, // 100 meters
-                        this);
-                isGpsHighAccuracy = false;
-                isLowPowerRegistered = true;
-                Log.d(TAG, "🔋 GPS LOW-POWER fallback (60s/100m) — network provider unavailable");
-            }
+            locationManager.removeUpdates(this);  // ← stop ALL providers → icon hidden
+            isGpsHighAccuracy = false;
+            isLowPowerRegistered = true;
+            Log.d(TAG, "🔋 GPS STOPPED — location icon hidden (AR + sensor still active)");
         } catch (SecurityException e) {
-            Log.e(TAG, "Permission error switching to low-power GPS", e);
+            Log.e(TAG, "Permission error stopping GPS", e);
         }
     }
 
