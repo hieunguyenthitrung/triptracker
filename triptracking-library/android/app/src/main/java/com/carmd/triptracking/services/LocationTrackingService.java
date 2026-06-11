@@ -85,8 +85,8 @@ public class LocationTrackingService extends Service implements
         Location finalLoc = getCurrentLocation();
         if (finalLoc != null) {
             TripTrackerAPIService.getInstance().sendPing(
-                        finalLoc, false, 0f, "still", null);
-                Log.d(TAG, "📡 Final ping before forced trip end");
+                    finalLoc, false, 0f, "still", null);
+            Log.d(TAG, "📡 Final ping before forced trip end");
         }
 
         stopTracking();
@@ -169,7 +169,10 @@ public class LocationTrackingService extends Service implements
     private static final long GPS_DEAD_MS = 18_000L; // speed forced to 0 after this
 
     // ── GPS power mode ────────────────────────────────────────────────────────
-    /** True = high-accuracy 1s/3m (active trip or moving). False = network/passive only (still, no trip). */
+    /**
+     * True = high-accuracy 1s/3m (active trip or moving). False = network/passive
+     * only (still, no trip).
+     */
     private boolean isGpsHighAccuracy = false;
 
     // ── Callback interface ────────────────────────────────────────────────────
@@ -335,9 +338,9 @@ public class LocationTrackingService extends Service implements
                 // Send one initial ping so server knows device position on app open
                 if (initLoc.getAccuracy() <= 50) {
                     TripTrackerAPIService.getInstance().sendPing(
-                                initLoc, false, 0f, "still", null);
-                        Log.d(TAG, "📡 Initial ping sent on app open — " +
-                                String.format("%.6f,%.6f", initLoc.getLatitude(), initLoc.getLongitude()));
+                            initLoc, false, 0f, "still", null);
+                    Log.d(TAG, "📡 Initial ping sent on app open — " +
+                            String.format("%.6f,%.6f", initLoc.getLatitude(), initLoc.getLongitude()));
                 }
             }
         }, 5000);
@@ -490,7 +493,7 @@ public class LocationTrackingService extends Service implements
     /** Current best location — with fallback to LocationManager cache. */
     public Location getCurrentLocation() {
         // if (lastSensorLocation != null)
-        //     return new Location(lastSensorLocation);
+        // return new Location(lastSensorLocation);
         if (lastGpsLocation != null)
             return new Location(lastGpsLocation);
         // Fallback: try LocationManager cached locations
@@ -1045,8 +1048,7 @@ public class LocationTrackingService extends Service implements
 
     @Override
     public void onMovementDetected(boolean isMoving, float speed) {
-        // Emit sensor-based motion change to Ionic
-        emitMotionChange(isMoving ? "MOVING" : "STILL", "SENSOR");
+
         if (!isMoving) {
             long silenceMs = System.currentTimeMillis() - lastGpsUpdateTime;
             if (silenceMs > GPS_STALE_MS) {
@@ -1071,6 +1073,8 @@ public class LocationTrackingService extends Service implements
                 cancelAutoStopTimer();
                 Log.d(TAG, "Still timer reset — device moving");
             }
+            // Emit sensor-based motion change to Ionic
+            emitMotionChange("automotive", "MOTION");
             // Re-enable GPS if it was stopped during still period
             startGPSTracking();
         }
@@ -1409,13 +1413,15 @@ public class LocationTrackingService extends Service implements
     }
 
     /**
-     * Start GPS in HIGH-ACCURACY mode (1s / 3m) — used during active trips and when moving.
+     * Start GPS in HIGH-ACCURACY mode (1s / 3m) — used during active trips and when
+     * moving.
      * Activates the GPS hardware chip → GPS icon appears in status bar.
      */
     private void startGPSTracking() {
         if (!hasPermission(Manifest.permission.ACCESS_FINE_LOCATION))
             return;
-        if (isGpsHighAccuracy) return; // already in high-accuracy mode
+        if (isGpsHighAccuracy)
+            return; // already in high-accuracy mode
         try {
             locationManager.removeUpdates(this);
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 3f, this);
@@ -1427,14 +1433,18 @@ public class LocationTrackingService extends Service implements
     }
 
     /**
-     * Switch GPS to LOW-POWER NETWORK mode — used when device is STILL and no trip is active.
-     * Uses NETWORK_PROVIDER (cell/WiFi) instead of GPS chip → GPS icon disappears from status bar.
-     * Activity Recognition stays active to detect IN_VEHICLE and re-enable high-accuracy GPS.
+     * Switch GPS to LOW-POWER NETWORK mode — used when device is STILL and no trip
+     * is active.
+     * Uses NETWORK_PROVIDER (cell/WiFi) instead of GPS chip → GPS icon disappears
+     * from status bar.
+     * Activity Recognition stays active to detect IN_VEHICLE and re-enable
+     * high-accuracy GPS.
      */
     private void startGPSLowPower() {
         if (!hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION))
             return;
-        if (!isGpsHighAccuracy) return; // already in low-power mode
+        if (!isGpsHighAccuracy)
+            return; // already in low-power mode
         try {
             locationManager.removeUpdates(this);
             // Use NETWORK_PROVIDER: cell towers + WiFi — no GPS chip, no GPS icon
@@ -1442,7 +1452,7 @@ public class LocationTrackingService extends Service implements
                 locationManager.requestLocationUpdates(
                         LocationManager.NETWORK_PROVIDER,
                         60_000L, // 60 seconds interval
-                        50f,     // 50 meters displacement
+                        50f, // 50 meters displacement
                         this);
                 isGpsHighAccuracy = false;
                 Log.d(TAG, "🔋 GPS LOW-POWER (network) — GPS icon hidden, cell/WiFi only");
@@ -1451,7 +1461,7 @@ public class LocationTrackingService extends Service implements
                 locationManager.requestLocationUpdates(
                         LocationManager.GPS_PROVIDER,
                         60_000L, // 60 seconds
-                        100f,    // 100 meters
+                        100f, // 100 meters
                         this);
                 isGpsHighAccuracy = false;
                 Log.d(TAG, "🔋 GPS LOW-POWER fallback (60s/100m) — network provider unavailable");
@@ -2002,24 +2012,55 @@ public class LocationTrackingService extends Service implements
 
     /**
      * Emit a motionChange event to the Capacitor plugin bridge → Ionic.
-     * Uses reflection so LocationTrackingService has no hard dependency on the plugin.
+     * Uses reflection so LocationTrackingService has no hard dependency on the
+     * plugin.
      *
-     * @param activity   "IN_VEHICLE" | "STILL" | "WALKING" | "MOVING" | "ON_BICYCLE" etc.
-     * @param transition "ENTER" | "EXIT" (Activity Recognition) | "SENSOR" (accelerometer)
+     * @param activity   "IN_VEHICLE" | "STILL" | "WALKING" | "MOVING" |
+     *                   "ON_BICYCLE" etc.
+     * @param transition "ENTER" | "EXIT" (Activity Recognition) | "SENSOR"
+     *                   (accelerometer)
      */
     /**
      * Emit a motionChange event — calls TripTracker.notifyTripMotion() directly.
      * Mirrors the same pattern as notifyTripStarted / notifyTripEnded.
-     * TripTracker forwards to MotionListener (BLE plugin) and Capacitor plugin (Ionic).
+     * TripTracker forwards to MotionListener (BLE plugin) and Capacitor plugin
+     * (Ionic).
      *
-     * @param activity   "IN_VEHICLE" | "STILL" | "MOVING" | "WALKING" | "RUNNING" | "ON_BICYCLE"
-     * @param transition "ENTER" | "EXIT"  (Activity Recognition)
-     *                   "SENSOR"          (accelerometer)
+     * @param activity   "IN_VEHICLE" | "STILL" | "MOVING" | "WALKING" | "RUNNING" |
+     *                   "ON_BICYCLE"
+     * @param transition "ENTER" | "EXIT" (Activity Recognition)
+     *                   "SENSOR" (accelerometer)
      */
     private void emitMotionChange(String activity, String transition) {
         try {
+            Log.e(TAG, "emitMotionChange");
+            String activityChangeString = "";
+            switch (activity) {
+                case "IN_VEHICLE":
+                    activityChangeString = "Automotive";
+                case "ON_BICYCLE":
+                    activityChangeString = "Cycling";
+                case "WALKING":
+                    activityChangeString = "Walking";
+                case "RUNNING":
+                    activityChangeString = "Running";
+                case "STILL":
+                    activityChangeString = "Still";
+                case "ON_FOOT":
+                    activityChangeString = "Walking";
+                default:
+                    activityChangeString = "Unknown";
+            }
+
+            String motion = "";
+            switch (transition) {
+                case "ENTER":
+                    motion = "MOTION";
+                case "EXIT":
+                    motion = "STILL";
+            }
             Class<?> helperClass = Class.forName("com.megster.cordova.ble.central.TripTracker");
-            helperClass.getMethod("notifyTripMotion", long.class).invoke(null, activity, transition);
+            helperClass.getMethod("notifyTripMotion", long.class).invoke(null, activityChangeString, motion);
         } catch (Exception ignored) {
             Log.e(TAG, "Error occurred while notifying motion to Java", ignored);
         }
