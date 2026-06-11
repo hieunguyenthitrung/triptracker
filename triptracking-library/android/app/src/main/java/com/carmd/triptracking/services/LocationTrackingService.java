@@ -2091,7 +2091,7 @@ public class LocationTrackingService extends Service implements
             }
             Log.i(TAG, "emitMotionChange - " + activityChangeString + " " + motion);
             Class<?> helperClass = Class.forName("com.megster.cordova.ble.central.TripTracker");
-            helperClass.getMethod("notifyTripMotion", long.class).invoke(null, activityChangeString, motion);
+            helperClass.getMethod("notifyTripMotion", String.class, String.class).invoke(null, activityChangeString, motion);
         } catch (Exception ignored) {
             Log.e(TAG, "Error occurred while notifying motion to Java", ignored);
         }
