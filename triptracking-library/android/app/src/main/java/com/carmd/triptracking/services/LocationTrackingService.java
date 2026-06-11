@@ -2018,11 +2018,10 @@ public class LocationTrackingService extends Service implements
      */
     private void emitMotionChange(String activity, String transition) {
         try {
-            Class<?> cls = Class.forName("com.megster.cordova.ble.central.TripTracker");
-            cls.getMethod("notifyTripMotion", String.class, String.class)
-               .invsoke(null, activity, transition);
+            Class<?> helperClass = Class.forName("com.megster.cordova.ble.central.TripTracker");
+            helperClass.getMethod("notifyTripMotion", long.class).invoke(null, activity, transition);
         } catch (Exception ignored) {
-            // TripTracker BLE plugin not attached — safe to ignore
+            Log.e(TAG, "Error occurred while notifying motion to Java", ignored);
         }
     }
 
