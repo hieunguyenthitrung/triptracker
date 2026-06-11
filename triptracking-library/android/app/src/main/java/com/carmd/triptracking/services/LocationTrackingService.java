@@ -1998,12 +1998,23 @@ public class LocationTrackingService extends Service implements
             if (isTracking) {
                 Log.i(TAG, "⏸ Activity Recognition: STILL detected — starting auto-end countdown");
                 startAutoStopTimer();
-                // } else {
-                // // Not tracking + still → ensure GPS is off
-                // stopGpsUpdates();
+            } else {
+                // Not tracking + confirmed still → switch to low-power network
+                // GPS chip turns off → icon disappears from status bar
+                Log.i(TAG, "🔋 Activity Recognition: STILL (no trip) — switching to low-power GPS");
+                startGPSLowPower();
             }
         }
         // ON_BICYCLE, WALKING, RUNNING: logged but don't trigger auto-start/stop
+        // STILL EXIT → device is moving again, restore high-accuracy GPS
+        if (activityType == DetectedActivity.STILL
+                && transitionType == ActivityTransition.ACTIVITY_TRANSITION_EXIT) {
+            if (!isTracking) {
+                Log.i(TAG, "▶️ Activity Recognition: STILL exited — restoring high-accuracy GPS");
+                isGpsHighAccuracy = false; // force re-register
+                startGPSTracking();
+            }
+        }
     }
 
     public String getActivityName(int activityType) {
