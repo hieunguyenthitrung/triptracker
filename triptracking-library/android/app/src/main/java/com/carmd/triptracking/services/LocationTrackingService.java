@@ -311,6 +311,7 @@ public class LocationTrackingService extends Service implements
         // confirmation.
         // GPS runs continuously: calibration + vehicle-speed detection
         startGPSTracking();
+        startGPSStillMonitor();
 
         // Activity Recognition — detect automotive/still (like iOS CMMotionActivity)
         startActivityRecognition();
@@ -608,7 +609,6 @@ public class LocationTrackingService extends Service implements
 
         // GPS was stopped by the previous stopTracking() call — restart it.
         startGPSTracking();
-        startGPSStillMonitor();
 
         Log.d(TAG, "🚗 AUTO-TRIP STARTED — ID=" + currentTripId);
 
