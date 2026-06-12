@@ -168,15 +168,6 @@ public class LocationTrackingService extends Service implements
     private static final long GPS_STALE_MS = 10_000L; // speed starts decaying after this
     private static final long GPS_DEAD_MS = 18_000L; // speed forced to 0 after this
 
-    // ── GPS power mode ────────────────────────────────────────────────────────
-    /**
-     * True = high-accuracy 1s/3m (active trip or moving). False = network/passive
-     * only (still, no trip).
-     */
-    private boolean isGpsHighAccuracy = false;
-    /** true = low-power provider already registered — prevents double registration on first call */
-    private boolean isLowPowerRegistered = false;
-
     // ── Callback interface ────────────────────────────────────────────────────
     public interface LocationUpdateCallback {
         void onLocationUpdate(Location location, TrackingSource source, double distance);
@@ -315,14 +306,11 @@ public class LocationTrackingService extends Service implements
         // Seed sensor tracker with best available cached location
         startSensorTracking();
 
-        // Start GPS in LOW-POWER (network) mode — no GPS chip, no icon.
-        // Will switch to HIGH-ACCURACY only when:
-        //   • Activity Recognition detects IN_VEHICLE
-        //   • Sensor detects MOVING
-        //   • An active trip is restored
-        // This prevents the GPS icon from appearing immediately on app open
-        // when the device is sitting still on a table.
-        startGPSLowPower();
+        // GPS: only start if restoring an active trip.
+        // Otherwise, Activity Recognition will detect IN_VEHICLE → start GPS for
+        // confirmation.
+        // GPS runs continuously: calibration + vehicle-speed detection
+        startGPSTracking();
 
         // Activity Recognition — detect automotive/still (like iOS CMMotionActivity)
         startActivityRecognition();
@@ -797,9 +785,8 @@ public class LocationTrackingService extends Service implements
             autoStopHandler = new Handler(Looper.getMainLooper());
         autoStopHandler.postDelayed(() -> {
             if (!isTracking) {
-                isGpsHighAccuracy = false; // allow startGPSTracking() to re-register
                 startGPSTracking();
-                Log.d(TAG, "📡 GPS HIGH-ACCURACY resumed — 20s cooldown complete, ready for next trip");
+                Log.d(TAG, "📡 GPS LOW-POWER resumed — 20s cooldown complete, ready for next trip");
             }
         }, 20_000L);
     }
@@ -813,8 +800,18 @@ public class LocationTrackingService extends Service implements
      * alive.
      */
     private void stopGpsUpdates() {
-        // Switch to low-power network mode — removes GPS icon from status bar
-        startGPSLowPower();
+        try {
+            locationManager.removeUpdates(this);
+            // Immediately re-register at low rate — keeps GPS chip warm
+            locationManager.requestLocationUpdates(
+                    LocationManager.GPS_PROVIDER,
+                    30_000L, // 30 seconds interval
+                    100f, // 100 meters displacement
+                    this);
+            Log.d(TAG, "🔋 GPS LOW-POWER — 30s/100m (Activity Recognition + sensor still active)");
+        } catch (SecurityException e) {
+            Log.e(TAG, "stopGpsUpdates: no permission — " + e.getMessage());
+        }
     }
 
     // =========================================================================
@@ -1052,7 +1049,6 @@ public class LocationTrackingService extends Service implements
 
     @Override
     public void onMovementDetected(boolean isMoving, float speed) {
-
         if (!isMoving) {
             long silenceMs = System.currentTimeMillis() - lastGpsUpdateTime;
             if (silenceMs > GPS_STALE_MS) {
@@ -1065,10 +1061,10 @@ public class LocationTrackingService extends Service implements
                 Log.d(TAG, "Still timer started");
                 startAutoStopTimer();
             }
-            // No active trip + still → switch to low-power network (hides GPS icon).
-            // Activity Recognition will detect IN_VEHICLE and re-enable high-accuracy GPS.
+            // No active trip + still → stop GPS to save battery.
+            // Activity Recognition will re-enable GPS when IN_VEHICLE detected.
             if (!isTracking) {
-                startGPSLowPower();
+                stopGpsUpdates();
             }
         } else {
             // Device is moving — reset still timer and cancel auto-stop
@@ -1198,7 +1194,6 @@ public class LocationTrackingService extends Service implements
         if (speed >= requiredSpeed && accuracy <= 30f && location.hasSpeed() && location.getSpeed() >= requiredSpeed) {
             consecutiveVehicleCount++;
             if (!isTracking && consecutiveVehicleCount >= 3) {
-
                 autoStartTrip(location);
                 consecutiveVehicleCount = 0;
                 activityRecognitionVehicle = false;
@@ -1421,48 +1416,15 @@ public class LocationTrackingService extends Service implements
         }
     }
 
-    /**
-     * Start GPS in HIGH-ACCURACY mode (1s / 3m) — used during active trips and when
-     * moving.
-     * Activates the GPS hardware chip → GPS icon appears in status bar.
-     */
     private void startGPSTracking() {
         if (!hasPermission(Manifest.permission.ACCESS_FINE_LOCATION))
             return;
-        if (isGpsHighAccuracy)
-            return; // already in high-accuracy mode
         try {
             locationManager.removeUpdates(this);
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 3f, this);
-            isGpsHighAccuracy = true;
-            isLowPowerRegistered = false; // reset so startGPSLowPower() can re-register later
-            Log.d(TAG, "📡 GPS HIGH-ACCURACY started (1s / 3m) — GPS icon visible");
+            Log.d(TAG, "GPS updates started (1s / 3m)");
         } catch (SecurityException e) {
             Log.e(TAG, "Permission error starting GPS", e);
-        }
-    }
-
-    /**
-     * Stop all location updates — fully removes GPS icon from status bar.
-     *
-     * IMPORTANT: Both GPS_PROVIDER and NETWORK_PROVIDER trigger the location icon
-     * on Android 10+. The ONLY way to hide the icon is removeUpdates() with nothing
-     * re-registered.
-     *
-     * Motion detection continues via:
-     *   • Activity Recognition (IN_VEHICLE, STILL, WALKING) — no location needed
-     *   • SensorBasedLocationTracker (accelerometer) — no location needed
-     * GPS restarts when IN_VEHICLE or MOVING is detected.
-     */
-    private void startGPSLowPower() {
-        if (!isGpsHighAccuracy && isLowPowerRegistered) return; // already stopped
-        try {
-            locationManager.removeUpdates(this);  // ← stop ALL providers → icon hidden
-            isGpsHighAccuracy = false;
-            isLowPowerRegistered = true;
-            Log.d(TAG, "🔋 GPS STOPPED — location icon hidden (AR + sensor still active)");
-        } catch (SecurityException e) {
-            Log.e(TAG, "Permission error stopping GPS", e);
         }
     }
 
@@ -1989,23 +1951,12 @@ public class LocationTrackingService extends Service implements
             if (isTracking) {
                 Log.i(TAG, "⏸ Activity Recognition: STILL detected — starting auto-end countdown");
                 startAutoStopTimer();
-            } else {
-                // Not tracking + confirmed still → switch to low-power network
-                // GPS chip turns off → icon disappears from status bar
-                Log.i(TAG, "🔋 Activity Recognition: STILL (no trip) — switching to low-power GPS");
-                startGPSLowPower();
+                // } else {
+                // // Not tracking + still → ensure GPS is off
+                // stopGpsUpdates();
             }
         }
         // ON_BICYCLE, WALKING, RUNNING: logged but don't trigger auto-start/stop
-        // STILL EXIT → device is moving again, restore high-accuracy GPS
-        if (activityType == DetectedActivity.STILL
-                && transitionType == ActivityTransition.ACTIVITY_TRANSITION_EXIT) {
-            if (!isTracking) {
-                Log.i(TAG, "▶️ Activity Recognition: STILL exited — restoring high-accuracy GPS");
-                isGpsHighAccuracy = false; // force re-register
-                startGPSTracking();
-            }
-        }
     }
 
     public String getActivityName(int activityType) {
