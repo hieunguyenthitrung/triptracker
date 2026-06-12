@@ -306,11 +306,9 @@ public class LocationTrackingService extends Service implements
         // Seed sensor tracker with best available cached location
         startSensorTracking();
 
-        // GPS: only start if restoring an active trip.
-        // Otherwise, Activity Recognition will detect IN_VEHICLE → start GPS for
-        // confirmation.
-        // GPS runs continuously: calibration + vehicle-speed detection
-        startGPSTracking();
+        // Start GPS stopped — icon hidden immediately on app open.
+        // GPS restarts only when Activity Recognition confirms IN_VEHICLE.
+        stopGpsUpdates();
 
         // Activity Recognition — detect automotive/still (like iOS CMMotionActivity)
         startActivityRecognition();
@@ -802,13 +800,11 @@ public class LocationTrackingService extends Service implements
     private void stopGpsUpdates() {
         try {
             locationManager.removeUpdates(this);
-            // Immediately re-register at low rate — keeps GPS chip warm
-            locationManager.requestLocationUpdates(
-                    LocationManager.GPS_PROVIDER,
-                    30_000L, // 30 seconds interval
-                    100f, // 100 meters displacement
-                    this);
-            Log.d(TAG, "🔋 GPS LOW-POWER — 30s/100m (Activity Recognition + sensor still active)");
+            // Do NOT re-register any provider — both GPS_PROVIDER and NETWORK_PROVIDER
+            // trigger the location icon. removeUpdates() with nothing registered is the
+            // only way to fully hide the icon.
+            // Motion detection continues via Activity Recognition + accelerometer.
+            Log.d(TAG, "🔋 GPS STOPPED — location icon hidden (AR + sensor still active)");
         } catch (SecurityException e) {
             Log.e(TAG, "stopGpsUpdates: no permission — " + e.getMessage());
         }
@@ -1911,20 +1907,19 @@ public class LocationTrackingService extends Service implements
             Log.i(TAG, "🚗 Activity Recognition: IN_VEHICLE detected — enabling GPS for speed confirmation");
             if (!isTracking) {
                 activityRecognitionVehicle = true;
-                // Re-enable GPS to confirm vehicle speed — was stopped to save battery
-                // startGPSTracking();
-                // // Safety timeout: if no trip starts within 2 min, stop GPS to save battery
-                // if (autoStopHandler == null) autoStopHandler = new
-                // Handler(Looper.getMainLooper());
-                // autoStopHandler.postDelayed(() -> {
-                // if (!isTracking && activityRecognitionVehicle) {
-                // Log.i(TAG, "🔋 GPS confirmation timeout (2 min) — no vehicle speed confirmed,
-                // stopping GPS");
-                // activityRecognitionVehicle = false;
-                // stopGpsUpdates();
-                // }
-                // }, 120_000L); // 2 minutes
-                // If GPS speed is already high enough, start now
+                // Re-enable GPS to confirm vehicle speed
+                startGPSTracking();
+                // Safety timeout: if no trip starts within 2 min → stop GPS to hide icon
+                if (autoStopHandler == null)
+                    autoStopHandler = new Handler(Looper.getMainLooper());
+                autoStopHandler.postDelayed(() -> {
+                    if (!isTracking && activityRecognitionVehicle) {
+                        Log.i(TAG, "🔋 GPS confirmation timeout (2 min) — no vehicle speed, stopping GPS");
+                        activityRecognitionVehicle = false;
+                        stopGpsUpdates();
+                    }
+                }, 120_000L);
+                // If GPS speed already high enough, start trip immediately
                 Location loc = getCurrentLocation();
                 if (loc != null && loc.hasSpeed() && loc.getSpeed() >= vehicleThreshold()) {
                     autoStartTrip(loc);
