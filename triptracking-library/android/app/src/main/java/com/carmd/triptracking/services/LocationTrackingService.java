@@ -306,9 +306,11 @@ public class LocationTrackingService extends Service implements
         // Seed sensor tracker with best available cached location
         startSensorTracking();
 
-        // Start GPS stopped — icon hidden immediately on app open.
-        // GPS restarts only when Activity Recognition confirms IN_VEHICLE.
-        stopGpsUpdates();
+        // GPS: only start if restoring an active trip.
+        // Otherwise, Activity Recognition will detect IN_VEHICLE → start GPS for
+        // confirmation.
+        // GPS runs continuously: calibration + vehicle-speed detection
+        startGPSTracking();
 
         // Activity Recognition — detect automotive/still (like iOS CMMotionActivity)
         startActivityRecognition();
@@ -800,11 +802,13 @@ public class LocationTrackingService extends Service implements
     private void stopGpsUpdates() {
         try {
             locationManager.removeUpdates(this);
-            // Do NOT re-register any provider — both GPS_PROVIDER and NETWORK_PROVIDER
-            // trigger the location icon. removeUpdates() with nothing registered is the
-            // only way to fully hide the icon.
-            // Motion detection continues via Activity Recognition + accelerometer.
-            Log.d(TAG, "🔋 GPS STOPPED — location icon hidden (AR + sensor still active)");
+                        // Immediately re-register at low rate — keeps GPS chip warm
+            locationManager.requestLocationUpdates(
+                    LocationManager.GPS_PROVIDER,
+                    30_000L, // 30 seconds interval
+                    100f, // 100 meters displacement
+                    this);
+            Log.d(TAG, "🔋 GPS LOW-POWER — 30s/100m (Activity Recognition + sensor still active)");
         } catch (SecurityException e) {
             Log.e(TAG, "stopGpsUpdates: no permission — " + e.getMessage());
         }
@@ -1073,7 +1077,7 @@ public class LocationTrackingService extends Service implements
             // Emit sensor-based motion change to Ionic
             emitMotionChange("IN_VEHICLE", "ENTER");
             // Re-enable GPS if it was stopped during still period
-            // startGPSTracking();
+            startGPSTracking();
         }
         rescheduleSaveLoop();
         Log.d(TAG, "Movement state → " + (isMoving ? "MOVING" : "STILL") +
