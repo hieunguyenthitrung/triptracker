@@ -176,7 +176,7 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
     @objc func hasLocationPermission(_ call: CAPPluginCall) {
         let granted = Self.hasLocationPermissionNative()
         if granted {
-            //TripTrackerSDK.onPermissionGranted()
+            TripTrackerSDK.onPermissionGranted()
         }
         call.resolve(["granted": granted])
     }

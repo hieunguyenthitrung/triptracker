@@ -288,71 +288,71 @@ public class LocationTrackingService extends Service implements
      * Activate full location tracking. Only called when permission confirmed.
      */
     public void activateLocationTracking() {
-        locationTrackingActive = true;
+        // locationTrackingActive = true;
 
-        // Upgrade to location-type foreground notification
-        startForegroundNotification("Trip Tracker", "Starting…");
+        // // Upgrade to location-type foreground notification
+        // startForegroundNotification("Trip Tracker", "Starting…");
 
-        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        if (sensorTracker == null) {
-            sensorTracker = new SensorBasedLocationTracker(this, this);
-        }
+        // locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        // if (sensorTracker == null) {
+        //     sensorTracker = new SensorBasedLocationTracker(this, this);
+        // }
 
-        PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
-        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "TripTracker::WakeLock");
-        if (!wakeLock.isHeld())
-            wakeLock.acquire();
+        // PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        // wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "TripTracker::WakeLock");
+        // if (!wakeLock.isHeld())
+        //     wakeLock.acquire();
 
-        // Seed sensor tracker with best available cached location
-        startSensorTracking();
+        // // Seed sensor tracker with best available cached location
+        // startSensorTracking();
 
-        // GPS: only start if restoring an active trip.
-        // Otherwise, Activity Recognition will detect IN_VEHICLE → start GPS for
-        // confirmation.
-        // GPS runs continuously: calibration + vehicle-speed detection
-        startGPSTracking();
+        // // GPS: only start if restoring an active trip.
+        // // Otherwise, Activity Recognition will detect IN_VEHICLE → start GPS for
+        // // confirmation.
+        // // GPS runs continuously: calibration + vehicle-speed detection
+        // startGPSTracking();
 
-        // Activity Recognition — detect automotive/still (like iOS CMMotionActivity)
-        startActivityRecognition();
+        // // Activity Recognition — detect automotive/still (like iOS CMMotionActivity)
+        // startActivityRecognition();
 
-        // Single periodic save loop (always on, even outside a trip)
-        startSaveLoop();
+        // // Single periodic save loop (always on, even outside a trip)
+        // startSaveLoop();
 
-        // Delay 5s for GPS to warm up, then save initial location
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            Location initLoc = getCurrentLocation();
-            if (initLoc != null) {
-                database.saveCachedLocation(initLoc, "GPS");
-                notifyListeners(initLoc, TrackingSource.GPS);
-                Log.d(TAG, "Initial location cached (5s delay): (" +
-                        String.format("%.6f, %.6f", initLoc.getLatitude(), initLoc.getLongitude()) + ")");
+        // // Delay 5s for GPS to warm up, then save initial location
+        // new Handler(Looper.getMainLooper()).postDelayed(() -> {
+        //     Location initLoc = getCurrentLocation();
+        //     if (initLoc != null) {
+        //         database.saveCachedLocation(initLoc, "GPS");
+        //         notifyListeners(initLoc, TrackingSource.GPS);
+        //         Log.d(TAG, "Initial location cached (5s delay): (" +
+        //                 String.format("%.6f, %.6f", initLoc.getLatitude(), initLoc.getLongitude()) + ")");
 
-                // Send one initial ping so server knows device position on app open
-                if (initLoc.getAccuracy() <= 50) {
-                    TripTrackerAPIService.getInstance().sendPing(
-                            initLoc, false, 0f, "still", null);
-                    Log.d(TAG, "📡 Initial ping sent on app open — " +
-                            String.format("%.6f,%.6f", initLoc.getLatitude(), initLoc.getLongitude()));
-                }
-            }
-        }, 5000);
+        //         // Send one initial ping so server knows device position on app open
+        //         if (initLoc.getAccuracy() <= 50) {
+        //             TripTrackerAPIService.getInstance().sendPing(
+        //                     initLoc, false, 0f, "still", null);
+        //             Log.d(TAG, "📡 Initial ping sent on app open — " +
+        //                     String.format("%.6f,%.6f", initLoc.getLatitude(), initLoc.getLongitude()));
+        //         }
+        //     }
+        // }, 5000);
 
-        // Web server for real-time monitoring (if enabled in settings)
-        if (AppSettings.isWebServerEnabled(this)) {
-            webServer = new LocationWebServer(this);
-            webServer.start();
-        }
+        // // Web server for real-time monitoring (if enabled in settings)
+        // if (AppSettings.isWebServerEnabled(this)) {
+        //     webServer = new LocationWebServer(this);
+        //     webServer.start();
+        // }
 
-        // Schedule daily 6 AM reminder to check yesterday's route
-        // scheduleDailyReminder();
+        // // Schedule daily 6 AM reminder to check yesterday's route
+        // // scheduleDailyReminder();
 
-        // Schedule daily 12 PM auto-send of log file via email
-        // scheduleDailyLogSender();
+        // // Schedule daily 12 PM auto-send of log file via email
+        // // scheduleDailyLogSender();
 
-        // Re-register geofences (lost after reboot)
-        if (com.carmd.triptracking.geofence.GeofenceManager.isEnabled(this)) {
-            com.carmd.triptracking.geofence.GeofenceManager.registerAll(this);
-        }
+        // // Re-register geofences (lost after reboot)
+        // if (com.carmd.triptracking.geofence.GeofenceManager.isEnabled(this)) {
+        //     com.carmd.triptracking.geofence.GeofenceManager.registerAll(this);
+        // }
 
         Log.d(TAG, "Service started — sensor-first tracking active");
     }
@@ -486,26 +486,26 @@ public class LocationTrackingService extends Service implements
     public Location getCurrentLocation() {
         // if (lastSensorLocation != null)
         // return new Location(lastSensorLocation);
-        if (lastGpsLocation != null)
-            return new Location(lastGpsLocation);
-        // Fallback: try LocationManager cached locations
-        if (locationManager != null) {
-            try {
-                Location gps = locationManager.getLastKnownLocation(android.location.LocationManager.GPS_PROVIDER);
-                if (gps != null)
-                    return gps;
-                Location passive = locationManager
-                        .getLastKnownLocation(android.location.LocationManager.PASSIVE_PROVIDER);
-                if (passive != null)
-                    return passive;
-                Location network = locationManager
-                        .getLastKnownLocation(android.location.LocationManager.NETWORK_PROVIDER);
-                if (network != null)
-                    return network;
-            } catch (SecurityException e) {
-                Log.w(TAG, "No permission for last known location");
-            }
-        }
+        // if (lastGpsLocation != null)
+        //     return new Location(lastGpsLocation);
+        // // Fallback: try LocationManager cached locations
+        // if (locationManager != null) {
+        //     try {
+        //         Location gps = locationManager.getLastKnownLocation(android.location.LocationManager.GPS_PROVIDER);
+        //         if (gps != null)
+        //             return gps;
+        //         Location passive = locationManager
+        //                 .getLastKnownLocation(android.location.LocationManager.PASSIVE_PROVIDER);
+        //         if (passive != null)
+        //             return passive;
+        //         Location network = locationManager
+        //                 .getLastKnownLocation(android.location.LocationManager.NETWORK_PROVIDER);
+        //         if (network != null)
+        //             return network;
+        //     } catch (SecurityException e) {
+        //         Log.w(TAG, "No permission for last known location");
+        //     }
+        // }
         return null;
     }
 
