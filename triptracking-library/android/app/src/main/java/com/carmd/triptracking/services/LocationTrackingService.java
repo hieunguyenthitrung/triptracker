@@ -486,26 +486,26 @@ public class LocationTrackingService extends Service implements
     public Location getCurrentLocation() {
         // if (lastSensorLocation != null)
         // return new Location(lastSensorLocation);
-        // if (lastGpsLocation != null)
-        //     return new Location(lastGpsLocation);
-        // // Fallback: try LocationManager cached locations
-        // if (locationManager != null) {
-        //     try {
-        //         Location gps = locationManager.getLastKnownLocation(android.location.LocationManager.GPS_PROVIDER);
-        //         if (gps != null)
-        //             return gps;
-        //         Location passive = locationManager
-        //                 .getLastKnownLocation(android.location.LocationManager.PASSIVE_PROVIDER);
-        //         if (passive != null)
-        //             return passive;
-        //         Location network = locationManager
-        //                 .getLastKnownLocation(android.location.LocationManager.NETWORK_PROVIDER);
-        //         if (network != null)
-        //             return network;
-        //     } catch (SecurityException e) {
-        //         Log.w(TAG, "No permission for last known location");
-        //     }
-        // }
+        if (lastGpsLocation != null)
+            return new Location(lastGpsLocation);
+        // Fallback: try LocationManager cached locations
+        if (locationManager != null) {
+            try {
+                Location gps = locationManager.getLastKnownLocation(android.location.LocationManager.GPS_PROVIDER);
+                if (gps != null)
+                    return gps;
+                Location passive = locationManager
+                        .getLastKnownLocation(android.location.LocationManager.PASSIVE_PROVIDER);
+                if (passive != null)
+                    return passive;
+                Location network = locationManager
+                        .getLastKnownLocation(android.location.LocationManager.NETWORK_PROVIDER);
+                if (network != null)
+                    return network;
+            } catch (SecurityException e) {
+                Log.w(TAG, "No permission for last known location");
+            }
+        }
         return null;
     }
 
