@@ -1077,7 +1077,7 @@ public class LocationTrackingService extends Service implements
             // Emit sensor-based motion change to Ionic
             emitMotionChange("IN_VEHICLE", "ENTER");
             // Re-enable GPS if it was stopped during still period
-            startGPSTracking();
+            // startGPSTracking();
         }
         rescheduleSaveLoop();
         Log.d(TAG, "Movement state → " + (isMoving ? "MOVING" : "STILL") +
@@ -1921,7 +1921,7 @@ public class LocationTrackingService extends Service implements
                 // Log.i(TAG, "🔋 GPS confirmation timeout (2 min) — no vehicle speed confirmed,
                 // stopping GPS");
                 // activityRecognitionVehicle = false;
-                stopGpsUpdates();
+                // stopGpsUpdates();
                 // }
                 // }, 120_000L); // 2 minutes
                 // If GPS speed is already high enough, start now
@@ -1939,10 +1939,10 @@ public class LocationTrackingService extends Service implements
             // Vehicle exited — reset the flag
             activityRecognitionVehicle = false;
             // If no trip started, stop GPS to save battery
-            if (!isTracking) {
-            Log.i(TAG, "🔋 IN_VEHICLE exited without trip — stopping GPS");
-            stopGpsUpdates();
-            }
+            // if (!isTracking) {
+            // Log.i(TAG, "🔋 IN_VEHICLE exited without trip — stopping GPS");
+            // stopGpsUpdates();
+            // }
 
         } else if (activityType == DetectedActivity.STILL
                 && transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER) {
@@ -1951,9 +1951,9 @@ public class LocationTrackingService extends Service implements
             if (isTracking) {
                 Log.i(TAG, "⏸ Activity Recognition: STILL detected — starting auto-end countdown");
                 startAutoStopTimer();
-                } else {
-                // Not tracking + still → ensure GPS is off
-                stopGpsUpdates();
+                // } else {
+                // // Not tracking + still → ensure GPS is off
+                // stopGpsUpdates();
             }
         }
         // ON_BICYCLE, WALKING, RUNNING: logged but don't trigger auto-start/stop

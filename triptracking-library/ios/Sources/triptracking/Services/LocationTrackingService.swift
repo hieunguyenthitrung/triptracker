@@ -671,6 +671,7 @@ public class LocationTrackingService: NSObject {
         persistLastGPSTimestamp()
 
         if speed >= vehicleThreshold && !isTracking {
+            delegate?.didChangeActivity(activity: "automotive", transition: "MOTION")
             autoStartTrip(reason: "Significant location change (speed \(String(format:"%.1f", speed)) m/s)")
         }
     }
@@ -1126,6 +1127,7 @@ public class LocationTrackingService: NSObject {
 
             // cancelAutoEndTimer()
             if !isTracking {
+                delegate?.didChangeActivity(activity: next.rawValue, transition: "MOTION")
                 adaptLocationAccuracy(for: .automotive)
                 // autoStartTrip(reason: "Automotive activity detected")
                 print("🚗 TripTracker Automotive detected — GPS enabled, waiting for speed confirmation")
@@ -1174,6 +1176,7 @@ public class LocationTrackingService: NSObject {
 
             if !isTracking {
                 if consecutiveVehicleSpeedCount >= requiredConsecutiveVehicleFixes {
+                    delegate?.didChangeActivity(activity: "automotive", transition: "MOTION")
                     autoStartTrip(reason: "GPS speed \(String(format:"%.1f", speed)) m/s (\(consecutiveVehicleSpeedCount) consecutive fixes)")
                     consecutiveVehicleSpeedCount = 0
                 } else {
@@ -1681,6 +1684,7 @@ extension LocationTrackingService: CLLocationManagerDelegate {
                abs(loc.timestamp.timeIntervalSinceNow) < 10,
                Float(max(0, loc.speed)) >= vehicleThreshold {
                 // Fresh accurate fix with vehicle speed — start trip now
+                delegate?.didChangeActivity(activity: "automotive", transition: "MOTION")
                 autoStartTrip(reason: "Visit departure (speed \(String(format:"%.1f", loc.speed)) m/s)")
             } else {
                 // No fresh speed — start GPS at full accuracy to detect driving
