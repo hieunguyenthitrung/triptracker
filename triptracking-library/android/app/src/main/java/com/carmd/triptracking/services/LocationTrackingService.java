@@ -822,11 +822,9 @@ public class LocationTrackingService extends Service implements
      * Stops automatically when a trip starts (isTracking = true).
      */
     private void startGPSStillMonitor() {
-        new Timer().schedule(new TimerTask() {
-            @Override
-            public void run() {
-                stopGpsUpdates();
-            }
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            // Run after 15 seconds
+            stopGpsUpdates();
         }, 15000);
     }
 
