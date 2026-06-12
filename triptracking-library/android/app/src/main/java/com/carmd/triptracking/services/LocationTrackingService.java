@@ -311,7 +311,7 @@ public class LocationTrackingService extends Service implements
         // confirmation.
         // GPS runs continuously: calibration + vehicle-speed detection
         startGPSTracking();
-        startGPSStillMonitor();
+        stopGPSToSaveBattery();
 
         // Activity Recognition — detect automotive/still (like iOS CMMotionActivity)
         startActivityRecognition();
@@ -804,29 +804,31 @@ public class LocationTrackingService extends Service implements
         try {
             locationManager.removeUpdates(this);
                         // Immediately re-register at low rate — keeps GPS chip warm
-            locationManager.requestLocationUpdates(
-                    LocationManager.GPS_PROVIDER,
-                    30_000L, // 30 seconds interval
-                    100f, // 100 meters displacement
-                    this);
-            Log.d(TAG, "🔋 GPS LOW-POWER — 30s/100m (Activity Recognition + sensor still active)");
+            // locationManager.requestLocationUpdates(
+            //         LocationManager.GPS_PROVIDER,
+            //         30_000L, // 30 seconds interval
+            //         100f, // 100 meters displacement
+            //         this);
+            Log.d(TAG, "🔋 GPS STOPPED (Activity Recognition + sensor still active)");
         } catch (SecurityException e) {
             Log.e(TAG, "stopGpsUpdates: no permission — " + e.getMessage());
         }
     }
 
-    /**
+        /**
      * Polls every 15 seconds while GPS is on (and no active trip).
      * - Device STILL (lastGpsSpeed == 0 for 15s) → stopGpsUpdates() → icon hidden.
      * - Device MOVING → restart the 15s interval, GPS stays on.
      * Stops automatically when a trip starts (isTracking = true).
      */
-    private void startGPSStillMonitor() {
+    private void stopGPSToSaveBattery() {
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             // Run after 15 seconds
             stopGpsUpdates();
         }, 15000);
     }
+
+
 
     // =========================================================================
     // Effective speed — single source of truth for all save decisions
@@ -1087,9 +1089,18 @@ public class LocationTrackingService extends Service implements
                 cancelAutoStopTimer();
                 Log.d(TAG, "Still timer reset — device moving");
             }
-            Log.i(TAG, "SemitMotionChange: MOVING detected by sensors, speed=" + String.format("%.1f", speed) + " m/s");   
-            // Emit sensor-based motion change to Ionic
-            emitMotionChange("IN_VEHICLE", "ENTER");
+            activityRecognitionVehicle = false;
+            Log.i(TAG, "EmitMotionChange: MOVING detected by sensors, speed=" + String.format("%.1f", speed) + " m/s");   
+            if(speed >= vehicleThreshold()) {
+                // Emit sensor-based motion change to Ionic
+                activityRecognitionVehicle = true;
+                emitMotionChange("IN_VEHICLE", "ENTER");
+            }else {
+                 // Emit sensor-based motion change to Ionic
+                emitMotionChange("WALKING", "ENTER");
+
+            }
+            
             // Re-enable GPS if it was stopped during still period
             startGPSTracking();
         }
@@ -1930,7 +1941,7 @@ public class LocationTrackingService extends Service implements
                 // Safety timeout: if no trip starts within 2 min → stop GPS to hide icon
                 if (autoStopHandler == null)
                     autoStopHandler = new Handler(Looper.getMainLooper());
-                autoStopHandler.postDelayed(() -> {
+                    autoStopHandler.postDelayed(() -> {
                     if (!isTracking && activityRecognitionVehicle) {
                         Log.i(TAG, "🔋 GPS confirmation timeout (2 min) — no vehicle speed, stopping GPS");
                         activityRecognitionVehicle = false;
