@@ -260,14 +260,14 @@ public final class TripTrackerSDK {
      * Call from Activity.onRequestPermissionsResult or plugin handleOnResume.
      */
     public static void onPermissionGranted(Context context) {
-        LocationTrackingService svc = LocationTrackingService.getInstance();
-        if (svc != null) {
-            svc.onLocationPermissionGranted();
-            Log.i(TAG, "✅ Permission granted — location tracking activated");
-        } else {
-            // Service not running yet, start it
-            startTracking(context);
-        }
+        // LocationTrackingService svc = LocationTrackingService.getInstance();
+        // if (svc != null) {
+        //     svc.onLocationPermissionGranted();
+        //     Log.i(TAG, "✅ Permission granted — location tracking activated");
+        // } else {
+        //     // Service not running yet, start it
+        //     startTracking(context);
+        // }
     }
 
     public static void startTracking(Context context) {

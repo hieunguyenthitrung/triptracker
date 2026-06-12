@@ -100,10 +100,10 @@ public class TripTrackerCapPlugin extends Plugin {
     protected void handleOnResume() {
         super.handleOnResume();
         // User may have just granted permission in Settings
-        if (TripTrackerSDK.isInitialized() && TripTrackerSDK.hasLocationPermission(getContext())) {
-            TripTrackerSDK.onPermissionGranted(getContext());
-            if (!serviceBound) bindToServiceIfRunning();
-        }
+        // if (TripTrackerSDK.isInitialized() && TripTrackerSDK.hasLocationPermission(getContext())) {
+        //     TripTrackerSDK.onPermissionGranted(getContext());
+        //     if (!serviceBound) bindToServiceIfRunning();
+        // }
     }
 
     /** Bind to service if it's running. */
@@ -125,7 +125,7 @@ public class TripTrackerCapPlugin extends Plugin {
     public void hasLocationPermission(PluginCall call) {
         boolean granted = TripTrackerSDK.hasLocationPermission(getContext());
         if (granted) {
-            TripTrackerSDK.onPermissionGranted(getContext());
+            //TripTrackerSDK.onPermissionGranted(getContext());
         }
         JSObject ret = new JSObject();
         ret.put("granted", granted);
