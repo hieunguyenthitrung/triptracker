@@ -270,7 +270,7 @@ public final class TripTrackerSDK {
         // }
     }
 
-    public static void startTracking(Context context) {TripTrackerSDK.onPermissionGranted()
+    public static void startTracking(Context context) {
         try {
             Intent si = new Intent(context.getApplicationContext(), LocationTrackingService.class);
             context.getApplicationContext().startForegroundService(si);
