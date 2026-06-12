@@ -608,6 +608,7 @@ public class LocationTrackingService extends Service implements
 
         // GPS was stopped by the previous stopTracking() call — restart it.
         startGPSTracking();
+        startGPSStillMonitor();
 
         Log.d(TAG, "🚗 AUTO-TRIP STARTED — ID=" + currentTripId);
 
@@ -812,6 +813,21 @@ public class LocationTrackingService extends Service implements
         } catch (SecurityException e) {
             Log.e(TAG, "stopGpsUpdates: no permission — " + e.getMessage());
         }
+    }
+
+    /**
+     * Polls every 15 seconds while GPS is on (and no active trip).
+     * - Device STILL (lastGpsSpeed == 0 for 15s) → stopGpsUpdates() → icon hidden.
+     * - Device MOVING → restart the 15s interval, GPS stays on.
+     * Stops automatically when a trip starts (isTracking = true).
+     */
+    private void startGPSStillMonitor() {
+        new Timer().schedule(new TimerTask() {
+            @Override
+            public void run() {
+                stopGpsUpdates();
+            }
+        }, 15000);
     }
 
     // =========================================================================
