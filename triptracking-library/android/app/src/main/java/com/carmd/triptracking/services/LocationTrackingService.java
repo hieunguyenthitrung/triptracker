@@ -2030,22 +2030,22 @@ public class LocationTrackingService extends Service implements
             String activityChangeString = "";
             switch (activity) {
                 case "IN_VEHICLE":
-                    activityChangeString = "Automotive";
+                    activityChangeString = "automotive";
                     break;
                 case "ON_BICYCLE":
-                    activityChangeString = "Cycling";
+                    activityChangeString = "cycling";
                     break;
                 case "WALKING":
-                    activityChangeString = "Walking";
+                    activityChangeString = "walking";
                     break;
                 case "RUNNING":
-                    activityChangeString = "Running";
+                    activityChangeString = "running";
                     break;
                 case "STILL":
-                    activityChangeString = "Still";
+                    activityChangeString = "still";
                     break;
                 case "ON_FOOT":
-                    activityChangeString = "Walking";
+                    activityChangeString = "walking";
                     break;
                 default:
                     activityChangeString = "Unknown";
