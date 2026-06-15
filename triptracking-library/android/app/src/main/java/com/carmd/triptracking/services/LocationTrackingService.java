@@ -311,7 +311,6 @@ public class LocationTrackingService extends Service implements
         // confirmation.
         // GPS runs continuously: calibration + vehicle-speed detection
         startGPSTracking();
-        stopGPSToSaveBattery();
 
         // Activity Recognition — detect automotive/still (like iOS CMMotionActivity)
         startActivityRecognition();
@@ -803,33 +802,17 @@ public class LocationTrackingService extends Service implements
     private void stopGpsUpdates() {
         try {
             locationManager.removeUpdates(this);
-                        // Immediately re-register at low rate — keeps GPS chip warm
-            // locationManager.requestLocationUpdates(
-            //         LocationManager.GPS_PROVIDER,
-            //         30_000L, // 30 seconds interval
-            //         100f, // 100 meters displacement
-            //         this);
-            Log.d(TAG, "🔋 GPS STOPPED (Activity Recognition + sensor still active)");
+            // Immediately re-register at low rate — keeps GPS chip warm
+            locationManager.requestLocationUpdates(
+                    LocationManager.GPS_PROVIDER,
+                    30_000L, // 30 seconds interval
+                    100f, // 100 meters displacement
+                    this);
+            Log.d(TAG, "🔋 GPS LOW-POWER — 30s/100m (Activity Recognition + sensor still active)");
         } catch (SecurityException e) {
             Log.e(TAG, "stopGpsUpdates: no permission — " + e.getMessage());
         }
     }
-
-        /**
-     * Polls every 15 seconds while GPS is on (and no active trip).
-     * - Device STILL (lastGpsSpeed == 0 for 15s) → stopGpsUpdates() → icon hidden.
-     * - Device MOVING → restart the 15s interval, GPS stays on.
-     * Stops automatically when a trip starts (isTracking = true).
-     */
-    private void stopGPSToSaveBattery() {
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            // Run after 15 seconds
-            Log.d(TAG, "🔋 GPS STOPPED 15 seconds");
-            stopGpsUpdates();
-        }, 15000);
-    }
-
-
 
     // =========================================================================
     // Effective speed — single source of truth for all save decisions
@@ -1937,19 +1920,20 @@ public class LocationTrackingService extends Service implements
             Log.i(TAG, "🚗 Activity Recognition: IN_VEHICLE detected — enabling GPS for speed confirmation");
             if (!isTracking) {
                 activityRecognitionVehicle = true;
-                // Re-enable GPS to confirm vehicle speed
-                startGPSTracking();
-                // Safety timeout: if no trip starts within 2 min → stop GPS to hide icon
-                if (autoStopHandler == null)
-                    autoStopHandler = new Handler(Looper.getMainLooper());
-                    autoStopHandler.postDelayed(() -> {
-                    if (!isTracking && activityRecognitionVehicle) {
-                        Log.i(TAG, "🔋 GPS confirmation timeout (2 min) — no vehicle speed, stopping GPS");
-                        activityRecognitionVehicle = false;
-                        stopGpsUpdates();
-                    }
-                }, 120_000L);
-                // If GPS speed already high enough, start trip immediately
+                // Re-enable GPS to confirm vehicle speed — was stopped to save battery
+                // startGPSTracking();
+                // // Safety timeout: if no trip starts within 2 min, stop GPS to save battery
+                // if (autoStopHandler == null) autoStopHandler = new
+                // Handler(Looper.getMainLooper());
+                // autoStopHandler.postDelayed(() -> {
+                // if (!isTracking && activityRecognitionVehicle) {
+                // Log.i(TAG, "🔋 GPS confirmation timeout (2 min) — no vehicle speed confirmed,
+                // stopping GPS");
+                // activityRecognitionVehicle = false;
+                // stopGpsUpdates();
+                // }
+                // }, 120_000L); // 2 minutes
+                // If GPS speed is already high enough, start now
                 Location loc = getCurrentLocation();
                 if (loc != null && loc.hasSpeed() && loc.getSpeed() >= vehicleThreshold()) {
                     autoStartTrip(loc);
