@@ -566,11 +566,13 @@ public class LocationTrackingService extends Service implements
                 : String.format("%.2f km", dist / 1000);
         long min = duration / 60;
         long sec = duration % 60;
-        if (AppSettings.isNotifTripEnd(this))
+        Log.d(TAG, "Showing trip end notification " + AppSettings.isNotifTripEnd(this));
+        if (AppSettings.isNotifTripEnd(this)){
             showTripNotification(NOTIF_TRIP_END, "⏹️ Trip Ended",
                     "Trip #" + tripId + " - " + TripTrackerAPIService.getInstance().getVehicleId() + " — " + distStr
                             + " in " +
                             String.format("%02d:%02d", min, sec));
+        }
         com.carmd.triptracking.util.VoiceFeedback.getInstance(this)
                 .announceTripEnded(tripId, dist, duration);
     }
@@ -648,10 +650,12 @@ public class LocationTrackingService extends Service implements
 
         Log.d(TAG, "🚗 Vehicle speed detected — auto-starting trip");
         startTracking(triggerLocation);
-        if (TripTrackerAPIService.getInstance().hasUserId() && AppSettings.isNotifTripStart(this))
+        Log.d(TAG, "Showing trip start notification " + AppSettings.isNotifTripStart(this) + TripTrackerAPIService.getInstance().hasUserId());
+        if (TripTrackerAPIService.getInstance().hasUserId() && AppSettings.isNotifTripStart(this)){
             showTripNotification(NOTIF_TRIP_START, "🚗 Trip Started",
                     "Auto-trip #" + currentTripId + " - " + TripTrackerAPIService.getInstance().getVehicleId()
                             + " — vehicle speed detected");
+        }
         // Voice announcement
         com.carmd.triptracking.util.VoiceFeedback.getInstance(this)
                 .announceTripStarted(currentTripId);
@@ -682,11 +686,13 @@ public class LocationTrackingService extends Service implements
                 : String.format("%.2f km", dist / 1000);
         long min = duration / 60;
         long sec = duration % 60;
-        if (TripTrackerAPIService.getInstance().hasUserId() && AppSettings.isNotifTripEnd(this))
+        Log.d(TAG, "Showing trip end notification " + AppSettings.isNotifTripEnd(this) + TripTrackerAPIService.getInstance().hasUserId());
+        if (TripTrackerAPIService.getInstance().hasUserId() && AppSettings.isNotifTripEnd(this)){
             showTripNotification(NOTIF_TRIP_END, "⏹️ Trip Ended",
                     "Trip #" + tripId + " - " + TripTrackerAPIService.getInstance().getVehicleId() + " — " + distStr
                             + " in " +
                             String.format("%02d:%02d", min, sec));
+        }
         // Voice announcement
         com.carmd.triptracking.util.VoiceFeedback.getInstance(this)
                 .announceTripEnded(tripId, dist, duration);
@@ -1180,7 +1186,7 @@ public class LocationTrackingService extends Service implements
         // Only cancel auto-stop if GPS is reliable (accuracy ≤ 30m).
         // GPS drift with 80-400m accuracy produces fake speed that keeps
         // cancelling the timer — device sits on table for 45+ min before trip ends.
-        if (speed >= STATIONARY_THRESHOLD && accuracy <= 30f) {
+        if (speed >= vehicleThreshold() && accuracy <= 30f) {
             if (stillSinceMs != 0L) {
                 stillSinceMs = 0L;
                 cancelAutoStopTimer();

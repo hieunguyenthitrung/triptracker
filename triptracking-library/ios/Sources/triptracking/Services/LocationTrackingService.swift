@@ -340,7 +340,7 @@ public class LocationTrackingService: NSObject {
                 locationManager.showsBackgroundLocationIndicator = false
                 // Flush pending pings NOW — iOS may suspend app soon at low GPS rate
                 TripTrackerAPIService.shared.flushQueue()
-                print("📡 TripTracker GPS LOW-POWER — still/no trip (NearestTenMeters + 30m filter)")
+                print("📡 TripTracker GPS LOW-POWER — still/no trip (NearestTenMeters + 10m filter)")
 
                 // Start still timeout — if device stays still for 5 min, stop GPS completely
                 // to save battery overnight. CMMotionActivity will restart GPS when movement detected.
@@ -830,7 +830,7 @@ public class LocationTrackingService: NSObject {
         // Don't save now — let didUpdateLocations handle it with real GPS speed.
         if next == .automotive && prev != .automotive {
             adaptLocationAccuracy(for: .automotive)  // GPS ON → best accuracy
-            evaluateAutoTrip(from: prev, to: next)
+            // evaluateAutoTrip(from: prev, to: next)
             print("📍 Motion → Automotive: GPS started, waiting for fresh GPS speed")
             return  // Don't save with stale speed — didUpdateLocations will save with real speed
         }
@@ -1138,8 +1138,8 @@ public class LocationTrackingService: NSObject {
             // cancelAutoEndTimer()
             if !isTracking {
                 delegate?.didChangeActivity(activity: next.rawValue, transition: "MOTION")
-                //adaptLocationAccuracy(for: .automotive)
-                autoStartTrip(reason: "Automotive activity detected")
+                adaptLocationAccuracy(for: .automotive)
+                //autoStartTrip(reason: "Automotive activity detected")
                 print("🚗 TripTracker Automotive detected — GPS enabled, waiting for speed confirmation")
             }
 
@@ -1713,8 +1713,12 @@ extension LocationTrackingService: CLLocationManagerDelegate {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 60.0) { [weak self] in
                     guard let self = self else { return }
                     if !self.isTracking {
-                        self.adaptLocationAccuracy(for: self.lastMotionState)
-                        print("📍 TripTracker Visit departure: 60s elapsed, no trip — GPS adapted")
+                        if self.lastMotionState == .automotive {
+                            print("📍 TripTracker Visit departure: 60s elapsed, still Automotive — keeping GPS Best for speed")
+                        } else {
+                            self.adaptLocationAccuracy(for: self.lastMotionState)
+                            print("📍 TripTracker Visit departure: 60s elapsed, no trip — GPS adapted")
+                        }
                     }
                 }
             }
