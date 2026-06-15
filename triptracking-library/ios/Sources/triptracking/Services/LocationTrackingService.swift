@@ -1233,7 +1233,9 @@ public class LocationTrackingService: NSObject {
         startTrip(withInitialLocation: initialLocation)
 
         // Local push notification
-        NotificationManager.shared.notifyTripStarted(tripId: currentTripId, vehicleId: TripTrackerAPIService.shared.config.vehicleId)
+        if !TripTrackerAPIService.shared.config.userId.isEmpty {
+            NotificationManager.shared.notifyTripStarted(tripId: currentTripId, vehicleId: TripTrackerAPIService.shared.config.vehicleId)
+        }
 
         // Voice feedback
         VoiceFeedbackManager.shared.resetMilestones()
@@ -1343,13 +1345,15 @@ public class LocationTrackingService: NSObject {
         resetAutoEndTimer()
 
         // Local push notification with trip summary
-        NotificationManager.shared.notifyTripEnded(
-            tripId: tripId,
-            reason: reason,
-            distance: stats.distance,
-            duration: stats.duration,
-            vehicleId: TripTrackerAPIService.shared.config.vehicleId
-        )
+        if !TripTrackerAPIService.shared.config.userId.isEmpty {
+            NotificationManager.shared.notifyTripEnded(
+                tripId: tripId,
+                reason: reason,
+                distance: stats.distance,
+                duration: stats.duration,
+                vehicleId: TripTrackerAPIService.shared.config.vehicleId
+            )
+        }
 
         // Voice feedback
         VoiceFeedbackManager.shared.announceTripEnded(
