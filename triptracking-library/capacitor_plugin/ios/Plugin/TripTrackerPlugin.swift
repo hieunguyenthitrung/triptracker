@@ -61,6 +61,14 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
 
     public override func load() {
 
+        // Always set delegate so location/tracking events reach Ionic
+        LocationTrackingService.shared.delegate = self
+
+        // Ensure location manager is configured early (delegate, background updates,
+        // requestAlwaysAuthorization) so requestAlwaysPermission() works before
+        // initializeWithConfig() is called.
+        LocationTrackingService.shared.prepareLocationManager()
+
         // Auto-initialize SDK from saved config when app relaunches
         if !TripTrackerSDK.isInitialized {
             let hasSavedConfig = UserDefaults.standard.string(forKey: "tt_api_pingURL") != nil
@@ -117,7 +125,6 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
     @objc func initializeWithConfig(_ call: CAPPluginCall) {
         // Register for location/tracking/activity events
         print("🚀 TripTrackerPlugin initializing with config from JS")
-        LocationTrackingService.shared.delegate = self
 
         var config = TripTrackerConfig()
         if let v = call.getDouble("saveIntervalMinutes")   { config.saveIntervalMinutes = v }

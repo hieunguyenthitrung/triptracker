@@ -383,6 +383,14 @@ public class LocationTrackingService: NSObject {
 
     // MARK: - Public API
 
+    /// Call this as early as possible (e.g. from Capacitor plugin load()) to ensure
+    /// the location manager has a delegate and background updates enabled before the
+    /// SDK is fully initialized. Safe to call multiple times — no-op if already set up.
+    public func prepareLocationManager() {
+        guard locationManager.delegate == nil else { return }
+        setupLocationManager()
+    }
+
     public func startTerminalTracking() {
         // Start GPS — NEVER stops (keeps app alive in background)
         if isTracking {
