@@ -311,7 +311,7 @@ public class LocationTrackingService extends Service implements
         // confirmation.
         // GPS runs continuously: calibration + vehicle-speed detection
         startGPSTracking();
-        // stopGPSToSaveBattery();
+        stopGPSToSaveBattery();
 
         // Activity Recognition — detect automotive/still (like iOS CMMotionActivity)
         startActivityRecognition();
@@ -824,6 +824,7 @@ public class LocationTrackingService extends Service implements
     private void stopGPSToSaveBattery() {
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             // Run after 15 seconds
+            Log.d(TAG, "🔋 GPS STOPPED 15 seconds");
             stopGpsUpdates();
         }, 15000);
     }
