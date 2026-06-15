@@ -265,15 +265,14 @@ public class LocationTrackingService: NSObject {
 
     private func setupLocationManager() {
         locationManager.delegate                           = self
-        // Start in still mode — adaptLocationAccuracy() upgrades to Best
-        // automatically when motion is detected. This prevents the GPS from
-        // firing every second while the device is sitting on a table.
         locationManager.desiredAccuracy                    = kCLLocationAccuracyBest
         locationManager.distanceFilter                     = 10.0
         locationManager.allowsBackgroundLocationUpdates    = true
         locationManager.pausesLocationUpdatesAutomatically = false
         locationManager.showsBackgroundLocationIndicator   = false
-        locationManager.requestAlwaysAuthorization()
+        // requestAlwaysAuthorization() is NOT called here — the app calls
+        // requestAlwaysPermission() explicitly after login so the dialog
+        // appears at the right moment, not on cold launch.
     }
 
     private func setupMotionManager() {
@@ -1743,7 +1742,7 @@ extension LocationTrackingService: CLLocationManagerDelegate {
         case .denied, .restricted:
             print("❌ TripTracker Location permission denied")
         case .notDetermined:
-            manager.requestAlwaysAuthorization()
+            break  // Ionic calls requestAlwaysPermission() after login
         @unknown default:
             break
         }
