@@ -1732,6 +1732,7 @@ extension LocationTrackingService: CLLocationManagerDelegate {
             if isBackgroundTrackingStarted && !hasReceivedFirstGPSFix {
                 manager.startUpdatingLocation()
                 manager.requestAlwaysAuthorization()
+                manager.allowsBackgroundLocationUpdates    = true
                 print("📡 TripTracker Auth callback — ensuring GPS is running")
             }
         case .denied, .restricted:
