@@ -218,26 +218,26 @@ public class MainViewController: UIViewController {
         setupUpdateTimer()
 
         // Request location permission
-        requestLocationPermission()
-        mapView.delegate = self
-        mapView.showsBuildings = false
-        mapView.showsTraffic = false
-        MapAppearanceHelper.applyTimeBasedAppearance(to: mapView)
+        //requestLocationPermission()
+        // mapView.delegate = self
+        // mapView.showsBuildings = false
+        // mapView.showsTraffic = false
+        // MapAppearanceHelper.applyTimeBasedAppearance(to: mapView)
 
-        // Set initial map region immediately so tiles start loading the right area
-        // instead of loading the entire world first then zooming
-        if let coord = LocationTrackingService.shared.lastKnownCoordinate {
-            mapView.setRegion(MKCoordinateRegion(center: coord,
-                latitudinalMeters: 1000, longitudinalMeters: 1000), animated: false)
-        }
+        // // Set initial map region immediately so tiles start loading the right area
+        // // instead of loading the entire world first then zooming
+        // if let coord = LocationTrackingService.shared.lastKnownCoordinate {
+        //     mapView.setRegion(MKCoordinateRegion(center: coord,
+        //         latitudinalMeters: 1000, longitudinalMeters: 1000), animated: false)
+        // }
 
-        // Sync trip status — trip may have been resumed after app kill
-        let isTracking = LocationTrackingService.shared.isTracking
-        updateButtonStates(isTracking: isTracking)
-        updateTripStatusLabel()
-        if isTracking {
-            showToast(message: "♻️ Resumed tracking trip #\(LocationTrackingService.shared.currentTripId)")
-        }
+        // // Sync trip status — trip may have been resumed after app kill
+        // let isTracking = LocationTrackingService.shared.isTracking
+        // updateButtonStates(isTracking: isTracking)
+        // updateTripStatusLabel()
+        // if isTracking {
+        //     showToast(message: "♻️ Resumed tracking trip #\(LocationTrackingService.shared.currentTripId)")
+        // }
     }
     
     private func configureNavigationBar() {
