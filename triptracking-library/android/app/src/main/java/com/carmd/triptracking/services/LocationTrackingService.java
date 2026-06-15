@@ -310,7 +310,7 @@ public class LocationTrackingService extends Service implements
         // Otherwise, Activity Recognition will detect IN_VEHICLE → start GPS for
         // confirmation.
         // GPS runs continuously: calibration + vehicle-speed detection
-        // startGPSTracking();
+        startGPSTracking();
         // stopGPSToSaveBattery();
 
         // Activity Recognition — detect automotive/still (like iOS CMMotionActivity)
