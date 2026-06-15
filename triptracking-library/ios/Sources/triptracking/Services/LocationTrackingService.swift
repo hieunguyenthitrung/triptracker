@@ -311,7 +311,7 @@ public class LocationTrackingService: NSObject {
         switch state {
         case .still, .unknown:
             print("TripTracker GPS State: \(UIApplication.shared.applicationState)")
-            print("TripTracker GPS State: \(appTerminated ? "App is terminated" : "App is not terminated")")
+            print("TripTracker GPS State: \(UIApplication.shared.applicationState == UIApplication.State.inactive ? "App is terminated" : "App is not terminated")")
 
             if isTracking {
                 // ACTIVE TRIP: Keep GPS at Best accuracy — need continuous speed readings
@@ -356,10 +356,20 @@ public class LocationTrackingService: NSObject {
             // GPS active for pedestrian/cycling movement.
             stillGpsTimer?.invalidate()
             stillGpsTimer = nil
-            locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
-            locationManager.distanceFilter  = 10.0
-            locationManager.startUpdatingLocation()
-            print("📡 TripTracker GPS ON → \(state.rawValue): accuracy=10m filter=10m (survives termination)")
+            if isTracking {
+                // Active trip: keep automotive-quality GPS so a motion misclassification
+                // (e.g. vehicle in slow traffic detected as Cycling) doesn't starve updates.
+                locationManager.desiredAccuracy = kCLLocationAccuracyBest
+                locationManager.distanceFilter  = kCLDistanceFilterNone
+                locationManager.startUpdatingLocation()
+                print("📡 TripTracker GPS ON → \(state.rawValue) (active trip — keeping Best/none to avoid gap)")
+            } else {
+                // No active trip: pedestrian/cycling power profile is fine.
+                locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
+                locationManager.distanceFilter  = 10.0
+                locationManager.startUpdatingLocation()
+                print("📡 TripTracker GPS ON → \(state.rawValue): accuracy=10m filter=10m (survives termination)")
+            }
 
         case .automotive:
             // Best accuracy for driving — GPS always alive
