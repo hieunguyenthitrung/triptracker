@@ -117,7 +117,6 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         // Register for location/tracking/activity events
         print("🚀 TripTrackerPlugin initializing with config from JS")
         LocationTrackingService.shared.delegate = self
-        LocationTrackingService.shared.locationManager.requestAlwaysAuthorization()
 
         var config = TripTrackerConfig()
         if let v = call.getDouble("saveIntervalMinutes")   { config.saveIntervalMinutes = v }

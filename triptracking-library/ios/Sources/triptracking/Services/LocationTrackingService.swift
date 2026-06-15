@@ -273,7 +273,7 @@ public class LocationTrackingService: NSObject {
         locationManager.allowsBackgroundLocationUpdates    = true
         locationManager.pausesLocationUpdatesAutomatically = false
         locationManager.showsBackgroundLocationIndicator   = false
-        locationManager.requestAlwaysAuthorization()
+        // locationManager.requestAlwaysAuthorization()
     }
 
     private func setupMotionManager() {
