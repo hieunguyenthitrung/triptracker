@@ -1708,13 +1708,19 @@ extension LocationTrackingService: CLLocationManagerDelegate {
                 print("📍 TripTracker Visit departure: GPS started — waiting 60s for speed detection")
 
                 // GPS will deliver fixes → didUpdateLocations → evaluateAutoTripFromGPS
-                // If speed ≥ threshold × 3 consecutive fixes → auto-start trip
-                // After 60s, if no trip started, reduce GPS
+                // If speed ≥ threshold × 2 consecutive fixes → auto-start trip
+                // After 60s: if Automotive is still active keep GPS on (GPS cold-start
+                // can take >60s to report speed); only drop to low-power when motion
+                // has changed away from Automotive.
                 DispatchQueue.main.asyncAfter(deadline: .now() + 60.0) { [weak self] in
                     guard let self = self else { return }
                     if !self.isTracking {
-                        self.adaptLocationAccuracy(for: self.lastMotionState)
-                        print("📍 TripTracker Visit departure: 60s elapsed, no trip — GPS adapted")
+                        if self.lastMotionState == .automotive {
+                            print("📍 TripTracker Visit departure: 60s elapsed, still Automotive — keeping GPS Best for speed")
+                        } else {
+                            self.adaptLocationAccuracy(for: self.lastMotionState)
+                            print("📍 TripTracker Visit departure: 60s elapsed, no trip — GPS adapted")
+                        }
                     }
                 }
             }
