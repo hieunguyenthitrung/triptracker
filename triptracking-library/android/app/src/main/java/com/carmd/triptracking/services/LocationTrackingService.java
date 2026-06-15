@@ -293,10 +293,10 @@ public class LocationTrackingService extends Service implements
         // Upgrade to location-type foreground notification
         startForegroundNotification("Trip Tracker", "Starting…");
 
-        // locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        // if (sensorTracker == null) {
-        //     sensorTracker = new SensorBasedLocationTracker(this, this);
-        // }
+        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        if (sensorTracker == null) {
+            sensorTracker = new SensorBasedLocationTracker(this, this);
+        }
 
         PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "TripTracker::WakeLock");
@@ -304,7 +304,7 @@ public class LocationTrackingService extends Service implements
             wakeLock.acquire();
 
         // Seed sensor tracker with best available cached location
-        // startSensorTracking();
+        startSensorTracking();
 
         // GPS: only start if restoring an active trip.
         // Otherwise, Activity Recognition will detect IN_VEHICLE → start GPS for
