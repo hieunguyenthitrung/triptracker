@@ -217,8 +217,6 @@ public class MainViewController: UIViewController {
         setupLocationService()
         setupUpdateTimer()
 
-        // Request location permission
-        requestLocationPermission()
         mapView.delegate = self
         mapView.showsBuildings = false
         mapView.showsTraffic = false
@@ -433,42 +431,6 @@ public class MainViewController: UIViewController {
     private func setupUpdateTimer() {
         updateTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             self?.updateDurationLabel()
-        }
-    }
-    
-    private func requestLocationPermission() {
-        let locationManager = LocationTrackingService.shared.locationManager
-
-        switch locationManager.authorizationStatus {
-        case .notDetermined:
-            let alert = UIAlertController(
-                title: "Location Permission",
-                message: "TripTracker needs location permission to track your trips. Please allow 'Always' access for background tracking.",
-                preferredStyle: .alert
-            )
-            alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in
-                locationManager.requestAlwaysAuthorization()
-            })
-            safePresent(alert)
-        case .denied, .restricted:
-            let alert = UIAlertController(
-                title: "Permission Required",
-                message: "Please enable location permission in Settings → TripTracker → Location → Always",
-                preferredStyle: .alert
-            )
-            alert.addAction(UIAlertAction(title: "Open Settings", style: .default) { _ in
-                if let url = URL(string: UIApplication.openSettingsURLString) {
-                    UIApplication.shared.open(url)
-                }
-            })
-            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-            safePresent(alert)
-        case .authorizedWhenInUse:
-            locationManager.requestAlwaysAuthorization()
-        case .authorizedAlways:
-            break
-        @unknown default:
-            break
         }
     }
     

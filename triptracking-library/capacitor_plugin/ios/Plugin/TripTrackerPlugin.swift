@@ -28,6 +28,7 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         CAPPluginMethod(name: "updateVehicleId", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "updateToolId", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "hasLocationPermission", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "requestAlwaysPermission", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "startTracking", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "stopTracking", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "openSettings", returnType: CAPPluginReturnPromise),
@@ -173,12 +174,35 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
     }
 
     /// Check if location permission is granted.
+    /// Returns { granted, isAlways } so Ionic can tell whether upgrade to Always is needed.
     @objc func hasLocationPermission(_ call: CAPPluginCall) {
-        let granted = Self.hasLocationPermissionNative()
+        let status = LocationTrackingService.shared.locationManager.authorizationStatus
+        let granted = status == .authorizedAlways || status == .authorizedWhenInUse
+        let isAlways = status == .authorizedAlways
         if granted {
             TripTrackerSDK.onPermissionGranted()
         }
-        call.resolve(["granted": granted])
+        call.resolve(["granted": granted, "isAlways": isAlways])
+    }
+
+    /// Request upgrade from WhenInUse → Always, or ask for permission if not yet determined.
+    /// Must be called while app is in foreground.
+    @objc func requestAlwaysPermission(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            let lm = LocationTrackingService.shared.locationManager
+            let status = lm.authorizationStatus
+            switch status {
+            case .notDetermined, .authorizedWhenInUse:
+                lm.requestAlwaysAuthorization()
+                call.resolve(["requested": true])
+            case .authorizedAlways:
+                call.resolve(["requested": false, "isAlways": true])
+            case .denied, .restricted:
+                call.resolve(["requested": false, "denied": true])
+            @unknown default:
+                call.resolve(["requested": false])
+            }
+        }
     }
 
     /// Start tracking.

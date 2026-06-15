@@ -44,10 +44,20 @@ export interface TripTrackerPlugin {
 
   /**
    * Check if location permission is granted at runtime.
-   * Returns { granted: true } if ACCESS_FINE_LOCATION (Android) or
-   * kCLAuthorizationStatusAuthorizedAlways/WhenInUse (iOS) is granted.
+   * Returns { granted, isAlways } — isAlways is true only when iOS
+   * authorizedAlways (or Android background location) is granted.
+   * Use isAlways to decide whether to call requestAlwaysPermission().
    */
-  hasLocationPermission(): Promise<{ granted: boolean }>;
+  hasLocationPermission(): Promise<{ granted: boolean; isAlways: boolean }>;
+
+  /**
+   * Request "Allow Always" location permission (iOS) or background location (Android).
+   * Must be called while the app is in the foreground.
+   * - notDetermined or WhenInUse → shows system prompt.
+   * - Already Always → resolves with { requested: false, isAlways: true }.
+   * - Denied/restricted → resolves with { requested: false, denied: true }; direct user to Settings.
+   */
+  requestAlwaysPermission(): Promise<{ requested: boolean; isAlways?: boolean; denied?: boolean }>;
 
   /**
    * Start the location tracking service.
