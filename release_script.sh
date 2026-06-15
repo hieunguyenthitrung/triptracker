@@ -105,9 +105,18 @@ git tag "$VERSION"
 git push origin main
 git push origin "$VERSION"
 
+# ── Create and push a version branch ──
+BRANCH="release/v$VERSION"
+git checkout -b "$BRANCH"
+git push origin "$BRANCH"
+git checkout main   # switch back to main after pushing branch
+
 echo ""
 echo "═══════════════════════════════════════════════════"
 echo "✅ TripTracker v$VERSION released!"
+echo ""
+echo "📌 Branch:  $BRANCH"
+echo "🏷️  Tag:     $VERSION"
 echo ""
 echo "GitHub Actions will build Android AAR automatically."
 echo "Check: https://github.com/hieunguyentt/TripTracker/actions"
