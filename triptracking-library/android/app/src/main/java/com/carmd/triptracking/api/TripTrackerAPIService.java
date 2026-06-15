@@ -298,6 +298,7 @@ public final class TripTrackerAPIService {
 
     public void setRouteId(String id) { this.routeId = id != null ? id : ""; }
     public boolean isEnabled() { return !pingURL.isEmpty() && !endURL.isEmpty() && !userId.isEmpty(); }
+    public boolean hasUserId() { return userId != null && !userId.isEmpty(); }
     public boolean hasRouteId() { return routeId != null && !routeId.isEmpty(); }
 
     // ── Trip lifecycle — controls vehicle_id inclusion ──
