@@ -437,8 +437,8 @@ public class MainViewController: UIViewController {
     }
     
     private func requestLocationPermission() {
-        let locationManager = CLLocationManager()
-        
+        let locationManager = LocationTrackingService.shared.locationManager
+
         switch locationManager.authorizationStatus {
         case .notDetermined:
             let alert = UIAlertController(
