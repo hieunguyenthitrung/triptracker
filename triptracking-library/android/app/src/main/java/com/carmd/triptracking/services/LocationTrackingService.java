@@ -648,7 +648,7 @@ public class LocationTrackingService extends Service implements
 
         Log.d(TAG, "🚗 Vehicle speed detected — auto-starting trip");
         startTracking(triggerLocation);
-        if (AppSettings.isNotifTripStart(this))
+        if (TripTrackerAPIService.getInstance().hasUserId() && AppSettings.isNotifTripStart(this))
             showTripNotification(NOTIF_TRIP_START, "🚗 Trip Started",
                     "Auto-trip #" + currentTripId + " - " + TripTrackerAPIService.getInstance().getVehicleId()
                             + " — vehicle speed detected");
@@ -682,7 +682,7 @@ public class LocationTrackingService extends Service implements
                 : String.format("%.2f km", dist / 1000);
         long min = duration / 60;
         long sec = duration % 60;
-        if (AppSettings.isNotifTripEnd(this))
+        if (TripTrackerAPIService.getInstance().hasUserId() && AppSettings.isNotifTripEnd(this))
             showTripNotification(NOTIF_TRIP_END, "⏹️ Trip Ended",
                     "Trip #" + tripId + " - " + TripTrackerAPIService.getInstance().getVehicleId() + " — " + distStr
                             + " in " +
