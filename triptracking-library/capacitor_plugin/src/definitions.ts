@@ -308,13 +308,12 @@ export interface TripTrackerConfigOptions {
 /** Activity/motion change event from Activity Recognition or sensors. */
 export interface ActivityChangeEvent {
     /** Activity type:
-     *  Android: "IN_VEHICLE", "STILL", "MOVING", "ON_BICYCLE"
-     *  iOS: "Automotive", "Still", "Walking", "Running", "Cycling"
+     *  Android: "automotive", "still", "walking", "running", "cycling"
+     *  iOS: "automotive", "still", "walking", "running", "cycling"
      */
     activity: string;
     /** Transition type:
-     *  Android Activity Recognition: "ENTER" | "EXIT"
-     *  Android Sensor: "SENSOR"
+     *  Android Activity Recognition: "MOTION"
      *  iOS CMMotionActivity: "MOTION"
      */
     transition: string;
