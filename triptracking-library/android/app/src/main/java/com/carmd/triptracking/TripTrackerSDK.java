@@ -212,14 +212,6 @@ public final class TripTrackerSDK {
      * Call this on logout or account switch.
      */
     public static void resetConfig(Context context) {
-        // Stop active trip before wiping config
-        LocationTrackingService svc = LocationTrackingService.getInstance();
-        if (svc != null && svc.isTracking()) {
-            Log.i(TAG, "🔧 TripTracker resetConfig — stopping active trip before config wipe");
-            svc.forceEndTrip();
-            stopTracking(context);
-        }
-
         // Clear API config keys from triptracker_settings
         SharedPreferences.Editor ed = context.getSharedPreferences("triptracker_settings", Context.MODE_PRIVATE).edit();
         ed.remove("api_pingURL");
