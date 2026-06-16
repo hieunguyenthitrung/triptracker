@@ -430,6 +430,10 @@ public class LocationTrackingService: NSObject {
     }
 
     public func startTrip(withInitialLocation initialLocation: CLLocation? = nil) {
+        guard TripTrackerAPIService.shared.isEnabled else {
+            print("⚠️ TripTracker startTrip blocked — userId/pingURL not configured")
+            return
+        }
         print("🎯 TripTracker Starting trip")
         isTracking           = true
         tripStartTime        = Date()
