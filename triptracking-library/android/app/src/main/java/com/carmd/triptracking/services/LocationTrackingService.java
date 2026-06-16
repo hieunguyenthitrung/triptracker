@@ -428,6 +428,13 @@ public class LocationTrackingService extends Service implements
         return isTracking;
     }
 
+    /** Called by resetConfig — thresholds are read from AppSettings at runtime, nothing to reset in memory. */
+    public void onConfigReset() {
+        consecutiveVehicleCount = 0;
+        activityRecognitionVehicle = false;
+        Log.d(TAG, "🔧 TripTracker onConfigReset — runtime state cleared");
+    }
+
     public long getCurrentTripId() {
         return currentTripId;
     }
