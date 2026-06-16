@@ -242,13 +242,6 @@ public final class TripTrackerSDK {
         // Reset in-memory API config
         TripTrackerAPIService.getInstance().configure("", "", "", "", "", "", "", "", "");
 
-        // Reset in-memory service thresholds to defaults
-        LocationTrackingService svc = LocationTrackingService.getInstance();
-        if (svc != null) {
-            Config defaults = new Config();
-            svc.applyThresholds(defaults);
-        }
-
         Log.i(TAG, "🔧 TripTracker resetConfig — all persisted config cleared, in-memory reset to defaults");
     }
 
