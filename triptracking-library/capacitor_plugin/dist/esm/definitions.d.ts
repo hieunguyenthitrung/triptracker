@@ -156,8 +156,15 @@ export interface TripTrackerPlugin {
      */
     endTrip(): Promise<{ ended: boolean; tripId?: number; reason?: string }>;
     updateToolId(options: { toolId: string }): Promise<{ updated: boolean; toolId: string }>;
+    /**
+       * Reset and clear all TripTracker config from persistent storage.
+       * Removes all saved keys from UserDefaults (iOS) / SharedPreferences (Android)
+       * and resets in-memory config to defaults.
+       * Call this on logout or when switching accounts/environments.
+       */
+    resetConfig(): Promise<{ reset: boolean }>;
 
-     // ═══════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════════════
     // Event Listeners
     // ═══════════════════════════════════════════════════════════════════
 
@@ -310,7 +317,7 @@ export interface ActivityChangeEvent {
      *  Android Activity Recognition: "MOTION"
      *  iOS CMMotionActivity: "MOTION"
      */
-    transition: string;    
+    transition: string;
 }
 
 /** Location update event — fired each time a new location is saved. */
