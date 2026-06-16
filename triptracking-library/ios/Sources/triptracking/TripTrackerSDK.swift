@@ -268,10 +268,18 @@ public final class TripTrackerSDK {
 
     // ── Config Reset ──
 
-    /// Clears all persisted TripTracker config (UserDefaults) and resets in-memory
-    /// API config and tracking thresholds to defaults. Does NOT stop an active trip.
+    /// Stops any active trip and clears all persisted TripTracker config (UserDefaults),
+    /// then resets in-memory API config and tracking thresholds to defaults.
     /// Call this on logout or account switch.
     public static func resetConfig() {
+        // Stop active trip before wiping config
+        let svc = LocationTrackingService.shared
+        if svc.isTracking {
+            print("🔧 TripTracker resetConfig — stopping active trip before config wipe")
+            svc.stopTrip()
+            TripTrackerAPIService.shared.flushQueue()
+        }
+
         let ud = UserDefaults.standard
         let keys: [String] = [
             // API

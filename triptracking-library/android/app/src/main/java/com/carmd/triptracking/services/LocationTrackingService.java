@@ -596,6 +596,11 @@ public class LocationTrackingService extends Service implements
         if (isTracking)
             return;
 
+        if (!TripTrackerAPIService.getInstance().isEnabled()) {
+            Log.w(TAG, "⚠️ TripTracker startTracking blocked — userId/pingURL not configured");
+            return;
+        }
+
         isTracking = true;
         tripStartTime = System.currentTimeMillis();
         totalDistance = 0.0;
