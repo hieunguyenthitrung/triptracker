@@ -513,9 +513,11 @@ public class LocationTrackingService: NSObject {
             steps: stepCount
         )
 
-        // API: send final GPS location when trip ends (only if route_id is set)
-        if let lastLoc = locationManager.location, !TripTrackerAPIService.shared.config.routeId.isEmpty {
-            TripTrackerAPIService.shared.sendTripEnd(location: lastLoc)
+        // API: send trip-end whenever the service is configured (userId + endURL present).
+        // routeId is optional — do not gate the end call on it.
+        let endLoc = lastKnownLocation ?? locationManager.location
+        if let endLoc = endLoc, TripTrackerAPIService.shared.isEnabled {
+            TripTrackerAPIService.shared.sendTripEnd(location: endLoc)
         }
 
         isTracking    = false
