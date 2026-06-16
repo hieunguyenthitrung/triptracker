@@ -514,8 +514,11 @@ public class LocationTrackingService: NSObject {
         )
 
         // API: send final GPS location when trip ends (only if route_id is set)
-        if let lastLoc = locationManager.location, !TripTrackerAPIService.shared.config.routeId.isEmpty {
-            TripTrackerAPIService.shared.sendTripEnd(location: lastLoc)
+        // API: send trip-end whenever the service is configured (userId + endURL present).
+        // routeId is optional — do not gate the end call on it.
+        let endLoc = locationManager.location ?? lastKnownLocation
+        if let endLoc = endLoc, TripTrackerAPIService.shared.isEnabled {
+            TripTrackerAPIService.shared.sendTripEnd(location: endLoc)
         }
 
         isTracking    = false
@@ -1690,7 +1693,15 @@ extension LocationTrackingService: CLLocationManagerDelegate {
 
         if isTracking {
             let speed = effectiveSpeed()
-            if speed < vehicleThreshold {
+            if isArrival && speed < vehicleThreshold {
+                // iOS Visit arrival = device has definitively stopped.
+                // Timer-based auto-end is unreliable here because iOS suspends the app
+                // immediately after delivering the Visit event, killing any pending Timer.
+                // End the trip immediately on arrival so it doesn't linger until the next
+                // significant-location wake (which can be 30+ minutes later).
+                print("📍 TripTracker Visit arrival during active trip — ending trip immediately (speed=\(String(format:"%.1f", speed)) m/s < threshold)")
+                autoEndTrip(reason: "Visit arrival — device stopped")
+            } else if speed < vehicleThreshold {
                 startAutoEndTimer()
             }
         } else if isDeparture {
