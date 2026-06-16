@@ -1199,16 +1199,16 @@ public class LocationTrackingService extends Service implements
         }
 
         // ── Vehicle speed path ────────────────────────────────────────────────
-        // Anti-drift: require 3 CONSECUTIVE GPS fixes at vehicle speed + good accuracy
+        // Anti-drift: require 2 CONSECUTIVE GPS fixes at vehicle speed + good accuracy
         // + GPS hardware speed (Doppler). GPS drift on stationary Pixel 8 etc.
         // produces position jumps but NOT Doppler speed.
         float requiredSpeed = activityRecognitionVehicle
                 ? vehicleThreshold() * 0.5f // 11 km/h if Activity Recognition confirms vehicle
                 : vehicleThreshold(); // 22 km/h normally
-
+        
         if (speed >= requiredSpeed && accuracy <= 30f && location.hasSpeed() && location.getSpeed() >= requiredSpeed) {
             consecutiveVehicleCount++;
-            if (!isTracking && consecutiveVehicleCount >= 3) {
+            if (!isTracking && consecutiveVehicleCount >= 2) {
                 autoStartTrip(location);
                 consecutiveVehicleCount = 0;
                 activityRecognitionVehicle = false;
