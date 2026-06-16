@@ -428,6 +428,13 @@ public class LocationTrackingService extends Service implements
         return isTracking;
     }
 
+    /** Called by resetConfig — thresholds are read from AppSettings at runtime, nothing to reset in memory. */
+    public void onConfigReset() {
+        consecutiveVehicleCount = 0;
+        activityRecognitionVehicle = false;
+        Log.d(TAG, "🔧 TripTracker onConfigReset — runtime state cleared");
+    }
+
     public long getCurrentTripId() {
         return currentTripId;
     }
@@ -1183,9 +1190,9 @@ public class LocationTrackingService extends Service implements
         }
 
         // ── Auto-trip: moving at vehicle speed resets still timer ──────────
-        // Only cancel auto-stop if GPS is reliable (accuracy ≤ 30m).
-        // GPS drift with 80-400m accuracy produces fake speed that keeps
-        // cancelling the timer — device sits on table for 45+ min before trip ends.
+        // Only cancel auto-stop if GPS is reliable (accuracy ≤ 30m) AND speed is
+        // at vehicle threshold — walking speed (< vehicleThreshold) should not
+        // cancel the timer, otherwise a pedestrian trip never auto-stops.
         if (speed >= vehicleThreshold() && accuracy <= 30f) {
             if (stillSinceMs != 0L) {
                 stillSinceMs = 0L;

@@ -62,9 +62,10 @@ public final class TripTrackerAPIService {
     private let session: URLSession = {
         let cfg = URLSessionConfiguration.default
         cfg.timeoutIntervalForRequest = 15
-        if #available(iOS 11.0, *) {
-            cfg.waitsForConnectivity = true
-        }
+        // Do NOT set waitsForConnectivity — if offline, the request must fail fast
+        // so postWithRetry can enqueue it. With waitsForConnectivity=true, iOS holds
+        // all tasks open and fires 100+ simultaneous requests when network returns,
+        // hammering the server. The offline queue flushes in controlled batches instead.
         return URLSession(configuration: cfg)
     }()
 

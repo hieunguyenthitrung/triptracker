@@ -149,6 +149,14 @@ export interface TripTrackerPlugin {
   endTrip(): Promise<{ ended: boolean; tripId?: number; reason?: string }>;
   updateToolId(options: { toolId: string }): Promise<{ updated: boolean; toolId: string }>;
 
+  /**
+   * Reset and clear all TripTracker config from persistent storage.
+   * Removes all saved keys from UserDefaults (iOS) / SharedPreferences (Android)
+   * and resets in-memory config to defaults.
+   * Call this on logout or when switching accounts/environments.
+   */
+  resetConfig(): Promise<{ reset: boolean }>;
+
   // ═══════════════════════════════════════════════════════════════════
     // Event Listeners
     // ═══════════════════════════════════════════════════════════════════

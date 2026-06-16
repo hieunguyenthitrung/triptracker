@@ -612,6 +612,14 @@ public class TripTrackerCapPlugin extends Plugin {
         call.resolve(ret);
     }
 
+    @PluginMethod
+    public void resetConfig(PluginCall call) {
+        TripTrackerSDK.resetConfig(getContext());
+        JSObject ret = new JSObject();
+        ret.put("reset", true);
+        call.resolve(ret);
+    }
+
     // ═══════════════════════════════════════════════════════════════════
     // Helpers
     // ═══════════════════════════════════════════════════════════════════

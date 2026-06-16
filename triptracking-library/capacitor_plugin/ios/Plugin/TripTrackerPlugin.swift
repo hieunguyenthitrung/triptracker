@@ -193,6 +193,11 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         call.resolve(["stopped": true])
     }
 
+    @objc func resetConfig(_ call: CAPPluginCall) {
+        TripTrackerSDK.resetConfig()
+        call.resolve(["reset": true])
+    }
+
     @objc func endTrip(_ call: CAPPluginCall) {
         let svc = LocationTrackingService.shared
         guard svc.isTracking else {

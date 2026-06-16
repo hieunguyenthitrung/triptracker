@@ -206,6 +206,52 @@ public final class TripTrackerSDK {
         }
     }
 
+    /**
+     * Clears all persisted TripTracker config (SharedPreferences) and resets the
+     * in-memory API config to defaults. Does NOT stop an active trip.
+     * Call this on logout or account switch.
+     */
+    public static void resetConfig(Context context) {
+        // Clear API config keys from triptracker_settings
+        SharedPreferences.Editor ed = context.getSharedPreferences("triptracker_settings", Context.MODE_PRIVATE).edit();
+        ed.remove("api_pingURL");
+        ed.remove("api_endURL");
+        ed.remove("api_userId");
+        ed.remove("api_vehicleId");
+        ed.remove("api_osInfo");
+        ed.remove("api_routeId");
+        ed.remove("api_authorizationKey");
+        ed.remove("api_apiAuthKey");
+        ed.remove("api_apiAuthToken");
+        // Clear tracking setting keys
+        ed.remove(AppSettings.KEY_STILL_INTERVAL);
+        ed.remove(AppSettings.KEY_VEHICLE_DISTANCE);
+        ed.remove(AppSettings.KEY_VEHICLE_SPEED);
+        ed.remove(AppSettings.KEY_AUTO_STOP_TIMEOUT);
+        ed.remove(AppSettings.KEY_ROUTE_GAP);
+        ed.remove(AppSettings.KEY_WEB_SERVER_ENABLED);
+        ed.remove(AppSettings.KEY_VOICE_ENABLED);
+        ed.remove(AppSettings.KEY_NOTIF_TRIP_START);
+        ed.remove(AppSettings.KEY_NOTIF_TRIP_END);
+        ed.remove(AppSettings.KEY_NOTIF_DISTANCE_KM);
+        ed.remove(AppSettings.KEY_NOTIF_GEOFENCE_ENTER);
+        ed.remove(AppSettings.KEY_NOTIF_GEOFENCE_EXIT);
+        ed.remove("transport_type");
+        ed.apply();
+
+        // Reset in-memory API config
+        TripTrackerAPIService.getInstance().configure("", "", "", "", "", "", "", "", "");
+
+        // Reset in-memory service thresholds to defaults
+        LocationTrackingService svc = LocationTrackingService.getInstance();
+        if (svc != null) {
+            Config defaults = new Config();
+            svc.applyThresholds(defaults);
+        }
+
+        Log.i(TAG, "🔧 TripTracker resetConfig — all persisted config cleared, in-memory reset to defaults");
+    }
+
     public static boolean isInitialized() { return initialized; }
 
     /**

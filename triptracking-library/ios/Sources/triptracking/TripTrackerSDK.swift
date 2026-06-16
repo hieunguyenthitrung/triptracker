@@ -266,6 +266,42 @@ public final class TripTrackerSDK {
         print("📡 TripTracker API config restored from UserDefaults — enabled=\(apiConfig.isConfigured) ping=\(apiConfig.pingURL) userId=\(apiConfig.userId)")
     }
 
+    // ── Config Reset ──
+
+    /// Clears all persisted TripTracker config (UserDefaults) and resets in-memory
+    /// API config and tracking thresholds to defaults. Does NOT stop an active trip.
+    /// Call this on logout or account switch.
+    public static func resetConfig() {
+        let ud = UserDefaults.standard
+        let keys: [String] = [
+            // API
+            "tt_api_pingURL", "tt_api_endURL", "tt_api_userId",
+            "tt_api_vehicleId", "tt_api_osInfo", "tt_api_routeId",
+            "tt_api_authorizationKey", "tt_api_apiAuthKey", "tt_api_apiAuthToken",
+            "tt_api_toolId",
+            // Tracking settings
+            "tt_saveIntervalSecs", "tt_saveDistanceVehicleM", "tt_vehicleThreshold",
+            "tt_transportType", "tt_autoEndStillnessSecs", "tt_routeGapThresholdM",
+            "tt_webMonitorEnabled", "tt_voiceFeedbackEnabled",
+            // Notifications
+            "tt_notify_tripStart", "tt_notify_tripEnd", "tt_notify_distanceKm",
+            "tt_notify_geofenceEnter", "tt_notify_geofenceExit",
+        ]
+        keys.forEach { ud.removeObject(forKey: $0) }
+
+        // Reset in-memory API config
+        TripTrackerAPIService.shared.config = TripTrackerAPIConfig()
+
+        // Reset tracking thresholds to defaults
+        let svc = LocationTrackingService.shared
+        let defaults = TripTrackerConfig()
+        svc.vehicleThreshold      = defaults.vehicleThreshold
+        svc.saveIntervalStillMs   = Int64(defaults.saveIntervalMinutes * 60 * 1000)
+        svc.autoEndStillnessSecs  = defaults.autoStopTimeoutMinutes * 60.0
+
+        print("🔧 TripTracker resetConfig — all persisted config cleared, in-memory reset to defaults")
+    }
+
     // ── Lifecycle ──
     public static func didEnterBackground() { LocationTrackingService.shared.ensureBackgroundTracking() }
 
