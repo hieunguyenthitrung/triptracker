@@ -358,15 +358,18 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
             call.reject("No location available")
             return
         }
-        let stats = svc.getCurrentStats()
+        // Use raw GPS speed from the CLLocation fix (>= 0 means valid).
+        // Fall back to effectiveSpeed() only when GPS hasn't reported a speed yet.
+        let rawSpeed: Float = loc.speed >= 0 ? Float(loc.speed) : svc.getCurrentStats().speed
+        let speedKmh = rawSpeed * 3.6
         call.resolve([
-            "latitude": loc.coordinate.latitude,
+            "latitude":  loc.coordinate.latitude,
             "longitude": loc.coordinate.longitude,
-            "speed": stats.speed,
-            "speedKmh": stats.speed * 3.6,
-            "accuracy": loc.horizontalAccuracy,
-            "bearing": loc.course >= 0 ? loc.course : 0,
-            "altitude": loc.altitude,
+            "speed":     rawSpeed,
+            "speedKmh":  speedKmh,
+            "accuracy":  loc.horizontalAccuracy,
+            "bearing":   loc.course >= 0 ? loc.course : 0,
+            "altitude":  loc.altitude,
             "timestamp": Int64(loc.timestamp.timeIntervalSince1970 * 1000),
         ])
     }
