@@ -839,6 +839,7 @@ public class LocationTrackingService: NSObject {
             adaptLocationAccuracy(for: .automotive)  // GPS ON → best accuracy
             // evaluateAutoTrip(from: prev, to: next)
             print("📍 Motion → Automotive: GPS started, waiting for fresh GPS speed")
+            autoStartTrip(reason: "Motion → Automotive (speed \(String(format:"%.1f", effectiveSpeed())) m/s)")
             return  // Don't save with stale speed — didUpdateLocations will save with real speed
         }
 
@@ -1128,7 +1129,7 @@ public class LocationTrackingService: NSObject {
     // MARK: - Auto Trip Logic
     //
     //  Auto-start:  speed >= vehicleThreshold (6 m/s) OR CMMotionActivity = automotive
-    //  Auto-end:    speed stays below vehicleThreshold for autoEndStillnessSecs (10 min)
+    //  Auto-end:    speed stays below vehicleThreshold for autoEndStillnessSecs (5 min)
     //               GPS drift noise (0.5–2 m/s) does NOT cancel the countdown.
     //               Only real vehicle speed (>= 6 m/s) cancels it.
     //
@@ -1157,7 +1158,7 @@ public class LocationTrackingService: NSObject {
             if isTracking {
                 // startAutoEndTimer()
             }
-
+            
         case .still:
             // Device is still → start auto-end countdown if trip is active
             if isTracking {
@@ -1731,6 +1732,8 @@ extension LocationTrackingService: CLLocationManagerDelegate {
                     guard let self = self else { return }
                     if !self.isTracking {
                         if self.lastMotionState == .automotive {
+                            delegate?.didChangeActivity(activity: next.rawValue, transition: "MOTION")
+                            autoStartTrip(reason: "Visit departure — 60s elapsed, still Automotive")
                             print("📍 TripTracker Visit departure: 60s elapsed, still Automotive — keeping GPS Best for speed")
                         } else {
                             self.adaptLocationAccuracy(for: self.lastMotionState)
