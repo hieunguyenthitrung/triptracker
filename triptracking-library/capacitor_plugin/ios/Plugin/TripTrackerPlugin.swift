@@ -52,10 +52,44 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         CAPPluginMethod(name: "writeLog", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "endTrip", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "resetConfig", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "jsHeartbeat", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setFakeRoute", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "startFakeRoute", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "stopFakeRoute", returnType: CAPPluginReturnPromise),
     ]
+
+    // ═══════════════════════════════════════════════════════════════
+    // JS Heartbeat — detects when the Ionic/JS layer goes silent
+    // ═══════════════════════════════════════════════════════════════
+
+    /// Timestamp of last heartbeat received from JS. nil = JS has never connected.
+    private var lastHeartbeatDate: Date?
+    private var heartbeatWatchdog: Timer?
+    private static let heartbeatTimeoutSecs: Double = 120  // warn after 2 min JS silence
+
+    private func startHeartbeatWatchdog() {
+        heartbeatWatchdog?.invalidate()
+        heartbeatWatchdog = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            if let last = self.lastHeartbeatDate {
+                let silent = -last.timeIntervalSinceNow
+                if silent > Self.heartbeatTimeoutSecs {
+                    print("⚠️ TripTracker JS bridge silent for \(Int(silent))s — running standalone with saved config")
+                }
+            }
+            // If lastHeartbeatDate is nil JS has never sent a heartbeat yet — normal on first launch
+        }
+        if let t = heartbeatWatchdog { RunLoop.main.add(t, forMode: .common) }
+    }
+
+    @objc func jsHeartbeat(_ call: CAPPluginCall) {
+        let isFirstContact = lastHeartbeatDate == nil
+        lastHeartbeatDate = Date()
+        if isFirstContact {
+            print("💓 TripTracker JS bridge connected")
+        }
+        call.resolve(["alive": true, "timestamp": Int64(Date().timeIntervalSince1970 * 1000)])
+    }
 
     // ═══════════════════════════════════════════════════════════════
     // Lifecycle — auto-initialize on app launch (including background relaunch)
@@ -91,6 +125,8 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
             name: UIApplication.willTerminateNotification,
             object: nil
         )
+
+        startHeartbeatWatchdog()
     }
 
     @objc private func handleAppDidBecomeActive() {

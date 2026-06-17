@@ -103,4 +103,9 @@ export class TripTrackerWeb extends WebPlugin implements TripTrackerPlugin {
   async resetConfig(): Promise<{ reset: boolean }> {
     throw this.unavailable('resetConfig is only available on iOS/Android');
   }
+
+  async jsHeartbeat(): Promise<{ alive: boolean; timestamp: number }> {
+    // On web there's no native layer to ping — just return alive
+    return { alive: true, timestamp: Date.now() };
+  }
 }

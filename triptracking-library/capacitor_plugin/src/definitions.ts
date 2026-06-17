@@ -150,6 +150,14 @@ export interface TripTrackerPlugin {
   updateToolId(options: { toolId: string }): Promise<{ updated: boolean; toolId: string }>;
 
   /**
+   * JS heartbeat — call this every 30s from your Ionic app so the native SDK
+   * can detect when the JS layer goes silent (webview crash, JS error, etc.).
+   * When the native side doesn't receive a heartbeat for 2+ minutes it logs a
+   * warning but continues tracking autonomously with the last saved config.
+   */
+  jsHeartbeat(): Promise<{ alive: boolean; timestamp: number }>;
+
+  /**
    * Reset and clear all TripTracker config from persistent storage.
    * Removes all saved keys from UserDefaults (iOS) / SharedPreferences (Android)
    * and resets in-memory config to defaults.

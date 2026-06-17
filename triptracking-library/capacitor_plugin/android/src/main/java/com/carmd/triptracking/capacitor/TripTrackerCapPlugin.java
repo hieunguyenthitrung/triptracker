@@ -52,6 +52,23 @@ public class TripTrackerCapPlugin extends Plugin {
     // Static self-reference so LocationTrackingService can call emitMotionChange via reflection
     private static TripTrackerCapPlugin instance;
 
+    // ── JS heartbeat — detect when Ionic/JS layer goes silent ─────────────────
+    private long lastHeartbeatMs = 0L;
+    private static final long HEARTBEAT_TIMEOUT_MS = 120_000L; // warn after 2 min
+    private final android.os.Handler heartbeatHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable heartbeatWatchdog = new Runnable() {
+        @Override public void run() {
+            if (lastHeartbeatMs > 0) {
+                long silentMs = System.currentTimeMillis() - lastHeartbeatMs;
+                if (silentMs > HEARTBEAT_TIMEOUT_MS) {
+                    android.util.Log.w("TripTrackerCap",
+                        "⚠️ TripTracker JS bridge silent for " + (silentMs / 1000) + "s — running standalone with saved config");
+                }
+            }
+            heartbeatHandler.postDelayed(this, 60_000L);
+        }
+    };
+
     // ── Event name constants ──────────────────────────────────────────────────
     private static final String EVENT_ACTIVITY_CHANGE     = "activityChange";
     private static final String EVENT_LOCATION_UPDATE     = "locationUpdate";
@@ -92,8 +109,8 @@ public class TripTrackerCapPlugin extends Plugin {
     @Override
     public void load() {
         instance = this;  // register static reference for emitMotionChange()
-        // Service is always started by SDK. Bind to it.
         bindToServiceIfRunning();
+        heartbeatHandler.postDelayed(heartbeatWatchdog, 60_000L);
     }
 
     @Override
@@ -617,6 +634,19 @@ public class TripTrackerCapPlugin extends Plugin {
         TripTrackerSDK.resetConfig(getContext());
         JSObject ret = new JSObject();
         ret.put("reset", true);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void jsHeartbeat(PluginCall call) {
+        boolean isFirstContact = lastHeartbeatMs == 0L;
+        lastHeartbeatMs = System.currentTimeMillis();
+        if (isFirstContact) {
+            android.util.Log.i("TripTrackerCap", "💓 TripTracker JS bridge connected");
+        }
+        JSObject ret = new JSObject();
+        ret.put("alive", true);
+        ret.put("timestamp", lastHeartbeatMs);
         call.resolve(ret);
     }
 
