@@ -1720,12 +1720,14 @@ public class LocationTrackingService extends Service implements
      * Auto).
      */
     public void showNetworkLostNotification() {
+        if (!AppSettings.isNotifNetwork(this)) return;
         showTripNotification(NOTIF_NETWORK_LOST,
                 "⚠️ No Internet Connection",
                 "TripTracker is offline. Pings are queued and will be sent when restored.");
     }
 
     public void showNetworkRestoredNotification() {
+        if (!AppSettings.isNotifNetwork(this)) return;
         // Cancel the "lost" banner then show a brief "restored" banner
         NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm != null) nm.cancel(NOTIF_NETWORK_LOST);

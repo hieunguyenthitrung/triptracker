@@ -26,6 +26,7 @@ public class AppSettings {
     public static final String KEY_NOTIF_DISTANCE_KM   = "notif_distance_km";
     public static final String KEY_NOTIF_GEOFENCE_ENTER = "notif_geofence_enter";
     public static final String KEY_NOTIF_GEOFENCE_EXIT  = "notif_geofence_exit";
+    public static final String KEY_NOTIF_NETWORK = "notif_network";
 
     // Defaults
     public static final float DEF_VEHICLE_SPEED    = 6.0f;
@@ -103,6 +104,9 @@ public class AppSettings {
 
     public static boolean isNotifGeofenceExit(Context ctx) { return prefs(ctx).getBoolean(KEY_NOTIF_GEOFENCE_EXIT, true); }
     public static void setNotifGeofenceExit(Context ctx, boolean v) { prefs(ctx).edit().putBoolean(KEY_NOTIF_GEOFENCE_EXIT, v).apply(); }
+
+    public static boolean isNotifNetwork(Context ctx) { return prefs(ctx).getBoolean(KEY_NOTIF_NETWORK, true); }
+    public static void setNotifNetwork(Context ctx, boolean v) { prefs(ctx).edit().putBoolean(KEY_NOTIF_NETWORK, v).apply(); }
     /** Still save interval in milliseconds (for service use). */
     public static long getStillIntervalMs(Context ctx) {
         return (long) (getStillInterval(ctx) * 60_000L);

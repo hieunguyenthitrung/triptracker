@@ -134,6 +134,7 @@ public class NotificationManager: NSObject {
 
     /// Show a persistent alert when internet is lost during an active trip.
     public func notifyNetworkLost() {
+        guard NotificationSettingsViewController.isNetworkEnabled else { return }
         let content = UNMutableNotificationContent()
         content.title = "⚠️ No Internet Connection"
         content.body = "TripTracker is offline. Location pings are queued and will be sent when the connection is restored."
@@ -153,6 +154,7 @@ public class NotificationManager: NSObject {
 
     /// Clear the "no internet" alert and optionally show a "restored" banner.
     public func notifyNetworkRestored() {
+        guard NotificationSettingsViewController.isNetworkEnabled else { return }
         // Remove the persistent "lost" banner first
         UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ["tt_network_lost"])
 

@@ -36,6 +36,7 @@ public struct TripTrackerConfig {
     public var notifyDistanceKm: Bool = false
     public var notifyGeofenceEnter: Bool = false
     public var notifyGeofenceExit: Bool = false
+    public var notifyNetwork: Bool = true
 
     public init() {}
 
@@ -64,6 +65,7 @@ public struct TripTrackerConfig {
         if let v = dict["notifyDistanceKm"] as? Bool         { notifyDistanceKm = v }
         if let v = dict["notifyGeofenceEnter"] as? Bool      { notifyGeofenceEnter = v }
         if let v = dict["notifyGeofenceExit"] as? Bool       { notifyGeofenceExit = v }
+        if let v = dict["notifyNetwork"] as? Bool { notifyNetwork = v }
     }
 }
 
@@ -186,6 +188,7 @@ public final class TripTrackerSDK {
         ud.set(config.notifyDistanceKm, forKey: "tt_notify_distanceKm")
         ud.set(config.notifyGeofenceEnter, forKey: "tt_notify_geofenceEnter")
         ud.set(config.notifyGeofenceExit, forKey: "tt_notify_geofenceExit")
+        ud.set(config.notifyNetwork, forKey: "tt_notify_network")
 
         GeofenceManager.shared.isEnabled = config.geofenceEnabled
 
@@ -294,6 +297,7 @@ public final class TripTrackerSDK {
             // Notifications
             "tt_notify_tripStart", "tt_notify_tripEnd", "tt_notify_distanceKm",
             "tt_notify_geofenceEnter", "tt_notify_geofenceExit",
+            "tt_notify_network",
         ]
         keys.forEach { ud.removeObject(forKey: $0) }
 

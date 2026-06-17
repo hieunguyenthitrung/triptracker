@@ -244,6 +244,7 @@ public final class TripTrackerSDK {
         ed.remove(AppSettings.KEY_NOTIF_DISTANCE_KM);
         ed.remove(AppSettings.KEY_NOTIF_GEOFENCE_ENTER);
         ed.remove(AppSettings.KEY_NOTIF_GEOFENCE_EXIT);
+        ed.remove(AppSettings.KEY_NOTIF_NETWORK);
         ed.remove("transport_type");
         ed.apply();
 

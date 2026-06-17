@@ -19,6 +19,7 @@ public class NotificationSettingsViewController: UIViewController {
         static let distanceKm    = "tt_notify_distanceKm"
         static let geofenceEnter = "tt_notify_geofenceEnter"
         static let geofenceExit  = "tt_notify_geofenceExit"
+        static let network = "tt_notify_network"
     }
 
     // MARK: - Static helpers for checking from anywhere
@@ -38,6 +39,9 @@ public class NotificationSettingsViewController: UIViewController {
     public static var isGeofenceExitEnabled: Bool {
         UserDefaults.standard.object(forKey: Keys.geofenceExit) == nil ? true : UserDefaults.standard.bool(forKey: Keys.geofenceExit)
     }
+    public static var isNetworkEnabled: Bool {
+        UserDefaults.standard.object(forKey: Keys.network) == nil ? true : UserDefaults.standard.bool(forKey: Keys.network)
+    }
 
     // MARK: - UI
 
@@ -56,6 +60,7 @@ public class NotificationSettingsViewController: UIViewController {
     private var geofenceEnterSwitch = UISwitch()
     private var geofenceExitSwitch  = UISwitch()
     private var voiceFeedbackSwitch = UISwitch()
+    private var networkSwitch = UISwitch()
 
     // MARK: - Lifecycle
 
@@ -155,6 +160,17 @@ public class NotificationSettingsViewController: UIViewController {
                       icon: "📍",
                       toggle: geofenceExitSwitch))
 
+        stackView.addArrangedSubview(separator())
+
+        networkSwitch.isOn = Self.isNetworkEnabled
+        networkSwitch.onTintColor = .systemGreen
+        networkSwitch.addTarget(self, action: #selector(switchChanged), for: .valueChanged)
+        stackView.addArrangedSubview(
+            toggleRow(title: "Network Status",
+                      subtitle: "Notify when internet is lost or restored during tracking.",
+                      icon: "📶",
+                      toggle: networkSwitch))
+
         // ── Section: Voice Feedback ──────────────────────────────────
         stackView.addArrangedSubview(sectionHeader("🔊  Voice Feedback"))
 
@@ -176,6 +192,7 @@ public class NotificationSettingsViewController: UIViewController {
         UserDefaults.standard.set(distanceKmSwitch.isOn,    forKey: Keys.distanceKm)
         UserDefaults.standard.set(geofenceEnterSwitch.isOn, forKey: Keys.geofenceEnter)
         UserDefaults.standard.set(geofenceExitSwitch.isOn,  forKey: Keys.geofenceExit)
+        UserDefaults.standard.set(networkSwitch.isOn, forKey: Keys.network)
     }
 
     @objc private func voiceToggled() {

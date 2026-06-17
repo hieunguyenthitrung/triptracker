@@ -284,6 +284,8 @@ export interface TripTrackerConfigOptions {
   notifyGeofenceEnter?: boolean;
   /** Enable push for geofence exit (default true) */
   notifyGeofenceExit?: boolean;
+  /** Enable push for network lost/restored events (default true) */
+  notifyNetwork?: boolean;
 
   // ── API ──
 
