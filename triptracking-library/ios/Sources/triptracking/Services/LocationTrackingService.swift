@@ -1127,7 +1127,7 @@ public class LocationTrackingService: NSObject {
     // MARK: - Auto Trip Logic
     //
     //  Auto-start:  speed >= vehicleThreshold (6 m/s) OR CMMotionActivity = automotive
-    //  Auto-end:    speed stays below vehicleThreshold for autoEndStillnessSecs (10 min)
+    //  Auto-end:    speed stays below vehicleThreshold for autoEndStillnessSecs (5 min)
     //               GPS drift noise (0.5–2 m/s) does NOT cancel the countdown.
     //               Only real vehicle speed (>= 6 m/s) cancels it.
     //
@@ -1203,9 +1203,14 @@ public class LocationTrackingService: NSObject {
             // ── Below vehicle threshold ──
             consecutiveVehicleSpeedCount = 0
 
-            if isTracking && autoEndTimer == nil {
-                // Speed dropped while trip active → start auto-end countdown.
-                startAutoEndTimer()
+            if isTracking {
+                // Start countdown on first speed=0 fix.
+                if autoEndTimer == nil {
+                    startAutoEndTimer()
+                }
+                // Also check elapsed time directly — RunLoop timers don't fire when
+                // iOS suspends the app, so use the GPS callback itself as a heartbeat.
+                checkAutoEndByElapsedTime()
             }
         }
         // If autoEndTimer is already running and speed < vehicleThreshold → let it run.
@@ -1223,10 +1228,23 @@ public class LocationTrackingService: NSObject {
             if speed < self.vehicleThreshold {
                 print("⏱️ TripTracker GPS silent \(Int(self.gpsDeadSecs))s → speed=\(String(format:"%.1f", speed)) → starting auto-end timer")
                 self.startAutoEndTimer()
+                self.checkAutoEndByElapsedTime()
             }
         }
         if let timer = gpsSilenceTimer {
             RunLoop.main.add(timer, forMode: .common)
+        }
+    }
+
+    /// Check if the vehicle has been still long enough to end the trip right now.
+    /// Called on every GPS callback and GPS-silence event as a timer-independent
+    /// safety net — RunLoop timers don't fire when iOS suspends the app in background.
+    private func checkAutoEndByElapsedTime() {
+        guard isTracking, let since = stillSinceDate else { return }
+        let elapsed = Date().timeIntervalSince(since)
+        if elapsed >= autoEndStillnessSecs {
+            print("⏱️ TripTracker Auto-end triggered by elapsed check — still for \(Int(elapsed))s ≥ \(Int(autoEndStillnessSecs))s")
+            autoEndTrip(reason: "Parked for \(Int(elapsed / 60)) min")
         }
     }
 
