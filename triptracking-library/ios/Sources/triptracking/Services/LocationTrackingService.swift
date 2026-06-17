@@ -839,7 +839,14 @@ public class LocationTrackingService: NSObject {
             adaptLocationAccuracy(for: .automotive)  // GPS ON → best accuracy
             // evaluateAutoTrip(from: prev, to: next)
             print("📍 Motion → Automotive: GPS started, waiting for fresh GPS speed")
-            autoStartTrip(reason: "Motion → Automotive (speed \(String(format:"%.1f", effectiveSpeed())) m/s)")
+            guard let location = locationManager.location else { return }
+            let speed = Float(max(0, location.speed))
+            if(speed >= vehicleThreshold) 
+                autoStartTrip(reason: "Motion → Automotive (speed \(String(format:"%.1f", effectiveSpeed())) m/s)")
+            }else{
+                print("📍 Motion → Automotive - Cannot start trip")
+                print("📍 Motion → Automotive: speed \(String(format:"%.1f", effectiveSpeed())) m/s < threshold \(vehicleThreshold) m/s — trip not started - \(speed)")
+            }
             return  // Don't save with stale speed — didUpdateLocations will save with real speed
         }
 
