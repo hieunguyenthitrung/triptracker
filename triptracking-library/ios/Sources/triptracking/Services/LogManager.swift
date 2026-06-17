@@ -38,6 +38,9 @@ public class LogManager: NSObject {
     /// Pipe that captures stdout.
     private var stdoutPipe: Pipe?
 
+    /// Serial queue — ensures concurrent print() calls don't interleave in the log file.
+    private let writeQueue = DispatchQueue(label: "com.carmd.triptracker.logwriter")
+
     /// Timer for daily auto-send at 23:59.
     private var dailySendTimer: Timer?
 
@@ -396,23 +399,26 @@ public class LogManager: NSObject {
         // Also redirect stderr so crash / assertion logs are captured
         dup2(pipe.fileHandleForWriting.fileDescriptor, STDERR_FILENO)
 
-        // Read from pipe on a background queue
+        // Read from pipe on the serial write queue to prevent concurrent
+        // print() calls from interleaving into the same log line.
         pipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
             let data = handle.availableData
-            guard !data.isEmpty else { return }
+            guard !data.isEmpty, let self = self else { return }
 
-            // Write to the original stdout (so Xcode console still works — no timestamp)
-            if let self = self, self.originalStdout >= 0 {
-                data.withUnsafeBytes { bytes in
-                    if let ptr = bytes.baseAddress {
-                        write(self.originalStdout, ptr, data.count)
+            self.writeQueue.async {
+                // Write to the original stdout (so Xcode console still works — no timestamp)
+                if self.originalStdout >= 0 {
+                    data.withUnsafeBytes { bytes in
+                        if let ptr = bytes.baseAddress {
+                            write(self.originalStdout, ptr, data.count)
+                        }
                     }
                 }
-            }
 
-            // Write to log file WITH timestamp on each line
-            if let text = String(data: data, encoding: .utf8) {
-                self?.writeTimestampedLines(text)
+                // Write to log file WITH timestamp on each line
+                if let text = String(data: data, encoding: .utf8) {
+                    self.writeTimestampedLines(text)
+                }
             }
         }
     }
