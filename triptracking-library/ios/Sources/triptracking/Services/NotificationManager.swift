@@ -130,6 +130,49 @@ public class NotificationManager: NSObject {
         }
     }
 
+    // MARK: - Network Status
+
+    /// Show a persistent alert when internet is lost during an active trip.
+    public func notifyNetworkLost() {
+        let content = UNMutableNotificationContent()
+        content.title = "⚠️ No Internet Connection"
+        content.body = "TripTracker is offline. Location pings are queued and will be sent when the connection is restored."
+        content.sound = .default
+        content.categoryIdentifier = "NETWORK_EVENT"
+
+        let request = UNNotificationRequest(
+            identifier: "tt_network_lost",
+            content: content,
+            trigger: nil
+        )
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error { print("🔔 Failed to send network-lost notification: \(error)") }
+            else { print("🔔 TripTracker Network-lost notification sent") }
+        }
+    }
+
+    /// Clear the "no internet" alert and optionally show a "restored" banner.
+    public func notifyNetworkRestored() {
+        // Remove the persistent "lost" banner first
+        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ["tt_network_lost"])
+
+        let content = UNMutableNotificationContent()
+        content.title = "✅ Internet Restored"
+        content.body = "TripTracker is back online. Queued pings are being sent."
+        content.sound = nil   // silent — just informational
+        content.categoryIdentifier = "NETWORK_EVENT"
+
+        let request = UNNotificationRequest(
+            identifier: "tt_network_restored",
+            content: content,
+            trigger: nil
+        )
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error { print("🔔 Failed to send network-restored notification: \(error)") }
+            else { print("🔔 TripTracker Network-restored notification sent") }
+        }
+    }
+
     // MARK: - Daily 6:00 AM Reminder
 
     /// Schedule a repeating daily notification at 6:00 AM to check yesterday's route.

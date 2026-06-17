@@ -54,6 +54,7 @@ public final class TripTrackerAPIService {
     private volatile boolean isFlushing = false;
     private Context appContext;
     private ConnectivityManager.NetworkCallback networkCallback;
+    private volatile boolean isNetworkAvailable = true; // assume online until first callback
 
     private TripTrackerAPIService() {}
 
@@ -231,9 +232,23 @@ public final class TripTrackerAPIService {
             networkCallback = new ConnectivityManager.NetworkCallback() {
                 @Override
                 public void onAvailable(Network network) {
+                    if (!isNetworkAvailable) {
+                        Log.i(TAG, "📡 TripTracker Network restored");
+                        isNetworkAvailable = true;
+                        notifyNetworkRestored();
+                    }
                     if (!pendingQueue.isEmpty()) {
                         Log.i(TAG, "Network restored — flushing pending queue");
                         flushQueue();
+                    }
+                }
+
+                @Override
+                public void onLost(Network network) {
+                    if (isNetworkAvailable) {
+                        Log.w(TAG, "⚠️ TripTracker Network lost");
+                        isNetworkAvailable = false;
+                        notifyNetworkLost();
                     }
                 }
             };
@@ -246,6 +261,18 @@ public final class TripTrackerAPIService {
         } catch (Exception e) {
             Log.e(TAG, "Network monitor error: " + e.getMessage());
         }
+    }
+
+    private void notifyNetworkLost() {
+        com.carmd.triptracking.services.LocationTrackingService svc =
+                com.carmd.triptracking.services.LocationTrackingService.getInstance();
+        if (svc != null) svc.showNetworkLostNotification();
+    }
+
+    private void notifyNetworkRestored() {
+        com.carmd.triptracking.services.LocationTrackingService svc =
+                com.carmd.triptracking.services.LocationTrackingService.getInstance();
+        if (svc != null) svc.showNetworkRestoredNotification();
     }
 
     // ═══════════════════════════════════════════════════════════════

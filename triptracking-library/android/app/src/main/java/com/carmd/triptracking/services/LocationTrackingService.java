@@ -103,6 +103,10 @@ public class LocationTrackingService extends Service implements
     private static final int NOTIF_TRIP_END = 2002;
     private static final int NOTIF_DISTANCE = 2003;
 
+    // ── Network event notifications ───────────────────────────────────────
+    private static final int NOTIF_NETWORK_LOST = 3001;
+    private static final int NOTIF_NETWORK_RESTORED = 3002;
+
     // ── Daily reminder ────────────────────────────────────────────────────
     private static final int DAILY_REMINDER_REQUEST = 9002;
     private static final int DAILY_LOG_SENDER_REQUEST = 9003;
@@ -1715,6 +1719,21 @@ public class LocationTrackingService extends Service implements
      * Show a one-shot push notification for trip events (also shows on Android
      * Auto).
      */
+    public void showNetworkLostNotification() {
+        showTripNotification(NOTIF_NETWORK_LOST,
+                "⚠️ No Internet Connection",
+                "TripTracker is offline. Pings are queued and will be sent when restored.");
+    }
+
+    public void showNetworkRestoredNotification() {
+        // Cancel the "lost" banner then show a brief "restored" banner
+        NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm != null) nm.cancel(NOTIF_NETWORK_LOST);
+        showTripNotification(NOTIF_NETWORK_RESTORED,
+                "✅ Internet Restored",
+                "TripTracker is back online. Queued pings are being sent.");
+    }
+
     private void showTripNotification(int notifId, String title, String text) {
         Intent launch = getPackageManager().getLaunchIntentForPackage(getPackageName());
         PendingIntent pi = PendingIntent.getActivity(this, notifId, launch,

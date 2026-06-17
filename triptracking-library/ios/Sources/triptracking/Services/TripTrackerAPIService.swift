@@ -263,19 +263,33 @@ public final class TripTrackerAPIService {
     // ═══════════════════════════════════════════════════════════════
 
     private var networkMonitor: Any?  // NWPathMonitor (stored as Any to avoid import issues)
+    private var isNetworkAvailable: Bool = true  // assume online until first update
 
     private func startNetworkMonitor() {
         if #available(iOS 12.0, *) {
             let monitor = NWPathMonitor()
             monitor.pathUpdateHandler = { [weak self] path in
-                if path.status == .satisfied && (self?.pendingQueue.isEmpty == false) {
-                    print("📡  TripTracker API network restored — will flush in 3s")
-                    // Use main queue — background utility queues get suspended by iOS
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
-                        guard self?.pendingQueue.isEmpty == false else { return }
-                        print("📡  TripTracker API flushing pending queue")
-                        self?.flushQueue()
+                guard let self = self else { return }
+                let nowAvailable = path.status == .satisfied
+
+                if nowAvailable && !self.isNetworkAvailable {
+                    // Network just came back
+                    print("📡 TripTracker Network restored")
+                    self.isNetworkAvailable = true
+                    NotificationManager.shared.notifyNetworkRestored()
+                    if !self.pendingQueue.isEmpty {
+                        print("📡 TripTracker API network restored — will flush in 3s")
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+                            guard self?.pendingQueue.isEmpty == false else { return }
+                            print("📡 TripTracker API flushing pending queue")
+                            self?.flushQueue()
+                        }
                     }
+                } else if !nowAvailable && self.isNetworkAvailable {
+                    // Network just dropped
+                    print("⚠️ TripTracker Network lost")
+                    self.isNetworkAvailable = false
+                    NotificationManager.shared.notifyNetworkLost()
                 }
             }
             // Run on main queue so callbacks fire when GPS wakes app in background
