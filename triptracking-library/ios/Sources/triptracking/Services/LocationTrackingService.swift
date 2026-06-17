@@ -1158,7 +1158,7 @@ public class LocationTrackingService: NSObject {
             if isTracking {
                 // startAutoEndTimer()
             }
-            
+
         case .still:
             // Device is still → start auto-end countdown if trip is active
             if isTracking {
@@ -1701,7 +1701,7 @@ extension LocationTrackingService: CLLocationManagerDelegate {
                 // End the trip immediately on arrival so it doesn't linger until the next
                 // significant-location wake (which can be 30+ minutes later).
                 print("📍 TripTracker Visit arrival during active trip — ending trip immediately (speed=\(String(format:"%.1f", speed)) m/s < threshold)")
-                autoEndTrip(reason: "Visit arrival — device stopped")
+                startAutoEndTimer()  // start timer to ensure trip ends even if app is suspended    
             } else if speed < vehicleThreshold {
                 startAutoEndTimer()
             }
