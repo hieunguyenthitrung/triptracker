@@ -836,8 +836,23 @@ public class LocationTrackingService: NSObject {
         // Don't save now — let didUpdateLocations handle it with real GPS speed.
         if next == .automotive && prev != .automotive {
             adaptLocationAccuracy(for: .automotive)  // GPS ON → best accuracy
-            // evaluateAutoTrip(from: prev, to: next)
             print("📍 Motion → Automotive: GPS started, waiting for fresh GPS speed")
+
+            // Fast-path: if CLLocationManager already has a fresh, accurate fix with
+            // vehicle speed, start the trip NOW without waiting for GPS cold-start.
+            // This cuts the "late start" delay when the app was briefly suspended
+            // (GPS was running but callbacks were queued — cached location is fresh).
+            if !isTracking,
+               let cached = locationManager.location,
+               cached.horizontalAccuracy > 0,
+               cached.horizontalAccuracy <= 50,
+               abs(cached.timestamp.timeIntervalSinceNow) < 30,
+               Float(max(0, cached.speed)) >= vehicleThreshold {
+                print("🚗 TripTracker Automotive + cached GPS speed \(String(format:"%.1f", cached.speed)) m/s — auto-starting immediately")
+                delegate?.didChangeActivity(activity: "automotive", transition: "MOTION")
+                autoStartTrip(reason: "Automotive detected + cached GPS speed \(String(format:"%.1f", cached.speed)) m/s")
+            }
+
             return  // Don't save with stale speed — didUpdateLocations will save with real speed
         }
 
@@ -1191,12 +1206,16 @@ public class LocationTrackingService: NSObject {
             cancelAutoEndTimer()
 
             if !isTracking {
-                if consecutiveVehicleSpeedCount >= requiredConsecutiveVehicleFixes {
+                // When CMMotionActivity already confirmed automotive, 1 GPS fix is enough.
+                // Without motion confirmation, require the full consecutiveVehicleFixes count
+                // to avoid false-starts from GPS drift or brief speed spikes.
+                let required = (lastMotionState == .automotive) ? 1 : requiredConsecutiveVehicleFixes
+                if consecutiveVehicleSpeedCount >= required {
                     delegate?.didChangeActivity(activity: "automotive", transition: "MOTION")
-                    autoStartTrip(reason: "GPS speed \(String(format:"%.1f", speed)) m/s (\(consecutiveVehicleSpeedCount) consecutive fixes)")
+                    autoStartTrip(reason: "GPS speed \(String(format:"%.1f", speed)) m/s (\(consecutiveVehicleSpeedCount) fix\(consecutiveVehicleSpeedCount == 1 ? "" : "es"), motion=\(lastMotionState.rawValue))")
                     consecutiveVehicleSpeedCount = 0
                 } else {
-                    print("🚗 TripTracker Vehicle speed \(String(format:"%.1f", speed)) m/s — \(consecutiveVehicleSpeedCount)/\(requiredConsecutiveVehicleFixes) consecutive fixes, waiting...")
+                    print("🚗 TripTracker Vehicle speed \(String(format:"%.1f", speed)) m/s — \(consecutiveVehicleSpeedCount)/\(required) consecutive fixes, waiting... (motion=\(lastMotionState.rawValue))")
                 }
             }
         } else {
