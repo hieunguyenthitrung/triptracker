@@ -1739,7 +1739,7 @@ extension LocationTrackingService: CLLocationManagerDelegate {
                     guard let self = self else { return }
                     if !self.isTracking {
                         if self.lastMotionState == .automotive {
-                            delegate?.didChangeActivity(activity: next.rawValue, transition: "MOTION")
+                            delegate?.didChangeActivity(activity: "automotive", transition: "MOTION")
                             autoStartTrip(reason: "Visit departure — 60s elapsed, still Automotive")
                             print("📍 TripTracker Visit departure: 60s elapsed, still Automotive — keeping GPS Best for speed")
                         } else {
