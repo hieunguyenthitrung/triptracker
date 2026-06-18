@@ -431,16 +431,17 @@ public class LocationTrackingService: NSObject {
             guard let self = self, let cb = self.currentLocationCompletion else { return }
             self.currentLocationCompletion = nil
             self.currentLocationTimer = nil
+            if !self.isTracking { self.locationManager.stopUpdatingLocation() }
             cb(nil, NSError(domain: "TripTracker", code: -1,
                 userInfo: [NSLocalizedDescriptionKey: "getCurrentLocation timed out after \(Int(timeout))s"]))
         }
         RunLoop.main.add(timer, forMode: .common)
         currentLocationTimer = timer
 
-        // requestLocation() triggers didUpdateLocations once with the best available fix.
-        // The existing delegate (didUpdateLocations) will pick it up and call
-        // resolveCurrentLocationIfNeeded() when accuracy ≤ 50m.
-        locationManager.requestLocation()
+        // startUpdatingLocation() keeps firing didUpdateLocations until resolveCurrentLocationIfNeeded
+        // accepts a fix with accuracy ≤ 50m. requestLocation() only fires once — if that one fix
+        // is inaccurate (e.g. cold-start cell/wifi estimate) the callback never resolves.
+        locationManager.startUpdatingLocation()
         print("📍 TripTracker requestCurrentLocation — waiting for GPS fix (timeout \(Int(timeout))s)")
     }
 
@@ -451,6 +452,11 @@ public class LocationTrackingService: NSObject {
         currentLocationTimer?.invalidate()
         currentLocationTimer = nil
         currentLocationCompletion = nil
+        // Stop continuous updates — we only needed them to get a fresh accurate fix.
+        // The tracking manager will re-enable updates normally if a trip is active.
+        if !isTracking {
+            locationManager.stopUpdatingLocation()
+        }
         pingAndReturn(location, completion: cb)
     }
 
@@ -1795,6 +1801,7 @@ extension LocationTrackingService: CLLocationManagerDelegate {
             currentLocationTimer?.invalidate()
             currentLocationTimer = nil
             currentLocationCompletion = nil
+            if !isTracking { locationManager.stopUpdatingLocation() }
             cb(nil, error)
         }
     }
