@@ -56,6 +56,10 @@ export class TripTrackerWeb extends WebPlugin implements TripTrackerPlugin {
     throw this.unavailable('getCurrentLocation is only available on iOS');
   }
 
+  async pingCurrentLocation(): Promise<any> {
+    throw this.unavailable('pingCurrentLocation is only available on iOS/Android');
+  }
+
   async getTripHistory(): Promise<any> {
     throw this.unavailable('getTripHistory is only available on iOS');
   }

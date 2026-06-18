@@ -89,6 +89,14 @@ export interface TripTrackerPlugin {
   /** Get current GPS coordinates. */
   getCurrentLocation(): Promise<LocationResult>;
 
+  /**
+   * Get current GPS location and immediately send a ping to the server.
+   * Useful for manual location checks or when Ionic needs to force-report
+   * the device position outside of an active trip.
+   * Rejects if no location is available or API is not configured.
+   */
+  pingCurrentLocation(): Promise<LocationResult & { pinged: boolean }>;
+
   // ── Trip History ──
 
   /** Get trip history. */

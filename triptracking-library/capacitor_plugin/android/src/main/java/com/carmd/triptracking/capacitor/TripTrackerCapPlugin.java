@@ -416,6 +416,44 @@ public class TripTrackerCapPlugin extends Plugin {
         }
     }
 
+    @PluginMethod
+    public void pingCurrentLocation(PluginCall call) {
+        android.location.Location loc = null;
+        if (trackingService != null) loc = trackingService.getLastKnownLocation();
+        if (loc == null) {
+            LocationTrackingService svc = LocationTrackingService.getInstance();
+            if (svc != null) loc = svc.getLastKnownLocation();
+        }
+        if (loc == null) {
+            call.reject("No location available");
+            return;
+        }
+
+        TripTrackerAPIService api = TripTrackerAPIService.getInstance();
+        if (api == null || !api.isEnabled()) {
+            call.reject("TripTracker API not configured (missing userId or pingURL)");
+            return;
+        }
+
+        float speed = loc.getSpeed();
+        float vehicleThreshold = AppSettings.getVehicleSpeed(getContext());
+        boolean isMoving = speed > 0;
+        String activityType = speed >= vehicleThreshold ? "in_vehicle" : (isMoving ? "walking" : "still");
+        api.sendPing(loc, isMoving, speed, activityType);
+
+        JSObject ret = new JSObject();
+        ret.put("latitude",  loc.getLatitude());
+        ret.put("longitude", loc.getLongitude());
+        ret.put("speed",     (double) speed);
+        ret.put("speedKmh",  (double) speed * 3.6);
+        ret.put("accuracy",  (double) loc.getAccuracy());
+        ret.put("bearing",   (double) loc.getBearing());
+        ret.put("altitude",  loc.getAltitude());
+        ret.put("timestamp", loc.getTime());
+        ret.put("pinged",    true);
+        call.resolve(ret);
+    }
+
     // ═══════════════════════════════════════════════════════════════════
     // Trip History
     // ═══════════════════════════════════════════════════════════════════

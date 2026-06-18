@@ -38,6 +38,7 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         CAPPluginMethod(name: "openDailyLocations", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getTrackingStatus", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getCurrentLocation", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "pingCurrentLocation", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getTripHistory", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getSettings", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "updateSetting", returnType: CAPPluginReturnPromise),
@@ -371,6 +372,44 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
             "bearing":   loc.course >= 0 ? loc.course : 0,
             "altitude":  loc.altitude,
             "timestamp": Int64(loc.timestamp.timeIntervalSince1970 * 1000),
+        ])
+    }
+
+    /// Get current location and immediately send a ping to the server.
+    /// Returns the same fields as getCurrentLocation plus a `pinged` boolean.
+    @objc func pingCurrentLocation(_ call: CAPPluginCall) {
+        let svc = LocationTrackingService.shared
+        guard let loc = svc.lastKnownLocation else {
+            call.reject("No location available")
+            return
+        }
+        let rawSpeed: Float = loc.speed >= 0 ? Float(loc.speed) : svc.getCurrentStats().speed
+        let speedKmh = rawSpeed * 3.6
+
+        let apiSvc = TripTrackerAPIService.shared
+        guard apiSvc.isEnabled else {
+            call.reject("TripTracker API not configured (missing userId or pingURL)")
+            return
+        }
+
+        let clLoc = CLLocation(latitude: loc.coordinate.latitude, longitude: loc.coordinate.longitude)
+        apiSvc.sendPing(
+            location: clLoc,
+            isMoving: rawSpeed > 0,
+            speed: rawSpeed,
+            activityType: rawSpeed >= svc.vehicleThreshold ? "in_vehicle" : (rawSpeed > 0 ? "walking" : "still")
+        )
+
+        call.resolve([
+            "latitude":  loc.coordinate.latitude,
+            "longitude": loc.coordinate.longitude,
+            "speed":     rawSpeed,
+            "speedKmh":  speedKmh,
+            "accuracy":  loc.horizontalAccuracy,
+            "bearing":   loc.course >= 0 ? loc.course : 0,
+            "altitude":  loc.altitude,
+            "timestamp": Int64(loc.timestamp.timeIntervalSince1970 * 1000),
+            "pinged":    true,
         ])
     }
 
