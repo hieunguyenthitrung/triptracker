@@ -528,14 +528,18 @@ public class LocationTrackingService extends Service implements
      * Cancels automatically after timeoutMs.
      */
     public void requestCurrentLocation(int timeoutMs, LocationCallback callback) {
-        // Fast-path: if we already have a very recent accurate cached fix, use it
-        if (lastGpsLocation != null
-                && lastGpsLocation.getAccuracy() > 0
-                && lastGpsLocation.getAccuracy() <= 50
-                && (System.currentTimeMillis() - lastGpsLocation.getTime()) < 5000) {
-                    Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: using recent cached GPS fix (age " + (System.currentTimeMillis() - lastGpsLocation.getTime()) + "ms)"); 
-            pingAndReturn(lastGpsLocation, callback);
-            return;
+        long now = System.currentTimeMillis();
+        // Fast-path: use cached fix if:
+        //   acc ≤ 20m and age < 30s  — high-quality fix, covers the common 5-6s gap
+        //   acc ≤ 50m and age < 5s   — acceptable fix, very fresh
+        if (lastGpsLocation != null && lastGpsLocation.getAccuracy() > 0) {
+            long age = now - lastGpsLocation.getTime();
+            float acc = lastGpsLocation.getAccuracy();
+            if ((acc <= 20f && age < 30_000L) || (acc <= 50f && age < 5_000L)) {
+                Log.d(TAG, "requestCurrentLocation: using cached fix acc=" + acc + "m age=" + age + "ms");
+                pingAndReturn(lastGpsLocation, callback);
+                return;
+            }
         }
 
         if (!hasLocationPermissions()) {
@@ -583,7 +587,15 @@ public class LocationTrackingService extends Service implements
             resolved[0] = true;
             locationManager.removeUpdates(listener);
             Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: timed out after " + (timeoutMs / 1000) + "s");
-            callback.onError("getCurrentLocation timed out after " + (timeoutMs / 1000) + "s");
+            // Fallback: use last known GPS fix if accuracy ≤ 100m and age < 60s
+            if (lastGpsLocation != null && lastGpsLocation.getAccuracy() > 0
+                    && lastGpsLocation.getAccuracy() <= 100f
+                    && (System.currentTimeMillis() - lastGpsLocation.getTime()) < 60_000L) {
+                Log.d(TAG, "requestCurrentLocation: timeout fallback acc=" + lastGpsLocation.getAccuracy() + "m");
+                pingAndReturn(lastGpsLocation, callback);
+            } else {
+                callback.onError("getCurrentLocation timed out after " + (timeoutMs / 1000) + "s");
+            }
         }, timeoutMs);
 
         try {

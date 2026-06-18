@@ -1766,6 +1766,13 @@ extension LocationTrackingService: CLLocationManagerDelegate {
     public func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         print("❌ TripTracker Location error: \(error.localizedDescription)")
         // GPS failed — sensor dead reckoning continues automatically; no action needed// Reject any pending requestCurrentLocation on GPS failure
+        if let cb = currentLocationCompletion {
+            currentLocationTimer?.invalidate()
+            currentLocationTimer = nil
+            currentLocationCompletion = nil
+            cb(nil, error)
+        }
+
     }
 
     public func locationManager(_ manager: CLLocationManager, didVisit visit: CLVisit) {
