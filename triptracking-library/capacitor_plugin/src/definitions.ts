@@ -110,8 +110,10 @@ export interface TripTrackerPlugin {
    *   webMonitorEnabled, voiceFeedbackEnabled, geofencingEnabled
    *
    * Notification toggles (boolean):
-   *   notifyTripStart, notifyTripEnd, notifyDistanceKm,
-   *   notifyGeofenceEnter, notifyGeofenceExit, notifyNetwork
+   *   notifyTrip          — turn trip-start AND trip-end notifications on/off together
+   *   notifyTripStart     — push when a trip starts (individual)
+   *   notifyTripEnd       — push when a trip ends (individual)
+   *   notifyDistanceKm, notifyGeofenceEnter, notifyGeofenceExit, notifyNetwork
    */
   updateSetting(options: { key: string; value: number | boolean }): Promise<{ key: string; updated: boolean }>;
 

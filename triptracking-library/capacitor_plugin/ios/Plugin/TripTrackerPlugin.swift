@@ -477,6 +477,11 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
             guard let v = call.getBool("value") else { call.reject("Missing 'value'"); return }
             GeofenceManager.shared.isEnabled = v
 
+        case "notifyTrip":
+            guard let v = call.getBool("value") else { call.reject("Missing 'value'"); return }
+            UserDefaults.standard.set(v, forKey: "tt_notify_tripStart")
+            UserDefaults.standard.set(v, forKey: "tt_notify_tripEnd")
+
         case "notifyTripStart":
             guard let v = call.getBool("value") else { call.reject("Missing 'value'"); return }
             UserDefaults.standard.set(v, forKey: "tt_notify_tripStart")

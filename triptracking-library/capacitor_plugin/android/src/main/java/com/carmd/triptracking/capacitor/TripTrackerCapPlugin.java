@@ -503,6 +503,11 @@ public class TripTrackerCapPlugin extends Plugin {
                 if (enabled) GeofenceManager.registerAll(ctx);
                 else GeofenceManager.unregisterAll(ctx);
                 break;
+            case "notifyTrip":
+                boolean notifyTrip = call.getBoolean("value", true);
+                AppSettings.setNotifTripStart(ctx, notifyTrip);
+                AppSettings.setNotifTripEnd(ctx, notifyTrip);
+                break;
             case "notifyTripStart":
                 AppSettings.setNotifTripStart(ctx, call.getBoolean("value", true)); break;
             case "notifyTripEnd":
