@@ -407,16 +407,25 @@ public final class TripTrackerAPIService {
     private func postWithRetry(url: String, body: [String: Any], completion: ((Bool) -> Void)?) {
         // If queue has old pings, flush them FIRST to maintain chronological order on server.
         // Old pings must arrive before new ping.
-        if !pendingQueue.isEmpty {
-            flushQueue()
-        }
+        // if !pendingQueue.isEmpty {
+        //     flushQueue()
+        // }
         
-        post(url: url, body: body) { [weak self] ok in
-            if !ok {
-                self?.enqueue(url: url, body: body)
-            }
-            completion?(ok)
-        }
+        // post(url: url, body: body) { [weak self] ok in
+        //     if !ok {
+        //         self?.enqueue(url: url, body: body)
+        //     }
+        //     completion?(ok)
+        // }
+
+        // Always enqueue first, then flush. This guarantees strict FIFO order on the
+        // server regardless of network conditions — no more "send latest directly while
+        // old pings are still queued" race that produces out-of-order timestamps.
+        // flushQueue is a no-op while a flush is already in progress, so calling it
+        // here adds no overhead when network is healthy (items flush one after another).
+        enqueue(url: url, body: body)
+        completion?(true)   // item is safely persisted to queue
+        flushQueue()        // attempt delivery now; skipped silently if offline or flushing
     }
 
     private func post(url: String, body: [String: Any], completion: ((Bool) -> Void)?) {
