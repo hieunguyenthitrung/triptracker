@@ -841,7 +841,7 @@ public class LocationTrackingService: NSObject {
             print("📍 Motion → Automotive: GPS started, waiting for fresh GPS speed")
             guard let location = locationManager.location else { return }
             let speed = Float(max(0, location.speed))
-            if(speed >= vehicleThreshold) 
+            if(speed >= vehicleThreshold) {
                 autoStartTrip(reason: "Motion → Automotive (speed \(String(format:"%.1f", effectiveSpeed())) m/s)")
             }else{
                 print("📍 Motion → Automotive - Cannot start trip")
