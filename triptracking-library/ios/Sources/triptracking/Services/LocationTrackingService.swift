@@ -248,6 +248,9 @@ public class LocationTrackingService: NSObject {
         // hasReceivedFirstGPSFix may be true from yesterday → reset it.
         hasReceivedFirstGPSFix = false
         isBackgroundTrackingStarted = false
+        // Reset consecutive count — first GPS fix after foreground is unreliable
+        // (cold-start drift, stale cached position delta). Require fresh confirmation.
+        consecutiveVehicleSpeedCount = 0
         TripTrackerSDK.startLocationTracking()
         print("📡 TripTracker appWillEnterForeground — GPS force restarted for fresh fix")
     }
@@ -839,14 +842,14 @@ public class LocationTrackingService: NSObject {
             adaptLocationAccuracy(for: .automotive)  // GPS ON → best accuracy
             // evaluateAutoTrip(from: prev, to: next)
             print("📍 Motion → Automotive: GPS started, waiting for fresh GPS speed")
-            guard let location = locationManager.location else { return }
-            let speed = Float(max(0, location.speed))
-            if(speed >= vehicleThreshold) {
+            // guard let location = locationManager.location else { return }
+            // let speed = Float(max(0, location.speed))
+            // if(speed >= vehicleThreshold) {
                 autoStartTrip(reason: "Motion → Automotive (speed \(String(format:"%.1f", effectiveSpeed())) m/s)")
-            }else{
-                print("📍 Motion → Automotive - Cannot start trip")
-                print("📍 Motion → Automotive: speed \(String(format:"%.1f", effectiveSpeed())) m/s < threshold \(vehicleThreshold) m/s — trip not started - \(speed)")
-            }
+            // }else{
+            //     print("📍 Motion → Automotive - Cannot start trip")
+            //     print("📍 Motion → Automotive: speed \(String(format:"%.1f", effectiveSpeed())) m/s < threshold \(vehicleThreshold) m/s — trip not started - \(speed)")
+            // }
             return  // Don't save with stale speed — didUpdateLocations will save with real speed
         }
 
