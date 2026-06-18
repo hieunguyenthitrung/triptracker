@@ -122,6 +122,19 @@ public class TripTrackerCapPlugin extends Plugin {
             TripTrackerSDK.onPermissionGranted(getContext());
             if (!serviceBound) bindToServiceIfRunning();
         }
+        // Ping server with current location when app returns to foreground.
+        if (TripTrackerSDK.isInitialized() && TripTrackerSDK.hasLocationPermission(getContext())
+                && trackingService != null) {
+            trackingService.requestCurrentLocation(15_000, new LocationTrackingService.LocationCallback() {
+                @Override public void onLocation(android.location.Location loc) {
+                    android.util.Log.d("TripTrackerCap", "handleOnResume — location pinged ("
+                            + loc.getLatitude() + ", " + loc.getLongitude() + ")");
+                }
+                @Override public void onError(String error) {
+                    android.util.Log.d("TripTrackerCap", "handleOnResume — location unavailable: " + error);
+                }
+            });
+        }
     }
 
     /** Bind to service if it's running. */

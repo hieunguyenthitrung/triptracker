@@ -269,6 +269,15 @@ public class LocationTrackingService: NSObject {
         foregroundBaseLocation = lastKnownLocation ?? locationManager.location
         TripTrackerSDK.startLocationTracking()
         print("📡 TripTracker appWillEnterForeground — GPS restarted, baseline set at \(foregroundBaseLocation.map { "(\($0.coordinate.latitude), \($0.coordinate.longitude))" } ?? "nil")")
+
+        // Ping server with current location when app returns to foreground.
+        requestCurrentLocation(timeout: 15.0) { location, error in
+            if let loc = location {
+                print("📍 TripTracker appWillEnterForeground — location pinged (\(loc.coordinate.latitude), \(loc.coordinate.longitude))")
+            } else {
+                print("📍 TripTracker appWillEnterForeground — location unavailable: \(error?.localizedDescription ?? "unknown")")
+            }
+        }
     }
 
     private func loadPersistedSettings() {
