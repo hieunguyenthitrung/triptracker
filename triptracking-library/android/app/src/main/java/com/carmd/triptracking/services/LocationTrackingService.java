@@ -562,7 +562,7 @@ public class LocationTrackingService extends Service implements
                 if (resolved[0]) return;
                 // Wait for an accurate fix
                 if (loc.getAccuracy() > 50) {
-                    Log.d(TAG, "rTripTrackerPlugin getCurrentLocation equestCurrentLocation: inaccurate fix " + loc.getAccuracy() + "m — waiting");
+                    Log.d(TAG, "TripTrackerPlugin getCurrentLocation equestCurrentLocation: inaccurate fix " + loc.getAccuracy() + "m — waiting");
                     return;
                 }
                 Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: got accurate fix " + loc.getAccuracy() + "m — returning");
