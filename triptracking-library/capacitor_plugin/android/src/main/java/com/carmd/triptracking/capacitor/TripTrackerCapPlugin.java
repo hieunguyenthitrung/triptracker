@@ -42,12 +42,6 @@ import java.util.List;
 import com.carmd.triptracking.util.LogcatWriter;
 import com.carmd.triptracking.api.TripTrackerAPIService;
 
-import android.os.Handler;
-import android.os.Looper;
-import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.location.Priority;
-import com.google.android.gms.tasks.CancellationTokenSource;
 
 
 @CapacitorPlugin(name = "TripTracker")
@@ -395,27 +389,18 @@ public class TripTrackerCapPlugin extends Plugin {
     @PluginMethod
     public void getCurrentLocation(PluginCall call) {
         call.setKeepAlive(true);
-        int timeoutMs = (int)((call.getFloat("timeout", 15f)) * 1000);
+        int timeoutMs = (int)(call.getFloat("timeout", 15f) * 1000);
 
-        Context ctx = getContext();
-        FusedLocationProviderClient fusedClient = LocationServices.getFusedLocationProviderClient(ctx);
-        CancellationTokenSource cts = new CancellationTokenSource();
+        LocationTrackingService svc = (trackingService != null)
+                ? trackingService : LocationTrackingService.getInstance();
+        if (svc == null) {
+            call.reject("LocationTrackingService not available");
+            return;
+        }
 
-        // Timeout: cancel the request and reject if GPS takes too long
-        Handler handler = new Handler(Looper.getMainLooper());
-        Runnable timeoutRunnable = () -> {
-            cts.cancel();
-            call.reject("getCurrentLocation timed out after " + (timeoutMs / 1000) + "s");
-        };
-        handler.postDelayed(timeoutRunnable, timeoutMs);
-
-        fusedClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cts.getToken())
-            .addOnSuccessListener(loc -> {
-                handler.removeCallbacks(timeoutRunnable);
-                if (loc == null) {
-                    call.reject("No location available");
-                    return;
-                }
+        svc.requestCurrentLocation(timeoutMs, new LocationTrackingService.LocationCallback() {
+            @Override
+            public void onLocation(android.location.Location loc) {
                 JSObject ret = new JSObject();
                 ret.put("latitude",  loc.getLatitude());
                 ret.put("longitude", loc.getLongitude());
@@ -426,11 +411,12 @@ public class TripTrackerCapPlugin extends Plugin {
                 ret.put("altitude",  loc.getAltitude());
                 ret.put("timestamp", loc.getTime());
                 call.resolve(ret);
-            })
-            .addOnFailureListener(e -> {
-                handler.removeCallbacks(timeoutRunnable);
-                call.reject("GPS error: " + e.getMessage());
-            });
+            }
+            @Override
+            public void onError(String error) {
+                call.reject(error);
+            }
+        });
     }
 
     @PluginMethod

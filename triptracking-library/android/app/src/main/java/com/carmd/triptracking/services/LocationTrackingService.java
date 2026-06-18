@@ -37,6 +37,10 @@ import android.content.SharedPreferences;
 import java.util.ArrayList;
 import java.util.List;
 import com.carmd.triptracking.TripTrackerSDK;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
+import com.google.android.gms.tasks.CancellationTokenSource;
 
 /**
  * Location Tracking Service
@@ -518,6 +522,43 @@ public class LocationTrackingService extends Service implements
             }
         }
         return null;
+    }
+
+    public interface LocationCallback {
+        void onLocation(Location location);
+        void onError(String error);
+    }
+
+    /**
+     * Request a fresh one-shot GPS fix using FusedLocationProviderClient.
+     * Calls back on the main thread. Cancels automatically after timeoutMs.
+     */
+    public void requestCurrentLocation(int timeoutMs, LocationCallback callback) {
+        Context ctx = getApplicationContext();
+        FusedLocationProviderClient fusedClient = LocationServices.getFusedLocationProviderClient(ctx);
+        CancellationTokenSource cts = new CancellationTokenSource();
+
+        android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+        Runnable timeoutRunnable = () -> {
+            cts.cancel();
+            callback.onError("getCurrentLocation timed out after " + (timeoutMs / 1000) + "s");
+        };
+        handler.postDelayed(timeoutRunnable, timeoutMs);
+
+        fusedClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cts.getToken())
+            .addOnSuccessListener(loc -> {
+                handler.removeCallbacks(timeoutRunnable);
+                if (loc == null) {
+                    callback.onError("No location available");
+                } else {
+                    Log.d(TAG, "requestCurrentLocation: fix ok acc=" + loc.getAccuracy() + "m spd=" + loc.getSpeed() + " m/s");
+                    callback.onLocation(loc);
+                }
+            })
+            .addOnFailureListener(e -> {
+                handler.removeCallbacks(timeoutRunnable);
+                callback.onError("GPS error: " + e.getMessage());
+            });
     }
 
     /** Last known GPS heading in degrees (0=north). */

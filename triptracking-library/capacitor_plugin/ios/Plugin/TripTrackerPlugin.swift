@@ -352,29 +352,29 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         call.resolve(result)
     }
 
-    /// Request a fresh one-shot GPS fix from hardware.
-    /// Uses a dedicated CLLocationManager so it never interferes with the
-    /// tracking manager. Resolves on the first fix with accuracy ≤ 50m,
-    /// or rejects after a 15-second timeout.
+    /// Request a fresh GPS fix via LocationTrackingService.requestCurrentLocation().
     @objc func getCurrentLocation(_ call: CAPPluginCall) {
         let timeout = call.getDouble("timeout") ?? 15.0
-        OneShotLocationManager.request(timeout: timeout) { result in
-            switch result {
-            case .success(let loc):
-                let rawSpeed: Float = loc.speed >= 0 ? Float(loc.speed) : 0
-                call.resolve([
-                    "latitude":  loc.coordinate.latitude,
-                    "longitude": loc.coordinate.longitude,
-                    "speed":     rawSpeed,
-                    "speedKmh":  rawSpeed * 3.6,
-                    "accuracy":  loc.horizontalAccuracy,
-                    "bearing":   loc.course >= 0 ? loc.course : 0,
-                    "altitude":  loc.altitude,
-                    "timestamp": Int64(loc.timestamp.timeIntervalSince1970 * 1000),
-                ])
-            case .failure(let error):
+        LocationTrackingService.shared.requestCurrentLocation(timeout: timeout) { loc, error in
+            if let error = error {
                 call.reject(error.localizedDescription)
+                return
             }
+            guard let loc = loc else {
+                call.reject("No location available")
+                return
+            }
+            let rawSpeed: Float = loc.speed >= 0 ? Float(loc.speed) : 0
+            call.resolve([
+                "latitude":  loc.coordinate.latitude,
+                "longitude": loc.coordinate.longitude,
+                "speed":     rawSpeed,
+                "speedKmh":  rawSpeed * 3.6,
+                "accuracy":  loc.horizontalAccuracy,
+                "bearing":   loc.course >= 0 ? loc.course : 0,
+                "altitude":  loc.altitude,
+                "timestamp": Int64(loc.timestamp.timeIntervalSince1970 * 1000),
+            ])
         }
     }
 
@@ -722,71 +722,5 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
             "activity": activity,
             "transition": transition
         ])
-    }
-}
-
-// MARK: - OneShotLocationManager
-// A self-contained CLLocationManager that fires requestLocation() once,
-// resolves on the first accurate fix, then tears itself down.
-// Isolated from the tracking CLLocationManager so it never interferes
-// with background GPS or trip auto-start logic.
-
-private class OneShotLocationManager: NSObject, CLLocationManagerDelegate {
-
-    private let manager  = CLLocationManager()
-    private let callback: (Result<CLLocation, Error>) -> Void
-    private var timer:    DispatchWorkItem?
-    private var settled  = false
-
-    private init(callback: @escaping (Result<CLLocation, Error>) -> Void) {
-        self.callback = callback
-        super.init()
-        manager.delegate          = self
-        manager.desiredAccuracy   = kCLLocationAccuracyBest
-        manager.distanceFilter    = kCLDistanceFilterNone
-    }
-
-    static func request(timeout: Double, callback: @escaping (Result<CLLocation, Error>) -> Void) {
-        // Kept alive by the timer closure until resolved
-        let mgr = OneShotLocationManager(callback: callback)
-        let work = DispatchWorkItem {
-            mgr.resolve(.failure(NSError(
-                domain: "TripTracker",
-                code: -1,
-                userInfo: [NSLocalizedDescriptionKey: "getCurrentLocation timed out after \(Int(timeout))s"]
-            )))
-        }
-        mgr.timer = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + timeout, execute: work)
-        DispatchQueue.main.async { mgr.manager.requestLocation() }
-        // Retain self via timer closure
-        objc_setAssociatedObject(work, &OneShotLocationManager.retainKey, mgr, .OBJC_ASSOCIATION_RETAIN)
-    }
-
-    private static var retainKey = "OneShotRetain"
-
-    private func resolve(_ result: Result<CLLocation, Error>) {
-        guard !settled else { return }
-        settled = true
-        timer?.cancel()
-        timer = nil
-        manager.delegate = nil
-        manager.stopUpdatingLocation()
-        DispatchQueue.main.async { self.callback(result) }
-    }
-
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let loc = locations.last else { return }
-        // Accept fix only when accuracy is reasonable
-        guard loc.horizontalAccuracy > 0, loc.horizontalAccuracy <= 50 else {
-            print("📡 OneShotGPS: fix too inaccurate (\(Int(loc.horizontalAccuracy))m) — waiting...")
-            return
-        }
-        print("📡 OneShotGPS: fix received acc=\(Int(loc.horizontalAccuracy))m spd=\(String(format:"%.1f", loc.speed)) m/s")
-        resolve(.success(loc))
-    }
-
-    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        resolve(.failure(error))
     }
 }
