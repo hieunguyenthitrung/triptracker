@@ -317,16 +317,19 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
 
     /// Request a fresh GPS fix via LocationTrackingService.requestCurrentLocation().
     @objc func getCurrentLocation(_ call: CAPPluginCall) {
-        let timeout = call.getDouble("timeout") ?? 15.0
-        LocationTrackingService.shared.requestCurrentLocation(timeout: timeout) { loc, error in
+        print("📍 TripTrackerPlugin getCurrentLocation — requesting fresh GPS fix from LocationTrackingService")
+        LocationTrackingService.shared.requestCurrentLocation(timeout: 15) { loc, error in
             if let error = error {
                 call.reject(error.localizedDescription)
+                print("📍 TripTrackerPlugin getCurrentLocation — error: \(error.localizedDescription)")
                 return
             }
             guard let loc = loc else {
                 call.reject("No location available")
+                print("📍 TripTrackerPlugin getCurrentLocation — no location available")
                 return
             }
+            print("📍 TripTrackerPlugin getCurrentLocation — got GPS fix: lat \(loc.coordinate.latitude), lon \(loc.coordinate.longitude), speed \(loc.speed)m/s, acc \(loc.horizontalAccuracy)m")
             let rawSpeed: Float = loc.speed >= 0 ? Float(loc.speed) : 0
             call.resolve([
                 "latitude":  loc.coordinate.latitude,

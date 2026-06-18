@@ -371,8 +371,7 @@ public class TripTrackerCapPlugin extends Plugin {
     @PluginMethod
     public void getCurrentLocation(PluginCall call) {
         call.setKeepAlive(true);
-        int timeoutMs = (int)(call.getFloat("timeout", 15f) * 1000);
-
+        int timeoutMs = (int)(15f * 1000);
         LocationTrackingService svc = (trackingService != null)
                 ? trackingService : LocationTrackingService.getInstance();
         if (svc == null) {

@@ -38,11 +38,6 @@ import java.util.ArrayList;
 import java.util.List;
 import com.carmd.triptracking.TripTrackerSDK;
 
-import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.location.Priority;
-import com.google.android.gms.tasks.CancellationTokenSource;
-
 /**
  * Location Tracking Service
  *
@@ -526,45 +521,93 @@ public class LocationTrackingService extends Service implements
         void onError(String error);
     }
 
-    /**
-     * Request a fresh one-shot GPS fix using FusedLocationProviderClient.
-     * Calls back on the main thread. Cancels automatically after timeoutMs.
+     /**
+     * Request a fresh one-shot GPS fix using the existing LocationManager.
+     * Uses requestSingleUpdate(GPS_PROVIDER) — same manager already running
+     * for background tracking. Calls back on the main thread.
+     * Cancels automatically after timeoutMs.
      */
     public void requestCurrentLocation(int timeoutMs, LocationCallback callback) {
-        Context ctx = getApplicationContext();
-        FusedLocationProviderClient fusedClient = LocationServices.getFusedLocationProviderClient(ctx);
-        CancellationTokenSource cts = new CancellationTokenSource();
+        // Fast-path: if we already have a very recent accurate cached fix, use it
+        if (lastGpsLocation != null
+                && lastGpsLocation.getAccuracy() > 0
+                && lastGpsLocation.getAccuracy() <= 50
+                && (System.currentTimeMillis() - lastGpsLocation.getTime()) < 5000) {
+                    Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: using recent cached GPS fix (age " + (System.currentTimeMillis() - lastGpsLocation.getTime()) + "ms)"); 
+            pingAndReturn(lastGpsLocation, callback);
+            return;
+        }
+
+        if (!hasLocationPermissions()) {
+            Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: no location permission");
+            callback.onError("Location permission not granted");
+            return;
+        }
+        if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: GPS provider not enabled");
+            callback.onError("GPS provider not enabled");
+            return;
+        }
 
         android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
-        Runnable timeoutRunnable = () -> {
-            cts.cancel();
-            callback.onError("getCurrentLocation timed out after " + (timeoutMs / 1000) + "s");
-        };
-        handler.postDelayed(timeoutRunnable, timeoutMs);
+        final boolean[] resolved = {false};
 
-        fusedClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cts.getToken())
-            .addOnSuccessListener(loc -> {
-                handler.removeCallbacks(timeoutRunnable);
-                if (loc == null) {
-                    callback.onError("No location available");
-                } else {
-                    Log.d(TAG, "requestCurrentLocation: fix ok acc=" + loc.getAccuracy() + "m spd=" + loc.getSpeed() + " m/s");
-                    // Ping server with the fresh fix
-                    TripTrackerAPIService api = TripTrackerAPIService.getInstance();
-                    if (api != null && api.isEnabled()) {
-                        float speed = loc.getSpeed();
-                        float threshold = AppSettings.getVehicleSpeed(ctx);
-                        String activityType = speed >= threshold ? "in_vehicle" : (speed > 0 ? "walking" : "still");
-                        api.sendPing(loc, speed > 0, speed, activityType);
-                        Log.d(TAG, "requestCurrentLocation: pinged (" + loc.getLatitude() + ", " + loc.getLongitude() + ") spd=" + speed + " m/s");
-                    }
-                    callback.onLocation(loc);
+        android.location.LocationListener listener = new android.location.LocationListener() {
+            @Override
+            public void onLocationChanged(@NonNull Location loc) {
+                if (resolved[0]) return;
+                // Wait for an accurate fix
+                if (loc.getAccuracy() > 50) {
+                    Log.d(TAG, "rTripTrackerPlugin getCurrentLocation equestCurrentLocation: inaccurate fix " + loc.getAccuracy() + "m — waiting");
+                    return;
                 }
-            })
-            .addOnFailureListener(e -> {
-                handler.removeCallbacks(timeoutRunnable);
-                callback.onError("GPS error: " + e.getMessage());
-            });
+                Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: got accurate fix " + loc.getAccuracy() + "m — returning");
+                resolved[0] = true;
+                locationManager.removeUpdates(this);
+                handler.removeCallbacksAndMessages(null);
+                pingAndReturn(loc, callback);
+            }
+            @Override public void onProviderDisabled(@NonNull String provider) {
+                if (resolved[0]) return;
+                resolved[0] = true;
+                locationManager.removeUpdates(this);
+                handler.removeCallbacksAndMessages(null);
+                Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: GPS provider disabled during request");
+                callback.onError("GPS provider disabled");
+            }
+        };
+
+        // Timeout
+        handler.postDelayed(() -> {
+            if (resolved[0]) return;
+            resolved[0] = true;
+            locationManager.removeUpdates(listener);
+            Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: timed out after " + (timeoutMs / 1000) + "s");
+            callback.onError("getCurrentLocation timed out after " + (timeoutMs / 1000) + "s");
+        }, timeoutMs);
+
+        try {
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0L, 0f, listener,
+                    android.os.Looper.getMainLooper());
+            Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: waiting for GPS fix (timeout " + (timeoutMs / 1000) + "s)");
+        } catch (SecurityException e) {
+            handler.removeCallbacksAndMessages(null);
+            Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: GPS permission error");
+            callback.onError("GPS permission error: " + e.getMessage());
+        }
+    }
+
+    private void pingAndReturn(Location loc, LocationCallback callback) {
+        Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: fix ok acc=" + loc.getAccuracy() + "m spd=" + loc.getSpeed() + " m/s");
+        TripTrackerAPIService api = TripTrackerAPIService.getInstance();
+        if (api != null && api.isEnabled()) {
+            float speed = loc.getSpeed();
+            float threshold = AppSettings.getVehicleSpeed(getApplicationContext());
+            String activityType = speed >= threshold ? "in_vehicle" : (speed > 0 ? "walking" : "still");
+            api.sendPing(loc, speed > 0, speed, activityType);
+            Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: pinged (" + loc.getLatitude() + ", " + loc.getLongitude() + ") spd=" + speed + " m/s");
+        }
+        callback.onLocation(loc);
     }
 
     /** Last known GPS heading in degrees (0=north). */
