@@ -409,7 +409,6 @@ public class LocationTrackingService: NSObject {
             }
         }
     }
-    }
 
 
     public func startTerminalTracking() {
