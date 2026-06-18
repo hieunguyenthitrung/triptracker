@@ -256,7 +256,8 @@ public class LocationTrackingService: NSObject {
         // (cold-start drift, stale cached position delta). Require fresh confirmation.
         consecutiveVehicleSpeedCount = -1
         TripTrackerSDK.startLocationTracking()
-        print("📡 TripTracker appWillEnterForeground — GPS restarted, baseline set at \(foregroundBaseLocation.map { "(\($0.coordinate.latitude), \($0.coordinate.longitude))" } ?? "nil")")
+
+        print("📡 TripTracker appWillEnterForeground — GPS force restarted for fresh fix")
 
         // Ping server with current location when app returns to foreground.
         requestCurrentLocation(timeout: 15.0) { location, error in
