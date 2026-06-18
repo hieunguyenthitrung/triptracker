@@ -140,9 +140,9 @@ public final class TripTrackerAPIService {
         let flushConfig = URLSessionConfiguration.default
         flushConfig.timeoutIntervalForRequest = 15
         flushConfig.requestCachePolicy = .reloadIgnoringLocalCacheData
-        if #available(iOS 11.0, *) {
-            flushConfig.waitsForConnectivity = true
-        }
+        // if #available(iOS 11.0, *) {
+        //     flushConfig.waitsForConnectivity = true
+        // }
         let flushSession = URLSession(configuration: flushConfig)
 
         DispatchQueue.global(qos: .utility).async { [weak self] in
