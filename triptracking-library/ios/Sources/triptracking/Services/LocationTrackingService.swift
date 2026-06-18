@@ -250,7 +250,7 @@ public class LocationTrackingService: NSObject {
         isBackgroundTrackingStarted = false
         // Reset consecutive count — first GPS fix after foreground is unreliable
         // (cold-start drift, stale cached position delta). Require fresh confirmation.
-        consecutiveVehicleSpeedCount = 0
+        consecutiveVehicleSpeedCount = -1
         TripTrackerSDK.startLocationTracking()
         print("📡 TripTracker appWillEnterForeground — GPS force restarted for fresh fix")
     }
