@@ -135,6 +135,14 @@ public class LocationTrackingService: NSObject {
     /// Number of consecutive vehicle-speed readings required to auto-start a trip.
     private let requiredConsecutiveVehicleFixes: Int = 2
 
+    /// Location captured when the app enters foreground. Auto-start is blocked until
+    /// the device moves at least foregroundMinMovementMeters from this baseline,
+    /// preventing a false trip-start caused by the first GPS fix after app open.
+    private var foregroundBaseLocation: CLLocation?
+    /// Minimum distance (m) the device must move from the foreground baseline before
+    /// a speed-based auto-start is allowed.
+    private let foregroundMinMovementMeters: Double = 100
+
     // Speed thresholds — internal so SettingsViewController can read/write
     public var vehicleThreshold:    Float = 3.0 {  // m/s — at or above → GPS saves
         didSet { print("⚙️ TripTracker vehicleThreshold updated → \(vehicleThreshold) m/s") }
@@ -251,8 +259,12 @@ public class LocationTrackingService: NSObject {
         // Reset consecutive count — first GPS fix after foreground is unreliable
         // (cold-start drift, stale cached position delta). Require fresh confirmation.
         consecutiveVehicleSpeedCount = 0
+        // Capture current position as baseline. Auto-start is suppressed until the
+        // device moves ≥ foregroundMinMovementMeters from here, preventing a trip
+        // from starting just because the first GPS fix reports vehicle speed.
+        foregroundBaseLocation = lastKnownLocation ?? locationManager.location
         TripTrackerSDK.startLocationTracking()
-        print("📡 TripTracker appWillEnterForeground — GPS force restarted, consecutiveVehicleCount reset")
+        print("📡 TripTracker appWillEnterForeground — GPS restarted, baseline set at \(foregroundBaseLocation.map { "(\($0.coordinate.latitude), \($0.coordinate.longitude))" } ?? "nil")")
     }
 
     private func loadPersistedSettings() {
@@ -1215,6 +1227,19 @@ public class LocationTrackingService: NSObject {
                 // to avoid false-starts from GPS drift or brief speed spikes.
                 let required = (lastMotionState == .automotive) ? 1 : requiredConsecutiveVehicleFixes
                 if consecutiveVehicleSpeedCount >= required {
+                    // Distance-from-foreground guard: if the app was just opened and the
+                    // device hasn't moved far from where it was when it came to foreground,
+                    // the speed reading is likely GPS noise — suppress the auto-start.
+                    if let base = foregroundBaseLocation, let current = lastGPSLocation {
+                        let moved = current.distance(from: base)
+                        if moved < foregroundMinMovementMeters {
+                            print("🚗 TripTracker Auto-start BLOCKED — only moved \(String(format:"%.0f", moved))m from foreground baseline (need \(Int(foregroundMinMovementMeters))m)")
+                            return
+                        }
+                        // Moved enough — clear baseline so it doesn't block future starts
+                        foregroundBaseLocation = nil
+                        print("🚗 TripTracker Foreground baseline cleared — device moved \(String(format:"%.0f", moved))m")
+                    }
                     delegate?.didChangeActivity(activity: "automotive", transition: "MOTION")
                     autoStartTrip(reason: "GPS speed \(String(format:"%.1f", speed)) m/s (\(consecutiveVehicleSpeedCount) fix\(consecutiveVehicleSpeedCount == 1 ? "" : "es"), motion=\(lastMotionState.rawValue))")
                     consecutiveVehicleSpeedCount = 0
@@ -1256,6 +1281,7 @@ public class LocationTrackingService: NSObject {
     /// Auto-start a new trip (vehicle speed detected).
     private func autoStartTrip(reason: String) {
         guard !isTracking else { return }
+        foregroundBaseLocation = nil  // trip started — baseline no longer needed
 
         // Only auto-start if vehicle_id or route_id is configured.
         // If neither is set, user hasn't selected a vehicle yet — don't start trip.
