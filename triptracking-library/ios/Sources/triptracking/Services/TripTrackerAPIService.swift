@@ -317,7 +317,7 @@ public final class TripTrackerAPIService {
             print("📡 TripTracker Ping NOT sent because API config is incomplete")
         }
 
-        if(config.userId.isEmpty || config.userId == nil || !includeVehicleId){
+        if(config.userId.isEmpty || config.userId == nil){
 
             print("⚠️ TripTracker API config missing userId or routeId — ping not sent")
             return

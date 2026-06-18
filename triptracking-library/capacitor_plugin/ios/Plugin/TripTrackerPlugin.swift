@@ -315,24 +315,30 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         call.resolve(result)
     }
 
-    /// Get current GPS location.
+    /// Request a fresh GPS fix via LocationTrackingService.requestCurrentLocation().
     @objc func getCurrentLocation(_ call: CAPPluginCall) {
-        let svc = LocationTrackingService.shared
-        guard let loc = svc.lastKnownLocation else {
-            call.reject("No location available")
-            return
+        let timeout = call.getDouble("timeout") ?? 15.0
+        LocationTrackingService.shared.requestCurrentLocation(timeout: timeout) { loc, error in
+            if let error = error {
+                call.reject(error.localizedDescription)
+                return
+            }
+            guard let loc = loc else {
+                call.reject("No location available")
+                return
+            }
+            let rawSpeed: Float = loc.speed >= 0 ? Float(loc.speed) : 0
+            call.resolve([
+                "latitude":  loc.coordinate.latitude,
+                "longitude": loc.coordinate.longitude,
+                "speed":     rawSpeed,
+                "speedKmh":  rawSpeed * 3.6,
+                "accuracy":  loc.horizontalAccuracy,
+                "bearing":   loc.course >= 0 ? loc.course : 0,
+                "altitude":  loc.altitude,
+                "timestamp": Int64(loc.timestamp.timeIntervalSince1970 * 1000),
+            ])
         }
-        let stats = svc.getCurrentStats()
-        call.resolve([
-            "latitude": loc.coordinate.latitude,
-            "longitude": loc.coordinate.longitude,
-            "speed": stats.speed,
-            "speedKmh": stats.speed * 3.6,
-            "accuracy": loc.horizontalAccuracy,
-            "bearing": loc.course >= 0 ? loc.course : 0,
-            "altitude": loc.altitude,
-            "timestamp": Int64(loc.timestamp.timeIntervalSince1970 * 1000),
-        ])
     }
 
     // MARK: - Trip History

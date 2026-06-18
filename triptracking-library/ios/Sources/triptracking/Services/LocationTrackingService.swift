@@ -387,6 +387,31 @@ public class LocationTrackingService: NSObject {
 
     // MARK: - Public API
 
+    /// Request a fresh one-shot GPS fix.
+    /// Uses a dedicated CLLocationManager so it never interferes with the
+    /// background tracking manager. Resolves on the first fix with accuracy
+    /// ≤ 50 m, or calls back with an error after `timeout` seconds.
+    public func requestCurrentLocation(timeout: Double = 15.0,
+                                       completion: @escaping (CLLocation?, Error?) -> Void) {
+        OneShotGPS.request(timeout: timeout) { [weak self] result in
+            switch result {
+            case .success(let loc):
+                let speed = Float(max(0, loc.speed))
+                let apiSvc = TripTrackerAPIService.shared
+                if apiSvc.isEnabled {
+                    let activityType = speed >= (self?.vehicleThreshold ?? 3.0) ? "in_vehicle" : (speed > 0 ? "walking" : "still")
+                    apiSvc.sendPing(location: loc, isMoving: speed > 0, speed: speed, activityType: activityType)
+                    print("📡 TripTracker requestCurrentLocation — pinged (\(loc.coordinate.latitude), \(loc.coordinate.longitude)) spd=\(String(format:"%.1f", speed)) m/s")
+                }
+                completion(loc, nil)
+            case .failure(let err):
+                completion(nil, err)
+            }
+        }
+    }
+    }
+
+
     public func startTerminalTracking() {
         // Start GPS — NEVER stops (keeps app alive in background)
         if isTracking {
@@ -1816,5 +1841,67 @@ extension LocationTrackingService: CLLocationManagerDelegate {
             speed: safeSpeed,
             activityType: safeSpeed > 0 ? (activityType != "still" ? activityType : "in_vehicle") : "still",
         )
+    }
+}
+
+/ MARK: - OneShotGPS
+// Self-contained one-shot CLLocationManager. Creates its own manager so it
+// never touches the shared tracking manager or affects GPS mode/accuracy.
+internal class OneShotGPS: NSObject, CLLocationManagerDelegate {
+
+    private let manager  = CLLocationManager()
+    private let callback: (Result<CLLocation, Error>) -> Void
+    private var timer:    DispatchWorkItem?
+    private var resolved = false
+
+    private init(callback: @escaping (Result<CLLocation, Error>) -> Void) {
+        self.callback = callback
+        super.init()
+        manager.delegate        = self
+        manager.desiredAccuracy = kCLLocationAccuracyBest
+        manager.distanceFilter  = kCLDistanceFilterNone
+    }
+
+    static func request(timeout: Double, callback: @escaping (Result<CLLocation, Error>) -> Void) {
+        let gps = OneShotGPS(callback: callback)
+        let work = DispatchWorkItem {
+            gps.finish(.failure(NSError(
+                domain: "TripTracker",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "getCurrentLocation timed out after \(Int(timeout))s"]
+            )))
+        }
+        gps.timer = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + timeout, execute: work)
+        DispatchQueue.main.async { gps.manager.requestLocation() }
+        // Retain until resolved via the timer closure
+        objc_setAssociatedObject(work, &OneShotGPS.retainKey, gps, .OBJC_ASSOCIATION_RETAIN)
+    }
+
+    private static var retainKey = "OneShotGPSRetain"
+
+    private func finish(_ result: Result<CLLocation, Error>) {
+        guard !resolved else { return }
+        resolved = true
+        timer?.cancel()
+        timer = nil
+        manager.delegate = nil
+        manager.stopUpdatingLocation()
+        DispatchQueue.main.async { self.callback(result) }
+    }
+
+    public func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let loc = locations.last,
+              loc.horizontalAccuracy > 0,
+              loc.horizontalAccuracy <= 50 else {
+            print("📡 OneShotGPS: inaccurate fix (\(Int(locations.last?.horizontalAccuracy ?? -1))m) — waiting")
+            return
+        }
+        print("📡 OneShotGPS: fix ok acc=\(Int(loc.horizontalAccuracy))m spd=\(String(format:"%.1f", loc.speed)) m/s")
+        finish(.success(loc))
+    }
+
+    public func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        finish(.failure(error))
     }
 }

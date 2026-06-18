@@ -370,34 +370,37 @@ public class TripTrackerCapPlugin extends Plugin {
 
     @PluginMethod
     public void getCurrentLocation(PluginCall call) {
-        JSObject ret = new JSObject();
-        // Try bound service first, then static instance
-        android.location.Location loc = null;
-        if (trackingService != null) {
-            loc = trackingService.getLastKnownLocation();
+        call.setKeepAlive(true);
+        int timeoutMs = (int)(call.getFloat("timeout", 15f) * 1000);
+
+        LocationTrackingService svc = (trackingService != null)
+                ? trackingService : LocationTrackingService.getInstance();
+        if (svc == null) {
+            call.reject("LocationTrackingService not available");
+            return;
         }
-        if (loc == null) {
-            LocationTrackingService svc = LocationTrackingService.getInstance();
-            if (svc != null) loc = svc.getLastKnownLocation();
-        }
-        if (loc == null) {
-            LocationTrackingService svc = LocationTrackingService.getInstance();
-            if (svc != null) loc = svc.getCurrentLocation();
-        }
-        if (loc != null) {
-            ret.put("latitude", loc.getLatitude());
-            ret.put("longitude", loc.getLongitude());
-            ret.put("speed", (double) loc.getSpeed());
-            ret.put("speedKmh", (double) loc.getSpeed() * 3.6);
-            ret.put("accuracy", (double) loc.getAccuracy());
-            ret.put("bearing", (double) loc.getBearing());
-            ret.put("altitude", loc.getAltitude());
-            ret.put("timestamp", loc.getTime());
-            call.resolve(ret);
-        } else {
-            call.reject("No location available");
-        }
+
+        svc.requestCurrentLocation(timeoutMs, new LocationTrackingService.LocationCallback() {
+            @Override
+            public void onLocation(android.location.Location loc) {
+                JSObject ret = new JSObject();
+                ret.put("latitude",  loc.getLatitude());
+                ret.put("longitude", loc.getLongitude());
+                ret.put("speed",     (double) loc.getSpeed());
+                ret.put("speedKmh",  (double) loc.getSpeed() * 3.6);
+                ret.put("accuracy",  (double) loc.getAccuracy());
+                ret.put("bearing",   (double) loc.getBearing());
+                ret.put("altitude",  loc.getAltitude());
+                ret.put("timestamp", loc.getTime());
+                call.resolve(ret);
+            }
+            @Override
+            public void onError(String error) {
+                call.reject(error);
+            }
+        });
     }
+
 
     // ═══════════════════════════════════════════════════════════════════
     // Trip History
