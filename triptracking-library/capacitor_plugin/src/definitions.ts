@@ -86,8 +86,12 @@ export interface TripTrackerPlugin {
   /** Get current tracking status, speed, distance, trip info. */
   getTrackingStatus(): Promise<TrackingStatus>;
 
-  /** Get current GPS coordinates. */
-  getCurrentLocation(): Promise<LocationResult>;
+  /**
+   * Request a fresh GPS fix from hardware.
+   * Waits up to `timeout` seconds (default 15) for an accurate fix (≤ 50m).
+   * Rejects on timeout or if location permission is not granted.
+   */
+  getCurrentLocation(options?: { timeout?: number }): Promise<LocationResult>;
 
   /**
    * Get current GPS location and immediately send a ping to the server.

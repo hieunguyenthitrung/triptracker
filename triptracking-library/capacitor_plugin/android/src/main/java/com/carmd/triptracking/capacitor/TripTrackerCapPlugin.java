@@ -42,6 +42,13 @@ import java.util.List;
 import com.carmd.triptracking.util.LogcatWriter;
 import com.carmd.triptracking.api.TripTrackerAPIService;
 
+import android.os.Handler;
+import android.os.Looper;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
+import com.google.android.gms.tasks.CancellationTokenSource;
+
 
 @CapacitorPlugin(name = "TripTracker")
 public class TripTrackerCapPlugin extends Plugin {
@@ -387,33 +394,43 @@ public class TripTrackerCapPlugin extends Plugin {
 
     @PluginMethod
     public void getCurrentLocation(PluginCall call) {
-        JSObject ret = new JSObject();
-        // Try bound service first, then static instance
-        android.location.Location loc = null;
-        if (trackingService != null) {
-            loc = trackingService.getLastKnownLocation();
-        }
-        if (loc == null) {
-            LocationTrackingService svc = LocationTrackingService.getInstance();
-            if (svc != null) loc = svc.getLastKnownLocation();
-        }
-        if (loc == null) {
-            LocationTrackingService svc = LocationTrackingService.getInstance();
-            if (svc != null) loc = svc.getCurrentLocation();
-        }
-        if (loc != null) {
-            ret.put("latitude", loc.getLatitude());
-            ret.put("longitude", loc.getLongitude());
-            ret.put("speed", (double) loc.getSpeed());
-            ret.put("speedKmh", (double) loc.getSpeed() * 3.6);
-            ret.put("accuracy", (double) loc.getAccuracy());
-            ret.put("bearing", (double) loc.getBearing());
-            ret.put("altitude", loc.getAltitude());
-            ret.put("timestamp", loc.getTime());
-            call.resolve(ret);
-        } else {
-            call.reject("No location available");
-        }
+        call.setKeepAlive(true);
+        int timeoutMs = (int)((call.getFloat("timeout", 15f)) * 1000);
+
+        Context ctx = getContext();
+        FusedLocationProviderClient fusedClient = LocationServices.getFusedLocationProviderClient(ctx);
+        CancellationTokenSource cts = new CancellationTokenSource();
+
+        // Timeout: cancel the request and reject if GPS takes too long
+        Handler handler = new Handler(Looper.getMainLooper());
+        Runnable timeoutRunnable = () -> {
+            cts.cancel();
+            call.reject("getCurrentLocation timed out after " + (timeoutMs / 1000) + "s");
+        };
+        handler.postDelayed(timeoutRunnable, timeoutMs);
+
+        fusedClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cts.getToken())
+            .addOnSuccessListener(loc -> {
+                handler.removeCallbacks(timeoutRunnable);
+                if (loc == null) {
+                    call.reject("No location available");
+                    return;
+                }
+                JSObject ret = new JSObject();
+                ret.put("latitude",  loc.getLatitude());
+                ret.put("longitude", loc.getLongitude());
+                ret.put("speed",     (double) loc.getSpeed());
+                ret.put("speedKmh",  (double) loc.getSpeed() * 3.6);
+                ret.put("accuracy",  (double) loc.getAccuracy());
+                ret.put("bearing",   (double) loc.getBearing());
+                ret.put("altitude",  loc.getAltitude());
+                ret.put("timestamp", loc.getTime());
+                call.resolve(ret);
+            })
+            .addOnFailureListener(e -> {
+                handler.removeCallbacks(timeoutRunnable);
+                call.reject("GPS error: " + e.getMessage());
+            });
     }
 
     @PluginMethod
