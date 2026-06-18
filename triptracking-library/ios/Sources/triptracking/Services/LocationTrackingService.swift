@@ -1843,7 +1843,7 @@ extension LocationTrackingService: CLLocationManagerDelegate {
     }
 }
 
-/ MARK: - OneShotGPS
+// MARK: - OneShotGPS
 // Self-contained one-shot CLLocationManager. Creates its own manager so it
 // never touches the shared tracking manager or affects GPS mode/accuracy.
 internal class OneShotGPS: NSObject, CLLocationManagerDelegate {
