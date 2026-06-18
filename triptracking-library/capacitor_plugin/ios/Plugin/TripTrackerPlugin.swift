@@ -477,6 +477,30 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
             guard let v = call.getBool("value") else { call.reject("Missing 'value'"); return }
             GeofenceManager.shared.isEnabled = v
 
+        case "notifyTripStart":
+            guard let v = call.getBool("value") else { call.reject("Missing 'value'"); return }
+            UserDefaults.standard.set(v, forKey: "tt_notify_tripStart")
+
+        case "notifyTripEnd":
+            guard let v = call.getBool("value") else { call.reject("Missing 'value'"); return }
+            UserDefaults.standard.set(v, forKey: "tt_notify_tripEnd")
+
+        case "notifyDistanceKm":
+            guard let v = call.getBool("value") else { call.reject("Missing 'value'"); return }
+            UserDefaults.standard.set(v, forKey: "tt_notify_distanceKm")
+
+        case "notifyGeofenceEnter":
+            guard let v = call.getBool("value") else { call.reject("Missing 'value'"); return }
+            UserDefaults.standard.set(v, forKey: "tt_notify_geofenceEnter")
+
+        case "notifyGeofenceExit":
+            guard let v = call.getBool("value") else { call.reject("Missing 'value'"); return }
+            UserDefaults.standard.set(v, forKey: "tt_notify_geofenceExit")
+
+        case "notifyNetwork":
+            guard let v = call.getBool("value") else { call.reject("Missing 'value'"); return }
+            UserDefaults.standard.set(v, forKey: "tt_notify_network")
+
         default:
             call.reject("Unknown setting key: \(key)")
             return

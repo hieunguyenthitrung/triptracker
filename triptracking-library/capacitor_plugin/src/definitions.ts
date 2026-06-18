@@ -100,10 +100,18 @@ export interface TripTrackerPlugin {
   getSettings(): Promise<SettingsResult>;
 
   /**
-   * Update a single setting.
-   * Keys: vehicleThreshold, saveIntervalMinutes, saveDistanceMeters,
-   *       autoEndTimeoutMinutes, routeGapThresholdMeters, webMonitorEnabled,
-   *       voiceFeedbackEnabled, geofencingEnabled
+   * Update a single setting by key.
+   *
+   * Tracking (number):
+   *   vehicleThreshold, saveIntervalMinutes, saveDistanceMeters,
+   *   autoEndTimeoutMinutes, routeGapThresholdMeters
+   *
+   * Feature toggles (boolean):
+   *   webMonitorEnabled, voiceFeedbackEnabled, geofencingEnabled
+   *
+   * Notification toggles (boolean):
+   *   notifyTripStart, notifyTripEnd, notifyDistanceKm,
+   *   notifyGeofenceEnter, notifyGeofenceExit, notifyNetwork
    */
   updateSetting(options: { key: string; value: number | boolean }): Promise<{ key: string; updated: boolean }>;
 

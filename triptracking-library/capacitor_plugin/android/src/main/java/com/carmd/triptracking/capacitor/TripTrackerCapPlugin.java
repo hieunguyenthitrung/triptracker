@@ -469,6 +469,7 @@ public class TripTrackerCapPlugin extends Plugin {
         ret.put("notifyDistanceKm", AppSettings.isNotifDistanceKm(ctx));
         ret.put("notifyGeofenceEnter", AppSettings.isNotifGeofenceEnter(ctx));
         ret.put("notifyGeofenceExit", AppSettings.isNotifGeofenceExit(ctx));
+        ret.put("notifyNetwork", AppSettings.isNotifNetwork(ctx));
         call.resolve(ret);
     }
 
@@ -502,6 +503,18 @@ public class TripTrackerCapPlugin extends Plugin {
                 if (enabled) GeofenceManager.registerAll(ctx);
                 else GeofenceManager.unregisterAll(ctx);
                 break;
+            case "notifyTripStart":
+                AppSettings.setNotifTripStart(ctx, call.getBoolean("value", true)); break;
+            case "notifyTripEnd":
+                AppSettings.setNotifTripEnd(ctx, call.getBoolean("value", true)); break;
+            case "notifyDistanceKm":
+                AppSettings.setNotifDistanceKm(ctx, call.getBoolean("value", true)); break;
+            case "notifyGeofenceEnter":
+                AppSettings.setNotifGeofenceEnter(ctx, call.getBoolean("value", true)); break;
+            case "notifyGeofenceExit":
+                AppSettings.setNotifGeofenceExit(ctx, call.getBoolean("value", true)); break;
+            case "notifyNetwork":
+                AppSettings.setNotifNetwork(ctx, call.getBoolean("value", true)); break;
             default:
                 call.reject("Unknown setting: " + key); return;
         }
