@@ -397,14 +397,16 @@ public class LocationTrackingService: NSObject {
     /// ≤ 50 m, or calls back with an error after `timeout` seconds.
     public func requestCurrentLocation(timeout: Double = 15.0,
                                        completion: @escaping (CLLocation?, Error?) -> Void) {
-        print("📡 TripTracker GPS ON → requestCurrentLocation")
-        // If a fresh cached fix is already available (< 5s old, accuracy ≤ 50m), use it
-        // immediately — avoids an unnecessary GPS warm-up round trip.
-        if let cached = locationManager.location,
-           cached.horizontalAccuracy > 0,
-           cached.horizontalAccuracy <= 50,
-           abs(cached.timestamp.timeIntervalSinceNow) < 5 {
-            print("📍 TripTrackerPlugin getCurrentLocation — using recent cached GPS fix (age \(Int(-cached.timestamp.timeIntervalSinceNow))s, acc \(Int(cached.horizontalAccuracy))m)")
+        let cached = locationManager.location
+        let age = cached.map { abs($0.timestamp.timeIntervalSinceNow) } ?? Double.infinity
+        let acc  = cached?.horizontalAccuracy ?? -1
+
+        // Use cached fix immediately if:
+        //   • accuracy ≤ 20m and age ≤ 30s  (high-quality recent fix — covers the ~5s gap seen in logs)
+        //   • accuracy ≤ 50m and age ≤  5s  (acceptable fix, very fresh)
+        if let cached = cached, acc > 0,
+           (acc <= 20 && age < 30) || (acc <= 50 && age < 5) {
+            print("📍 TripTracker requestCurrentLocation — using cached fix acc:\(Int(acc))m age:\(Int(age))s")
             pingAndReturn(cached, completion: completion)
             return
         }
@@ -413,30 +415,35 @@ public class LocationTrackingService: NSObject {
         currentLocationTimer?.invalidate()
         currentLocationTimer = nil
         currentLocationCompletion = nil
-
         currentLocationCompletion = completion
 
-        // Timeout — rejects if no accurate fix arrives in time
+        // Timeout handler — if no accurate fix arrives, fall back to best available or error.
         let timer = Timer.scheduledTimer(withTimeInterval: timeout, repeats: false) { [weak self] _ in
             guard let self = self, let cb = self.currentLocationCompletion else { return }
             self.currentLocationCompletion = nil
             self.currentLocationTimer = nil
-            print("📍TripTrackerPlugin getCurrentLocation — timed out after \(Int(timeout))s")
-            cb(nil, NSError(domain: "TripTracker", code: -1,
-                userInfo: [NSLocalizedDescriptionKey: "getCurrentLocation timed out after \(Int(timeout))s"]))
+            // Fallback: use last known location if accuracy is acceptable (≤ 100m, ≤ 60s old)
+            if let fallback = self.locationManager.location,
+               fallback.horizontalAccuracy > 0, fallback.horizontalAccuracy <= 100,
+               abs(fallback.timestamp.timeIntervalSinceNow) < 60 {
+                print("📍 TripTracker requestCurrentLocation — timeout, using fallback acc:\(Int(fallback.horizontalAccuracy))m")
+                self.pingAndReturn(fallback, completion: cb)
+            } else {
+                cb(nil, NSError(domain: "TripTracker", code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: "getCurrentLocation timed out after \(Int(timeout))s"]))
+            }
         }
         RunLoop.main.add(timer, forMode: .common)
         currentLocationTimer = timer
 
-        // requestLocation() triggers didUpdateLocations once with the best available fix.
-        // The existing delegate (didUpdateLocations) will pick it up and call
-        // resolveCurrentLocationIfNeeded() when accuracy ≤ 50m.
-        locationManager.requestLocation()
-        print("📍TripTrackerPlugin getCurrentLocation — waiting for GPS fix (timeout \(Int(timeout))s)")
+        // startUpdatingLocation() keeps delivering fixes until one passes the accuracy gate.
+        locationManager.startUpdatingLocation()
+        print("📍 TripTracker requestCurrentLocation — waiting for GPS fix (timeout \(Int(timeout))s)")
     }
 
     /// Called from didUpdateLocations to resolve a pending requestCurrentLocation.
     private func resolveCurrentLocationIfNeeded(_ location: CLLocation) {
+        print("TripTrackerPlugin getCurrentLocation resolveCurrentLocationIfNeeded")
         guard let cb = currentLocationCompletion else { return }
         guard location.horizontalAccuracy > 0, location.horizontalAccuracy <= 50 else { return }
         currentLocationTimer?.invalidate()
@@ -446,6 +453,7 @@ public class LocationTrackingService: NSObject {
     }
 
     private func pingAndReturn(_ location: CLLocation, completion: (CLLocation?, Error?) -> Void) {
+        print("TripTrackerPlugin getCurrentLocation pingAndReturn")
         let speed = Float(max(0, location.speed))
         let apiSvc = TripTrackerAPIService.shared
         if apiSvc.isEnabled {
@@ -1758,12 +1766,6 @@ extension LocationTrackingService: CLLocationManagerDelegate {
     public func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         print("❌ TripTracker Location error: \(error.localizedDescription)")
         // GPS failed — sensor dead reckoning continues automatically; no action needed// Reject any pending requestCurrentLocation on GPS failure
-        if let cb = currentLocationCompletion {
-            currentLocationTimer?.invalidate()
-            currentLocationTimer = nil
-            currentLocationCompletion = nil
-            cb(nil, error)
-        }
     }
 
     public func locationManager(_ manager: CLLocationManager, didVisit visit: CLVisit) {
