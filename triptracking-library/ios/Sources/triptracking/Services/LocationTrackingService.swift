@@ -1615,6 +1615,9 @@ extension LocationTrackingService: CLLocationManagerDelegate {
 
         print("📍 TripTracker GPS fix — acc:\(Int(location.horizontalAccuracy))m  spd:\(String(format:"%.1f", speed)) m/s  → \(source.rawValue)")
 
+        // Resolve a pending requestCurrentLocation() if accuracy is good enough.
+        resolveCurrentLocationIfNeeded(location)
+
         // Periodically try to flush pending API queue from GPS callback (every 30s).
         // GPS callback fires even when app is background — NWPathMonitor may not.
         let nowAPI: Date = Date()
