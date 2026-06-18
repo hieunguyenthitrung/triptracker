@@ -532,6 +532,13 @@ public class LocationTrackingService extends Service implements
      * Cancels automatically after timeoutMs.
      */
     public void requestCurrentLocation(int timeoutMs, LocationCallback callback) {
+        // LocationManager and Handler must operate on the main thread.
+        // Dispatch there immediately so callers can invoke this from any thread.
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            new Handler(Looper.getMainLooper()).post(() -> requestCurrentLocation(timeoutMs, callback));
+            return;
+        }
+
         long now = System.currentTimeMillis();
         // Fast-path: use cached fix if:
         //   acc ≤ 20m and age < 30s  — high-quality fix, covers the common 5-6s gap
