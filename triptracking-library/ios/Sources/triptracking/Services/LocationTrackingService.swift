@@ -405,10 +405,19 @@ public class LocationTrackingService: NSObject {
     /// ≤ 50 m, or calls back with an error after `timeout` seconds.
     public func requestCurrentLocation(timeout: Double = 15.0,
                                        completion: @escaping (CLLocation?, Error?) -> Void) {
-        OneShotGPS.request(timeout: timeout) { result in
+        OneShotGPS.request(timeout: timeout) { [weak self] result in
             switch result {
-            case .success(let loc): completion(loc, nil)
-            case .failure(let err): completion(nil, err)
+            case .success(let loc):
+                let speed = Float(max(0, loc.speed))
+                let apiSvc = TripTrackerAPIService.shared
+                if apiSvc.isEnabled {
+                    let activityType = speed >= (self?.vehicleThreshold ?? 3.0) ? "in_vehicle" : (speed > 0 ? "walking" : "still")
+                    apiSvc.sendPing(location: loc, isMoving: speed > 0, speed: speed, activityType: activityType)
+                    print("📡 TripTracker requestCurrentLocation — pinged (\(loc.coordinate.latitude), \(loc.coordinate.longitude)) spd=\(String(format:"%.1f", speed)) m/s")
+                }
+                completion(loc, nil)
+            case .failure(let err):
+                completion(nil, err)
             }
         }
     }

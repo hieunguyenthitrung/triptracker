@@ -552,6 +552,15 @@ public class LocationTrackingService extends Service implements
                     callback.onError("No location available");
                 } else {
                     Log.d(TAG, "requestCurrentLocation: fix ok acc=" + loc.getAccuracy() + "m spd=" + loc.getSpeed() + " m/s");
+                    // Ping server with the fresh fix
+                    TripTrackerAPIService api = TripTrackerAPIService.getInstance();
+                    if (api != null && api.isEnabled()) {
+                        float speed = loc.getSpeed();
+                        float threshold = AppSettings.getVehicleSpeed(ctx);
+                        String activityType = speed >= threshold ? "in_vehicle" : (speed > 0 ? "walking" : "still");
+                        api.sendPing(loc, speed > 0, speed, activityType);
+                        Log.d(TAG, "requestCurrentLocation: pinged (" + loc.getLatitude() + ", " + loc.getLongitude() + ") spd=" + speed + " m/s");
+                    }
                     callback.onLocation(loc);
                 }
             })
