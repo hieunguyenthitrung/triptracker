@@ -317,9 +317,9 @@ public final class TripTrackerAPIService {
             print("📡 TripTracker Ping NOT sent because API config is incomplete")
         }
 
-        if(config.userId.isEmpty || config.userId == nil){
+        if(config.userId.isEmpty || config.userId == nil || routeId.isEmpty || routeId == nil){
 
-            print("⚠️ TripTracker API config missing userId — ping not sent")
+            print("⚠️ TripTracker API config missing userId or routeId — ping not sent")
             return
         }
 
@@ -344,7 +344,7 @@ public final class TripTrackerAPIService {
             body["vehicle_Id"] = config.vehicleId
         }
         postWithRetry(url: config.pingURL, body: body) { ok in
-            print("📡 TripTrackerAPI ping \(ok ? "OK" : "QUEUED"): \(location.coordinate.latitude),\(location.coordinate.longitude)")
+            print("📡 TripTrackerAPI ping \(ok ? "OK" : "QUEUED"): \(body)")
         }
     }
 
@@ -364,7 +364,7 @@ public final class TripTrackerAPIService {
              "tool_Id": !config.toolId.isEmpty ? config.toolId : ""
              ]
         }
-        print("📡  TripTracker API ping route: \(includeVehicleId ? routeId ?? config.vehicleId : "") (vehicleId included: \(includeVehicleId))")
+        print("📡  TripTracker API ping route sendPingBatch: \(includeVehicleId ? routeId ?? config.vehicleId : "") (vehicleId included: \(includeVehicleId))")
         var body: [String: Any] = ["user_Id": config.userId, "os_Info": config.osInfo, "location": arr]
         if includeVehicleId && !config.vehicleId.isEmpty {
             body["vehicle_Id"] = config.vehicleId
