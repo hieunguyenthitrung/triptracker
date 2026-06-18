@@ -248,8 +248,11 @@ public class LocationTrackingService: NSObject {
         // hasReceivedFirstGPSFix may be true from yesterday → reset it.
         hasReceivedFirstGPSFix = false
         isBackgroundTrackingStarted = false
+        // Reset consecutive count — first GPS fix after foreground is unreliable
+        // (cold-start drift, stale cached position delta). Require fresh confirmation.
+        consecutiveVehicleSpeedCount = 0
         TripTrackerSDK.startLocationTracking()
-        print("📡 TripTracker appWillEnterForeground — GPS force restarted for fresh fix")
+        print("📡 TripTracker appWillEnterForeground — GPS force restarted, consecutiveVehicleCount reset")
     }
 
     private func loadPersistedSettings() {
@@ -1191,14 +1194,15 @@ public class LocationTrackingService: NSObject {
     /// these MUST NOT reset the countdown or the trip will never auto-end.
     private func evaluateAutoTripFromGPS(speed: Float) {
         if speed >= vehicleThreshold {
-            //         // ── Vehicle speed detected ──
-            //         // But is this GPS fix trustworthy? Reject if accuracy > 20m.
-            //         let accuracy = lastGPSLocation?.horizontalAccuracy ?? 999
-            //         if accuracy > 20 {
-            //     print("⚠️ TripTracker Vehicle speed \(String(format:"%.1f", speed)) m/s IGNORED — poor accuracy \(Int(accuracy))m")
-            //     consecutiveVehicleSpeedCount = 0
-            //     return
-            // }
+            // Accuracy gate: cold-start GPS fixes (and computed-delta speeds on app open)
+            // often have 100–400m accuracy. Don't count them toward consecutive fixes —
+            // they produce false trip starts immediately after the user opens the app.
+            let accuracy = lastGPSLocation?.horizontalAccuracy ?? 999
+            guard accuracy <= 40 else {
+                print("⚠️ TripTracker Vehicle speed \(String(format:"%.1f", speed)) m/s IGNORED — poor accuracy \(Int(accuracy))m (waiting for GPS lock)")
+                consecutiveVehicleSpeedCount = 0
+                return
+            }
 
             consecutiveVehicleSpeedCount += 1
 
