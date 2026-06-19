@@ -192,6 +192,9 @@ public class LocationTrackingService extends Service implements
     private long tripStartTime = 0;
     private double totalDistance = 0.0;
     private int tripStartStepCount = 0;
+    /** Last GPS position where a pedestrian (walking/running/cycling) API ping was sent. */
+    private Location lastSlowPingLocation = null;
+    private static final float SLOW_PING_DISTANCE_M = 200f;
 
     // ── Dependencies ──────────────────────────────────────────────────────────
     private SensorBasedLocationTracker sensorTracker;
@@ -712,6 +715,7 @@ public class LocationTrackingService extends Service implements
         totalDistance = 0.0;
         currentTripId = database.startTrip();
         lastSaveTime = 0L;
+        lastSlowPingLocation = null;
         stillSinceMs = 0L; // reset still timer — we're moving
 
         // API: mark trip start — vehicle_id will be included in pings
@@ -1313,6 +1317,21 @@ public class LocationTrackingService extends Service implements
 
         if (speed < vehicleThreshold()) {
             consecutiveVehicleCount = 0;
+            // Pedestrian ping: send API ping every SLOW_PING_DISTANCE_M (200m) when
+            // walking / running / cycling and the device has moved enough.
+            boolean isMovingPedestrian = speed >= 0.5f && accuracy <= 50f;
+            if (isMovingPedestrian) {
+                boolean shouldPing = lastSlowPingLocation == null
+                        || lastSlowPingLocation.distanceTo(location) >= SLOW_PING_DISTANCE_M;
+                if (shouldPing) {
+                    lastSlowPingLocation = new Location(location);
+                    String actType = speed >= 3.0f ? "on_bicycle"
+                            : speed >= 1.5f ? "running" : "walking";
+                    Log.d(TAG, "Pedestrian ping @ " + SLOW_PING_DISTANCE_M + "m — activity=" + actType
+                            + " speed=" + String.format("%.1f", speed) + " m/s");
+                    TripTrackerAPIService.getInstance().sendPing(location, true, speed, actType);
+                }
+            }
             return;
         }
 

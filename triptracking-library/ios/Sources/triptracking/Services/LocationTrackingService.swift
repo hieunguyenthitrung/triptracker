@@ -456,7 +456,7 @@ public class LocationTrackingService: NSObject {
 
     /// Called from didUpdateLocations to resolve a pending requestCurrentLocation.
     private func resolveCurrentLocationIfNeeded(_ location: CLLocation) {
-        print("TripTrackerPlugin getCurrentLocation resolveCurrentLocationIfNeeded")
+        // print("TripTrackerPlugin getCurrentLocation resolveCurrentLocationIfNeeded")
         guard let cb = currentLocationCompletion else { return }
         guard location.horizontalAccuracy > 0, location.horizontalAccuracy <= 50 else { return }
         currentLocationTimer?.invalidate()
@@ -1832,14 +1832,14 @@ extension LocationTrackingService: CLLocationManagerDelegate {
                 locationManager.desiredAccuracy = kCLLocationAccuracyBest
                 locationManager.distanceFilter  = kCLDistanceFilterNone
                 locationManager.startUpdatingLocation()
-                print("📍 TripTracker Visit departure: GPS started — waiting 60s for speed detection")
+                print("📍 TripTracker Visit departure: GPS started — waiting 15s for speed detection")
 
                 // GPS will deliver fixes → didUpdateLocations → evaluateAutoTripFromGPS
                 // If speed ≥ threshold × 2 consecutive fixes → auto-start trip
                 // After 60s: if Automotive is still active keep GPS on (GPS cold-start
                 // can take >60s to report speed); only drop to low-power when motion
                 // has changed away from Automotive.
-                DispatchQueue.main.asyncAfter(deadline: .now() + 60.0) { [weak self] in
+                DispatchQueue.main.asyncAfter(deadline: .now() + 15.0) { [weak self] in
                     guard let self = self else { return }
                     if !self.isTracking {
                         if self.lastMotionState == .automotive {
