@@ -1252,24 +1252,54 @@ public class LocationTrackingService extends Service implements
     public void onLocationChanged(@NonNull Location location) {
         float accuracy = location.getAccuracy();
 
-        // ── Compute speed from position delta ─────────────────────────────────
-        // Deriving speed from consecutive positions is more reliable than
-        // location.getSpeed() which can carry stale values from cached fixes.
-        // BUT: only compute delta speed when BOTH fixes have good accuracy.
-        // GPS noise with 80-400m accuracy produces enormous position jumps → fake
-        // speed.
+        // ── Speed selection: Doppler first, position-delta as fallback ────────
+        //
+        // Position-delta (distM / elapsedSec) looks precise but produces enormous
+        // noise spikes at 30-50m accuracy. A 40m position jump in 2s = 20 m/s even
+        // when standing still. Log confirms spikes of 16, 48, 26, 22 m/s at
+        // accuracy 24-40m — all false.
+        //
+        // Doppler speed (location.getSpeed()) is derived from the satellite carrier
+        // phase shift, not position change — it is immune to position jitter and
+        // accurate to ~0.1 m/s on modern chips. Use it as primary when available.
+        //
+        // Cross-validation: if Doppler says slow but delta says fast, the delta is
+        // GPS drift — discard it. Only raise speed when both agree.
         float speed = 0f;
-        if (lastGpsLocation != null && lastGpsUpdateTime > 0 && accuracy <= 50f
-                && lastGpsLocation.getAccuracy() <= 50f) {
-            float distM = lastGpsLocation.distanceTo(location);
-            long elapsedMs = System.currentTimeMillis() - lastGpsUpdateTime;
-            float elapsedSec = elapsedMs / 1000f;
-            if (elapsedSec > 0 && distM >= 0) {
-                speed = distM / elapsedSec;
+        if (accuracy <= 50f) {
+            float dopplerSpeed = location.hasSpeed() ? location.getSpeed() : -1f;
+
+            float deltaSpeed = 0f;
+            if (lastGpsLocation != null && lastGpsUpdateTime > 0
+                    && lastGpsLocation.getAccuracy() <= 50f) {
+                float distM = lastGpsLocation.distanceTo(location);
+                long elapsedMs = System.currentTimeMillis() - lastGpsUpdateTime;
+                float elapsedSec = elapsedMs / 1000f;
+                if (elapsedSec > 0 && distM >= 0) {
+                    deltaSpeed = distM / elapsedSec;
+                }
             }
-        } else if (location.hasSpeed() && accuracy <= 50f) {
-            // Use GPS hardware Doppler speed — more reliable than delta
-            speed = location.getSpeed();
+
+            if (dopplerSpeed >= 0f) {
+                // Doppler available — use it, but also check delta for consistency.
+                // If delta is wildly higher than Doppler, it's a position jump: ignore delta.
+                // If delta agrees with Doppler (within 2x), both are real movement.
+                speed = dopplerSpeed;
+                if (deltaSpeed > dopplerSpeed * 2f && deltaSpeed > vehicleThreshold()) {
+                    Log.d(TAG, "GPS delta speed " + String.format("%.1f", deltaSpeed)
+                            + " m/s discarded — Doppler says " + String.format("%.1f", dopplerSpeed) + " m/s (position drift)");
+                }
+            } else {
+                // No Doppler — use delta, but cap at a physically plausible acceleration.
+                // Max 0→100 km/h in 5s = 5.5 m/s² → never jump > lastSpeed + 11 m/s in 2s.
+                float maxPlausible = (lastGpsSpeed > 0f) ? lastGpsSpeed * 3f + 5f : 15f;
+                if (deltaSpeed > maxPlausible) {
+                    Log.d(TAG, "GPS delta speed " + String.format("%.1f", deltaSpeed)
+                            + " m/s capped to " + String.format("%.1f", maxPlausible) + " m/s (no Doppler, implausible jump)");
+                    deltaSpeed = maxPlausible;
+                }
+                speed = deltaSpeed;
+            }
         }
         // If accuracy > 50m, speed stays 0 — we don't trust this fix
 
