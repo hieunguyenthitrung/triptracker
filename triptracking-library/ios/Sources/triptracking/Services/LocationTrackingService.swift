@@ -134,6 +134,9 @@ public class LocationTrackingService: NSObject {
     private var currentLocationCompletion: ((CLLocation?, Error?) -> Void)?
     private var currentLocationTimer: Timer?
 
+    /// Distance threshold for pedestrian (walking/running/cycling) API pings.
+    private let slowPingDistanceM: Double = 200.0
+
     /// Consecutive GPS fixes at vehicle speed. Must reach threshold before auto-start.
     private var consecutiveVehicleSpeedCount: Int = 0
     /// Number of consecutive vehicle-speed readings required to auto-start a trip.
@@ -1880,17 +1883,18 @@ extension LocationTrackingService: CLLocationManagerDelegate {
 
     private func sendAPIPing(location: LocationPoint, source: TrackingSource, speed: Float) {
         // Only send pings during active trip — save bandwidth and battery when idle
-        guard isTracking else { return }
+        //guard isTracking else { return }
 
         let clLoc = CLLocation(latitude: location.latitude, longitude: location.longitude)
 
-        // Distance gate: only send ping if moved >= saveDistanceVehicleM (80m) since last ping.
-        // This prevents excessive API calls while keeping GPS at full rate for speed detection.
+        // Distance gate — threshold depends on activity:
+        //   vehicle (≥ 6 m/s)               → saveDistanceVehicleM (30m)
+        //   walking / running / cycling      → slowPingDistanceM (200m)
+        let pingThreshold: Double = isSlowMoving ? slowPingDistanceM : saveDistanceVehicleM
         if let lastPinged = lastPingedLocation {
             let distSinceLastPing = clLoc.distance(from: lastPinged)
-            if distSinceLastPing < saveDistanceVehicleM {
-                print("📡 TripTracker Ping skipped — only moved \(String(format:"%.1f", distSinceLastPing))m since last ping")
-                return  // Too close to last ping — skip
+            if distSinceLastPing < pingThreshold {
+                return
             }
         }
         lastPingedLocation = clLoc
