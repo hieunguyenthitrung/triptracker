@@ -230,6 +230,7 @@ public final class TripTrackerAPIService {
                 let bodyUserId = body["user_Id"] as? String ?? ""
                 if bodyUserId.isEmpty { body["user_Id"] = self.config.userId }
 
+                print("End trip API" + body)
                 let ok = self.postSyncWith(session: flushSession, url: urlStr, body: body)
                 if ok {
                     successCount += 1
@@ -238,6 +239,7 @@ public final class TripTrackerAPIService {
                         self.pendingQueue.remove(at: idx)
                     }
                     self.queueLock.unlock()
+                    print("📡  TripTracker API END batch flush request — OK")
                 }
             }
 

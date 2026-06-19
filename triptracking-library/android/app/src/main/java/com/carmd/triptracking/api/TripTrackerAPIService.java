@@ -334,7 +334,7 @@ public final class TripTrackerAPIService {
                 locObj.put("route_Id", includeVehicleId ? (routeId != null ? routeId : this.routeId) : "");
                 locObj.put("tool_Id", toolId != null && !toolId.isEmpty() ? toolId : "");
                 
-                Log.d(TAG, "routeId API" + includeVehicleId ? (routeId != null ? routeId : this.routeId) : "");
+                Log.d(TAG, "routeId API " + this.routeId + " route_id " + routeId);
 
                 JSONArray locArr = new JSONArray();
                 locArr.put(locObj);
@@ -345,8 +345,8 @@ public final class TripTrackerAPIService {
                 body.put("location", locArr);
                 
                 // Only include vehicle_Id during active trip and if configured
-                if (includeVehicleId && !vehicleId.isEmpty()) {
-                    body.put("vehicle_Id", vehicleId);
+                if (includeVehicleId && !this.vehicleId.isEmpty()) {
+                    body.put("vehicle_Id", this.vehicleId);
                 }
                 Log.d(TAG, "TripTracker Body" + body.toString());
                 boolean ok = post(pingURL, body);
