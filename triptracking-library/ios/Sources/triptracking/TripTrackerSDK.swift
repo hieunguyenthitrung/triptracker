@@ -127,7 +127,7 @@ public final class TripTrackerSDK {
         //     webServer = LocationWebServer(); webServer?.start()
         // }
 
-        NotificationManager.shared.requestPermission()
+        // NotificationManager.shared.requestPermission()
         if GeofenceManager.shared.isEnabled { GeofenceManager.shared.startMonitoringAll() }
 
         // If permission already granted, start GPS immediately

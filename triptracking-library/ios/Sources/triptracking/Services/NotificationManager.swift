@@ -27,17 +27,17 @@ public class NotificationManager: NSObject {
 
     /// Request notification permission. Call once at app launch.
     public func requestPermission() {
-        let center = UNUserNotificationCenter.current()
-        // center.delegate = self
-        center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
-            if granted {
-                print("🔔 Notification permission granted")
-            } else {
-                print("🔔 Notification permission denied: \(error?.localizedDescription ?? "–")")
-            }
-            // Schedule daily reminder regardless — it'll fire once permission is granted
-            // self.scheduleDailyReminder()
-        }
+        // let center = UNUserNotificationCenter.current()
+        // // center.delegate = self
+        // center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
+        //     if granted {
+        //         print("🔔 Notification permission granted")
+        //     } else {
+        //         print("🔔 Notification permission denied: \(error?.localizedDescription ?? "–")")
+        //     }
+        //     // Schedule daily reminder regardless — it'll fire once permission is granted
+        //     // self.scheduleDailyReminder()
+        // }
     }
 
     // MARK: - Trip Notifications

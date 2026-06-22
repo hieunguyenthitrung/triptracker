@@ -393,7 +393,7 @@ public final class TripTrackerAPIService {
             "latitude": location.coordinate.latitude,
             "longitude": location.coordinate.longitude
         ]
-        postWithRetry(url: config.endURL, body: body) { [weak self] ok in
+        postSync(url: config.endURL, body: body) { [weak self] ok in
             print("📡 TripTracker API trip-end \(ok ? "OK" : "QUEUED")")
             // Stop including vehicle_id after trip end
             self?.includeVehicleId = false

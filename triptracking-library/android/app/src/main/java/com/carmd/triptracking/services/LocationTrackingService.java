@@ -1387,7 +1387,7 @@ public class LocationTrackingService extends Service implements
         
         if (speed >= requiredSpeed && accuracy <= 30f && location.hasSpeed() && location.getSpeed() >= requiredSpeed) {
             consecutiveVehicleCount++;
-            if (!isTracking && consecutiveVehicleCount >= 1) {
+            if (!isTracking && consecutiveVehicleCount >= 2) {
                 autoStartTrip(location);
                 consecutiveVehicleCount = 0;
                 activityRecognitionVehicle = false;
