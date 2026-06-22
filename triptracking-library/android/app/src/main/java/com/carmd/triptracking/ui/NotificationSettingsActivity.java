@@ -21,16 +21,6 @@ public class NotificationSettingsActivity extends AppCompatActivity {
                             ContextCompat.getColor(this, R.color.header_blue)));
         }
 
-        // Push Notifications
-        bindSwitch(R.id.switchTripStart, AppSettings.isNotifTripStart(this),
-                checked -> AppSettings.setNotifTripStart(this, checked));
-
-        bindSwitch(R.id.switchTripEnd, AppSettings.isNotifTripEnd(this),
-                checked -> AppSettings.setNotifTripEnd(this, checked));
-
-        bindSwitch(R.id.switchDistanceKm, AppSettings.isNotifDistanceKm(this),
-                checked -> AppSettings.setNotifDistanceKm(this, checked));
-
         bindSwitch(R.id.switchGeofenceEnter, AppSettings.isNotifGeofenceEnter(this),
                 checked -> AppSettings.setNotifGeofenceEnter(this, checked));
 

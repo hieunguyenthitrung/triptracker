@@ -21,9 +21,6 @@ public class AppSettings {
     public static final String KEY_AUTO_STOP_TIMEOUT = "auto_stop_timeout";      // minutes
     public static final String KEY_WEB_SERVER_ENABLED = "web_server_enabled";
     public static final String KEY_VOICE_ENABLED = "voice_enabled";
-    public static final String KEY_NOTIF_TRIP_START    = "notif_trip_start";
-    public static final String KEY_NOTIF_TRIP_END      = "notif_trip_end";
-    public static final String KEY_NOTIF_DISTANCE_KM   = "notif_distance_km";
     public static final String KEY_NOTIF_GEOFENCE_ENTER = "notif_geofence_enter";
     public static final String KEY_NOTIF_GEOFENCE_EXIT  = "notif_geofence_exit";
 
@@ -88,16 +85,7 @@ public class AppSettings {
         prefs(ctx).edit().putBoolean(KEY_VOICE_ENABLED, enabled).apply();
     }
 
-    // ── Notification toggles (all default true) ──────────────────────────
-    public static boolean isNotifTripStart(Context ctx) { return prefs(ctx).getBoolean(KEY_NOTIF_TRIP_START, true); }
-    public static void setNotifTripStart(Context ctx, boolean v) { prefs(ctx).edit().putBoolean(KEY_NOTIF_TRIP_START, v).apply(); }
-
-    public static boolean isNotifTripEnd(Context ctx) { return prefs(ctx).getBoolean(KEY_NOTIF_TRIP_END, true); }
-    public static void setNotifTripEnd(Context ctx, boolean v) { prefs(ctx).edit().putBoolean(KEY_NOTIF_TRIP_END, v).apply(); }
-
-    public static boolean isNotifDistanceKm(Context ctx) { return prefs(ctx).getBoolean(KEY_NOTIF_DISTANCE_KM, true); }
-    public static void setNotifDistanceKm(Context ctx, boolean v) { prefs(ctx).edit().putBoolean(KEY_NOTIF_DISTANCE_KM, v).apply(); }
-
+    // ── Notification toggles ─────────────────────────────────────────────
     public static boolean isNotifGeofenceEnter(Context ctx) { return prefs(ctx).getBoolean(KEY_NOTIF_GEOFENCE_ENTER, true); }
     public static void setNotifGeofenceEnter(Context ctx, boolean v) { prefs(ctx).edit().putBoolean(KEY_NOTIF_GEOFENCE_ENTER, v).apply(); }
 

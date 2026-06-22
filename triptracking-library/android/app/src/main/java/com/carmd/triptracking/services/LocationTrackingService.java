@@ -97,12 +97,6 @@ public class LocationTrackingService extends Service implements
     private static final int NOTIFICATION_ID = 1001;
     private static final String CHANNEL_ID = "location_tracking";
 
-    // ── Trip event notifications ──────────────────────────────────────────
-    private static final String CHANNEL_TRIP_EVENTS = "trip_events";
-    private static final int NOTIF_TRIP_START = 2001;
-    private static final int NOTIF_TRIP_END = 2002;
-    private static final int NOTIF_DISTANCE = 2003;
-
     // ── Daily reminder ────────────────────────────────────────────────────
     private static final int DAILY_REMINDER_REQUEST = 9002;
     private static final int DAILY_LOG_SENDER_REQUEST = 9003;
@@ -567,11 +561,6 @@ public class LocationTrackingService extends Service implements
                 : String.format("%.2f km", dist / 1000);
         long min = duration / 60;
         long sec = duration % 60;
-        if (TripTrackerAPIService.getInstance().hasUserId() && AppSettings.isNotifTripEnd(this))
-            showTripNotification(NOTIF_TRIP_END, "⏹️ Trip Ended",
-                    "Trip #" + tripId + " - " + TripTrackerAPIService.getInstance().getVehicleId() + " — " + distStr
-                            + " in " +
-                            String.format("%02d:%02d", min, sec));
         com.carmd.triptracking.util.VoiceFeedback.getInstance(this)
                 .announceTripEnded(tripId, dist, duration);
     }
@@ -649,10 +638,6 @@ public class LocationTrackingService extends Service implements
 
         Log.d(TAG, "🚗 Vehicle speed detected — auto-starting trip");
         startTracking(triggerLocation);
-        if (TripTrackerAPIService.getInstance().hasUserId() && AppSettings.isNotifTripStart(this))
-            showTripNotification(NOTIF_TRIP_START, "🚗 Trip Started",
-                    "Auto-trip #" + currentTripId + " - " + TripTrackerAPIService.getInstance().getVehicleId()
-                            + " — vehicle speed detected");
         // Voice announcement
         com.carmd.triptracking.util.VoiceFeedback.getInstance(this)
                 .announceTripStarted(currentTripId);
@@ -683,11 +668,6 @@ public class LocationTrackingService extends Service implements
                 : String.format("%.2f km", dist / 1000);
         long min = duration / 60;
         long sec = duration % 60;
-        if (TripTrackerAPIService.getInstance().hasUserId() && AppSettings.isNotifTripEnd(this))
-            showTripNotification(NOTIF_TRIP_END, "⏹️ Trip Ended",
-                    "Trip #" + tripId + " - " + TripTrackerAPIService.getInstance().getVehicleId() + " — " + distStr
-                            + " in " +
-                            String.format("%02d:%02d", min, sec));
         // Voice announcement
         com.carmd.triptracking.util.VoiceFeedback.getInstance(this)
                 .announceTripEnded(tripId, dist, duration);
@@ -1056,9 +1036,7 @@ public class LocationTrackingService extends Service implements
             if (isTracking) {
                 double km = com.carmd.triptracking.util.VoiceFeedback.getInstance(this)
                         .checkDistanceMilestone(totalDistance);
-                if (km > 0 && AppSettings.isNotifDistanceKm(this))
-                    showTripNotification(NOTIF_DISTANCE, "📏 Distance Milestone",
-                            String.format(java.util.Locale.US, "%.0f km traveled", km));
+                // local distance-milestone notification removed
             }
         }
         lastSensorLocation = new Location(location);
@@ -1253,9 +1231,7 @@ public class LocationTrackingService extends Service implements
         {
             double km = com.carmd.triptracking.util.VoiceFeedback.getInstance(this)
                     .checkDistanceMilestone(totalDistance);
-            if (km > 0 && AppSettings.isNotifDistanceKm(this))
-                showTripNotification(NOTIF_DISTANCE, "📏 Distance Milestone",
-                        String.format(java.util.Locale.US, "%.0f km traveled", km));
+                // local distance-milestone notification removed
         }
         Log.i(TAG, "MotionChange: emitMotionChange ");
 
@@ -1695,43 +1671,12 @@ public class LocationTrackingService extends Service implements
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager nm = getSystemService(NotificationManager.class);
 
-            // Low-priority channel for ongoing foreground notification
+            // Low-priority channel for ongoing foreground service notification only
             NotificationChannel ch = new NotificationChannel(
                     CHANNEL_ID, "Location Tracking", NotificationManager.IMPORTANCE_LOW);
             ch.setDescription("Tracks your location in background");
             nm.createNotificationChannel(ch);
-
-            // High-priority channel for trip start/end and daily reminder
-            NotificationChannel tripCh = new NotificationChannel(
-                    CHANNEL_TRIP_EVENTS, "Trip Events", NotificationManager.IMPORTANCE_HIGH);
-            tripCh.setDescription("Notifications for trip start, trip end, and daily reminders");
-            tripCh.enableVibration(true);
-            nm.createNotificationChannel(tripCh);
         }
-    }
-
-    /**
-     * Show a one-shot push notification for trip events (also shows on Android
-     * Auto).
-     */
-    private void showTripNotification(int notifId, String title, String text) {
-        Intent launch = getPackageManager().getLaunchIntentForPackage(getPackageName());
-        PendingIntent pi = PendingIntent.getActivity(this, notifId, launch,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        Notification n = new NotificationCompat.Builder(this, CHANNEL_TRIP_EVENTS)
-                .setContentTitle(title)
-                .setContentText(text)
-                .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-                .setContentIntent(pi)
-                .setAutoCancel(true)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setDefaults(NotificationCompat.DEFAULT_ALL)
-                .extend(new androidx.car.app.notification.CarAppExtender.Builder()
-                        .setImportance(NotificationManager.IMPORTANCE_HIGH)
-                        .build())
-                .build();
-        NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        nm.notify(notifId, n);
     }
 
     // =========================================================================

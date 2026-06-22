@@ -35,10 +35,7 @@ public final class TripTrackerSDK {
         public boolean webMonitorEnabled = false;
         public boolean voiceFeedbackEnabled = false;
 
-        // Notifications
-        public boolean notifyTripStart = false;
-        public boolean notifyTripEnd = false;
-        public boolean notifyDistanceKm = false;
+        // Notifications (geofence only — trip/distance notifications removed)
         public boolean notifyGeofenceEnter = false;
         public boolean notifyGeofenceExit = false;
 
@@ -65,9 +62,6 @@ public final class TripTrackerSDK {
         public Config geofence(boolean v)           { geofenceEnabled = v; return this; }
         public Config webMonitor(boolean v)         { webMonitorEnabled = v; return this; }
         public Config voice(boolean v)              { voiceFeedbackEnabled = v; return this; }
-        public Config notifTripStart(boolean v)     { notifyTripStart = v; return this; }
-        public Config notifTripEnd(boolean v)       { notifyTripEnd = v; return this; }
-        public Config notifDistanceKm(boolean v)    { notifyDistanceKm = v; return this; }
         public Config notifGeofenceEnter(boolean v) { notifyGeofenceEnter = v; return this; }
         public Config notifGeofenceExit(boolean v)  { notifyGeofenceExit = v; return this; }
         public Config pingUrl(String v)             { pingURL = v; return this; }
@@ -145,9 +139,6 @@ public final class TripTrackerSDK {
         ed.putFloat(AppSettings.KEY_ROUTE_GAP, (float) config.routeGapMeters);
         ed.putBoolean(AppSettings.KEY_WEB_SERVER_ENABLED, config.webMonitorEnabled);
         ed.putBoolean(AppSettings.KEY_VOICE_ENABLED, config.voiceFeedbackEnabled);
-        ed.putBoolean(AppSettings.KEY_NOTIF_TRIP_START, config.notifyTripStart);
-        ed.putBoolean(AppSettings.KEY_NOTIF_TRIP_END, config.notifyTripEnd);
-        ed.putBoolean(AppSettings.KEY_NOTIF_DISTANCE_KM, config.notifyDistanceKm);
         ed.putBoolean(AppSettings.KEY_NOTIF_GEOFENCE_ENTER, config.notifyGeofenceEnter);
         ed.putBoolean(AppSettings.KEY_NOTIF_GEOFENCE_EXIT, config.notifyGeofenceExit);
         ed.putInt("transport_type", config.transportType);
