@@ -252,8 +252,9 @@ public class LocationTrackingService extends Service implements
         // so it works even without location permission on Android 14+.
         try {
             Notification n = new NotificationCompat.Builder(this, CHANNEL_ID)
-                    .setContentTitle("Trip Tracker")
-                    .setContentText("Waiting for location permission…")
+                    // .setContentTitle("Trip Tracker")
+                    // .setContentText("Waiting for location permission…")
+                    .setSilent(true)
                     .setSmallIcon(android.R.drawable.ic_menu_mylocation)
                     .setOngoing(true)
                     .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -1823,7 +1824,8 @@ public class LocationTrackingService extends Service implements
         PendingIntent pi = PendingIntent.getActivity(this, 0, launch,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         Notification n = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle(title).setContentText(text)
+                //.setContentTitle(title).setContentText(text)
+                .setSilent(true)
                 .setSmallIcon(android.R.drawable.ic_menu_mylocation)
                 .setContentIntent(pi).setOngoing(true)
                 .setPriority(NotificationCompat.PRIORITY_LOW).build();
