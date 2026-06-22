@@ -230,7 +230,7 @@ public final class TripTrackerAPIService {
                 let bodyUserId = body["user_Id"] as? String ?? ""
                 if bodyUserId.isEmpty { body["user_Id"] = self.config.userId }
 
-                print("End trip API" + body)
+                print("End trip API:  \(body)")
                 let ok = self.postSyncWith(session: flushSession, url: urlStr, body: body)
                 if ok {
                     successCount += 1
@@ -393,7 +393,7 @@ public final class TripTrackerAPIService {
             "latitude": location.coordinate.latitude,
             "longitude": location.coordinate.longitude
         ]
-        postSync(url: config.endURL, body: body) { [weak self] ok in
+        postWithRetry(url: config.endURL, body: body) { [weak self] ok in
             print("📡 TripTracker API trip-end \(ok ? "OK" : "QUEUED")")
             // Stop including vehicle_id after trip end
             self?.includeVehicleId = false
