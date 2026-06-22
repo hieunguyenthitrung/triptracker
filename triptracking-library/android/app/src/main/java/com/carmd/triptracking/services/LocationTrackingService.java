@@ -262,7 +262,6 @@ public class LocationTrackingService extends Service implements
                 .setSmallIcon(android.R.drawable.ic_menu_mylocation)
                 .setOngoing(true)
                 .setPriority(NotificationCompat.PRIORITY_MIN)
-                .setSilent(true)
                 .build();
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -1852,7 +1851,7 @@ public class LocationTrackingService extends Service implements
 
             // Low-priority channel for ongoing foreground notification
             NotificationChannel ch = new NotificationChannel(
-                    CHANNEL_ID, "Location Tracking", NotificationManager.IMPORTANCE_MIN);
+                    CHANNEL_ID, "Location Tracking", NotificationManager.IMPORTANCE_LOW);
             ch.setDescription("Tracks your location in background");
             nm.createNotificationChannel(ch);
 
