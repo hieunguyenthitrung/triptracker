@@ -192,7 +192,10 @@ public class LocationTrackingService extends Service implements
     private long tripStartTime = 0;
     private double totalDistance = 0.0;
     private int tripStartStepCount = 0;
-    /** Last GPS position where a pedestrian (walking/running/cycling) API ping was sent. */
+    /**
+     * Last GPS position where a pedestrian (walking/running/cycling) API ping was
+     * sent.
+     */
     private Location lastSlowPingLocation = null;
     private static final float SLOW_PING_DISTANCE_M = 200f;
 
@@ -250,20 +253,24 @@ public class LocationTrackingService extends Service implements
 
         // ALWAYS start foreground — minimal notification WITHOUT location type
         // so it works even without location permission on Android 14+.
+        Notification n = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+                .setOngoing(true)
+                .setPriority(NotificationCompat.PRIORITY_MIN)
+                .build();
         try {
-            Notification n = new NotificationCompat.Builder(this, CHANNEL_ID)
-                    // .setContentTitle("Trip Tracker")
-                    // .setContentText("Waiting for location permission…")
-                    .setSilent(true)
-                    .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-                    .setOngoing(true)
-                    .setPriority(NotificationCompat.PRIORITY_LOW)
-                    .build();
-            startForeground(NOTIFICATION_ID, n);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(NOTIFICATION_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
+            } else {
+                startForeground(NOTIFICATION_ID, n);
+            }
         } catch (Exception e) {
-            Log.e(TAG, "startForeground failed: " + e.getMessage());
-            stopSelf();
-            return;
+            Log.e(TAG, "startForeground with type failed, retrying: " + e.getMessage());
+            try {
+                startForeground(NOTIFICATION_ID, n); // fallback, no stopSelf()
+            } catch (Exception e2) {
+                Log.e(TAG, "startForeground fallback failed: " + e2.getMessage());
+            }
         }
 
         // If permission already granted → activate full tracking now
@@ -432,7 +439,10 @@ public class LocationTrackingService extends Service implements
         return isTracking;
     }
 
-    /** Called by resetConfig — thresholds are read from AppSettings at runtime, nothing to reset in memory. */
+    /**
+     * Called by resetConfig — thresholds are read from AppSettings at runtime,
+     * nothing to reset in memory.
+     */
     public void onConfigReset() {
         consecutiveVehicleCount = 0;
         activityRecognitionVehicle = false;
@@ -522,10 +532,11 @@ public class LocationTrackingService extends Service implements
 
     public interface LocationCallback {
         void onLocation(Location location);
+
         void onError(String error);
     }
 
-     /**
+    /**
      * Request a fresh one-shot GPS fix using the existing LocationManager.
      * Uses requestSingleUpdate(GPS_PROVIDER) — same manager already running
      * for background tracking. Calls back on the main thread.
@@ -534,8 +545,8 @@ public class LocationTrackingService extends Service implements
     public void requestCurrentLocation(int timeoutMs, LocationCallback callback) {
         long now = System.currentTimeMillis();
         // Fast-path: use cached fix if:
-        //   acc ≤ 20m and age < 30s  — high-quality fix, covers the common 5-6s gap
-        //   acc ≤ 50m and age < 5s   — acceptable fix, very fresh
+        // acc ≤ 20m and age < 30s — high-quality fix, covers the common 5-6s gap
+        // acc ≤ 50m and age < 5s — acceptable fix, very fresh
         if (lastGpsLocation != null && lastGpsLocation.getAccuracy() > 0) {
             long age = now - lastGpsLocation.getTime();
             float acc = lastGpsLocation.getAccuracy();
@@ -558,39 +569,48 @@ public class LocationTrackingService extends Service implements
         }
 
         android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
-        final boolean[] resolved = {false};
+        final boolean[] resolved = { false };
 
         android.location.LocationListener listener = new android.location.LocationListener() {
             @Override
             public void onLocationChanged(@NonNull Location loc) {
-                if (resolved[0]) return;
+                if (resolved[0])
+                    return;
                 // Wait for an accurate fix
                 if (loc.getAccuracy() > 50) {
-                    Log.d(TAG, "TripTrackerPlugin getCurrentLocation equestCurrentLocation: inaccurate fix " + loc.getAccuracy() + "m — waiting");
+                    Log.d(TAG, "TripTrackerPlugin getCurrentLocation equestCurrentLocation: inaccurate fix "
+                            + loc.getAccuracy() + "m — waiting");
                     return;
                 }
-                Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: got accurate fix " + loc.getAccuracy() + "m — returning");
+                Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: got accurate fix "
+                        + loc.getAccuracy() + "m — returning");
                 resolved[0] = true;
                 locationManager.removeUpdates(this);
                 handler.removeCallbacksAndMessages(null);
                 pingAndReturn(loc, callback);
             }
-            @Override public void onProviderDisabled(@NonNull String provider) {
-                if (resolved[0]) return;
+
+            @Override
+            public void onProviderDisabled(@NonNull String provider) {
+                if (resolved[0])
+                    return;
                 resolved[0] = true;
                 locationManager.removeUpdates(this);
                 handler.removeCallbacksAndMessages(null);
-                Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: GPS provider disabled during request");
+                Log.d(TAG,
+                        "TripTrackerPlugin getCurrentLocation requestCurrentLocation: GPS provider disabled during request");
                 callback.onError("GPS provider disabled");
             }
         };
 
         // Timeout
         handler.postDelayed(() -> {
-            if (resolved[0]) return;
+            if (resolved[0])
+                return;
             resolved[0] = true;
             locationManager.removeUpdates(listener);
-            Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: timed out after " + (timeoutMs / 1000) + "s");
+            Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: timed out after "
+                    + (timeoutMs / 1000) + "s");
             // Fallback: use last known GPS fix if accuracy ≤ 100m and age < 60s
             if (lastGpsLocation != null && lastGpsLocation.getAccuracy() > 0
                     && lastGpsLocation.getAccuracy() <= 100f
@@ -605,7 +625,8 @@ public class LocationTrackingService extends Service implements
         try {
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0L, 0f, listener,
                     android.os.Looper.getMainLooper());
-            Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: waiting for GPS fix (timeout " + (timeoutMs / 1000) + "s)");
+            Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: waiting for GPS fix (timeout "
+                    + (timeoutMs / 1000) + "s)");
         } catch (SecurityException e) {
             handler.removeCallbacksAndMessages(null);
             Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: GPS permission error");
@@ -614,14 +635,16 @@ public class LocationTrackingService extends Service implements
     }
 
     private void pingAndReturn(Location loc, LocationCallback callback) {
-        Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: fix ok acc=" + loc.getAccuracy() + "m spd=" + loc.getSpeed() + " m/s");
+        Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: fix ok acc=" + loc.getAccuracy()
+                + "m spd=" + loc.getSpeed() + " m/s");
         TripTrackerAPIService api = TripTrackerAPIService.getInstance();
         if (api != null && api.isEnabled()) {
             float speed = loc.getSpeed();
             float threshold = AppSettings.getVehicleSpeed(getApplicationContext());
             String activityType = speed >= threshold ? "in_vehicle" : (speed > 0 ? "walking" : "still");
             api.sendPing(loc, speed > 0, speed, activityType);
-            Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: pinged (" + loc.getLatitude() + ", " + loc.getLongitude() + ") spd=" + speed + " m/s");
+            Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: pinged (" + loc.getLatitude()
+                    + ", " + loc.getLongitude() + ") spd=" + speed + " m/s");
         }
         callback.onLocation(loc);
     }
@@ -684,7 +707,7 @@ public class LocationTrackingService extends Service implements
         long min = duration / 60;
         long sec = duration % 60;
         Log.d(TAG, "Showing trip end notification " + AppSettings.isNotifTripEnd(this));
-        if (AppSettings.isNotifTripEnd(this)){
+        if (AppSettings.isNotifTripEnd(this)) {
             showTripNotification(NOTIF_TRIP_END, "⏹️ Trip Ended",
                     "Trip #" + tripId + " - " + TripTrackerAPIService.getInstance().getVehicleId() + " — " + distStr
                             + " in " +
@@ -773,8 +796,9 @@ public class LocationTrackingService extends Service implements
 
         Log.d(TAG, "🚗 Vehicle speed detected — auto-starting trip");
         startTracking(triggerLocation);
-        Log.d(TAG, "Showing trip start notification " + AppSettings.isNotifTripStart(this) + TripTrackerAPIService.getInstance().hasUserId());
-        if (TripTrackerAPIService.getInstance().hasUserId() && AppSettings.isNotifTripStart(this)){
+        Log.d(TAG, "Showing trip start notification " + AppSettings.isNotifTripStart(this)
+                + TripTrackerAPIService.getInstance().hasUserId());
+        if (TripTrackerAPIService.getInstance().hasUserId() && AppSettings.isNotifTripStart(this)) {
             showTripNotification(NOTIF_TRIP_START, "🚗 Trip Started",
                     "Auto-trip #" + currentTripId + " - " + TripTrackerAPIService.getInstance().getVehicleId()
                             + " — vehicle speed detected");
@@ -809,8 +833,9 @@ public class LocationTrackingService extends Service implements
                 : String.format("%.2f km", dist / 1000);
         long min = duration / 60;
         long sec = duration % 60;
-        Log.d(TAG, "Showing trip end notification " + AppSettings.isNotifTripEnd(this) + TripTrackerAPIService.getInstance().hasUserId());
-        if (TripTrackerAPIService.getInstance().hasUserId() && AppSettings.isNotifTripEnd(this)){
+        Log.d(TAG, "Showing trip end notification " + AppSettings.isNotifTripEnd(this)
+                + TripTrackerAPIService.getInstance().hasUserId());
+        if (TripTrackerAPIService.getInstance().hasUserId() && AppSettings.isNotifTripEnd(this)) {
             showTripNotification(NOTIF_TRIP_END, "⏹️ Trip Ended",
                     "Trip #" + tripId + " - " + TripTrackerAPIService.getInstance().getVehicleId() + " — " + distStr
                             + " in " +
@@ -1203,16 +1228,16 @@ public class LocationTrackingService extends Service implements
                 Log.d(TAG, "Still timer reset — device moving");
             }
             activityRecognitionVehicle = false;
-            Log.i(TAG, "EmitMotionChange: MOVING detected by sensors, speed=" + String.format("%.1f", speed) + " m/s");   
-            if(speed >= vehicleThreshold()) {
+            Log.i(TAG, "EmitMotionChange: MOVING detected by sensors, speed=" + String.format("%.1f", speed) + " m/s");
+            if (speed >= vehicleThreshold()) {
                 // Emit sensor-based motion change to Ionic
                 activityRecognitionVehicle = true;
                 emitMotionChange("IN_VEHICLE", "ENTER");
-            }else {
-                 // Emit sensor-based motion change to Ionic
+            } else {
+                // Emit sensor-based motion change to Ionic
                 emitMotionChange("WALKING", "ENTER");
             }
-            
+
             // Re-enable GPS if it was stopped during still period
             startGPSTracking();
         }
@@ -1262,16 +1287,16 @@ public class LocationTrackingService extends Service implements
         // GPS drift — discard it. Only raise speed when both agree.
         float speed = 0f;
         // if (lastGpsLocation != null && lastGpsUpdateTime > 0 && accuracy <= 50f
-        //         && lastGpsLocation.getAccuracy() <= 50f) {
-        //     float distM = lastGpsLocation.distanceTo(location);
-        //     long elapsedMs = System.currentTimeMillis() - lastGpsUpdateTime;
-        //     float elapsedSec = elapsedMs / 1000f;
-        //     if (elapsedSec > 0 && distM >= 0) {
-        //         speed = distM / elapsedSec;
-        //     }
+        // && lastGpsLocation.getAccuracy() <= 50f) {
+        // float distM = lastGpsLocation.distanceTo(location);
+        // long elapsedMs = System.currentTimeMillis() - lastGpsUpdateTime;
+        // float elapsedSec = elapsedMs / 1000f;
+        // if (elapsedSec > 0 && distM >= 0) {
+        // speed = distM / elapsedSec;
+        // }
         // } else if (location.hasSpeed() && accuracy <= 50f) {
-        //     // Use GPS hardware Doppler speed — more reliable than delta
-        //     speed = location.getSpeed();
+        // // Use GPS hardware Doppler speed — more reliable than delta
+        // speed = location.getSpeed();
         // }
 
         if (accuracy <= 50f) {
@@ -1295,7 +1320,8 @@ public class LocationTrackingService extends Service implements
                 speed = dopplerSpeed;
                 if (deltaSpeed > dopplerSpeed * 2f && deltaSpeed > vehicleThreshold()) {
                     Log.d(TAG, "GPS delta speed " + String.format("%.1f", deltaSpeed)
-                            + " m/s discarded — Doppler says " + String.format("%.1f", dopplerSpeed) + " m/s (position drift)");
+                            + " m/s discarded — Doppler says " + String.format("%.1f", dopplerSpeed)
+                            + " m/s (position drift)");
                 }
             } else {
                 // No Doppler — use delta, but cap at a physically plausible acceleration.
@@ -1303,7 +1329,8 @@ public class LocationTrackingService extends Service implements
                 float maxPlausible = (lastGpsSpeed > 0f) ? lastGpsSpeed * 3f + 5f : 15f;
                 if (deltaSpeed > maxPlausible) {
                     Log.d(TAG, "GPS delta speed " + String.format("%.1f", deltaSpeed)
-                            + " m/s capped to " + String.format("%.1f", maxPlausible) + " m/s (no Doppler, implausible jump)");
+                            + " m/s capped to " + String.format("%.1f", maxPlausible)
+                            + " m/s (no Doppler, implausible jump)");
                     deltaSpeed = maxPlausible;
                 }
                 speed = deltaSpeed;
@@ -1385,7 +1412,7 @@ public class LocationTrackingService extends Service implements
         float requiredSpeed = activityRecognitionVehicle
                 ? vehicleThreshold() * 0.5f // 11 km/h if Activity Recognition confirms vehicle
                 : vehicleThreshold(); // 22 km/h normally
-        
+
         if (speed >= requiredSpeed && accuracy <= 30f && location.hasSpeed() && location.getSpeed() >= requiredSpeed) {
             consecutiveVehicleCount++;
             if (!isTracking && consecutiveVehicleCount >= 2) {
@@ -1824,7 +1851,7 @@ public class LocationTrackingService extends Service implements
         // PendingIntent pi = PendingIntent.getActivity(this, 0, launch,
         //         PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         // Notification n = new NotificationCompat.Builder(this, CHANNEL_ID)
-        //         //.setContentTitle(title).setContentText(text)
+        //         // .setContentTitle(title).setContentText(text)
         //         .setSilent(true)
         //         .setSmallIcon(android.R.drawable.ic_menu_mylocation)
         //         .setContentIntent(pi).setOngoing(true)
@@ -1838,26 +1865,6 @@ public class LocationTrackingService extends Service implements
         //     Log.e(TAG, "startForeground SecurityException: " + e.getMessage());
         // } catch (Exception e) {
         //     Log.e(TAG, "startForeground error: " + e.getMessage());
-        // }
-    }
-
-    /**
-     * Start foreground with a minimal notification (called first to satisfy the
-     * 5-second rule). No FOREGROUND_SERVICE_TYPE — works without location
-     * permission.
-     */
-    private void startMinimalForeground() {
-        // try {
-        //     Notification n = new NotificationCompat.Builder(this, CHANNEL_ID)
-        //             .setContentTitle("Trip Tracker")
-        //             .setContentText("Initializing…")
-        //             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-        //             .setOngoing(true)
-        //             .setPriority(NotificationCompat.PRIORITY_LOW)
-        //             .build();
-        //     startForeground(NOTIFICATION_ID, n);
-        // } catch (Exception e) {
-        //     Log.e(TAG, "startMinimalForeground failed: " + e.getMessage());
         // }
     }
 
@@ -2249,7 +2256,8 @@ public class LocationTrackingService extends Service implements
             }
             Log.i(TAG, "emitMotionChange - " + activityChangeString + " " + motion);
             Class<?> helperClass = Class.forName("com.megster.cordova.ble.central.TripTracker");
-            helperClass.getMethod("notifyTripMotion", String.class, String.class).invoke(null, activityChangeString, motion);
+            helperClass.getMethod("notifyTripMotion", String.class, String.class).invoke(null, activityChangeString,
+                    motion);
         } catch (Exception ignored) {
             Log.e(TAG, "Error occurred while notifying motion to Java", ignored);
         }
