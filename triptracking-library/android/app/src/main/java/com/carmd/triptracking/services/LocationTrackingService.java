@@ -295,7 +295,7 @@ public class LocationTrackingService extends Service implements
         locationTrackingActive = true;
 
         // Upgrade to location-type foreground notification
-        startForegroundNotification("Trip Tracker", "Starting…");
+        // startForegroundNotification("Trip Tracker", "Starting…");
 
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         if (sensorTracker == null) {
@@ -752,7 +752,7 @@ public class LocationTrackingService extends Service implements
 
         saveCheckpoint();
         cancelWatchdog();
-        startForegroundNotification("Tracking…", "Auto-trip #" + currentTripId + " in progress");
+        // startForegroundNotification("Tracking…", "Auto-trip #" + currentTripId + " in progress");
         notifyTrackingStateChanged(true);
     }
 
@@ -906,7 +906,7 @@ public class LocationTrackingService extends Service implements
         // After 20s, resume GPS at low-power for next trip detection.
         stopGpsUpdates();
         cancelWatchdog();
-        startForegroundNotification("Trip Tracker", "Waiting for vehicle speed…");
+        // startForegroundNotification("Trip Tracker", "Waiting for vehicle speed…");
         notifyTrackingStateChanged(false);
 
         // Resume GPS at low-power after 20s cooldown
@@ -1764,7 +1764,7 @@ public class LocationTrackingService extends Service implements
         }
 
         cancelWatchdog();
-        startForegroundNotification("Tracking resumed", "Trip #" + savedTripId + " continuing");
+        // startForegroundNotification("Tracking resumed", "Trip #" + savedTripId + " continuing");
         notifyTrackingStateChanged(true);
     }
 
