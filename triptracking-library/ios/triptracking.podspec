@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'triptracking'
-  s.version          = '3.0.84'
+  s.version          = '3.0.85'
   s.summary      = 'GPS trip tracking library for iOS — auto-trip, geofencing, CarPlay, voice feedback.'
   s.description  = <<-DESC
     TripTracker is a drop-in iOS library for GPS-based trip tracking.
