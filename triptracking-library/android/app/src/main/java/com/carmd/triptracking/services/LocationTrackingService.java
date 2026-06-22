@@ -253,11 +253,11 @@ public class LocationTrackingService extends Service implements
         try {
             Notification n = new NotificationCompat.Builder(this, CHANNEL_ID)
                     // .setContentTitle("Trip Tracker")
-                    .setContentText("Waiting for location permission…")
+                    // .setContentText("Waiting for location permission…")
                     .setSilent(true)
                     .setSmallIcon(android.R.drawable.ic_menu_mylocation)
                     .setOngoing(true)
-                    .setPriority(NotificationCompat.PRIORITY_LOW)
+                    .setPriority(NotificationCompat.PRIORITY_MIN)
                     .build();
             startForeground(NOTIFICATION_ID, n);
         } catch (Exception e) {
@@ -1828,7 +1828,7 @@ public class LocationTrackingService extends Service implements
                 .setSilent(true)
                 .setSmallIcon(android.R.drawable.ic_menu_mylocation)
                 .setOngoing(true)
-                .setPriority(NotificationCompat.PRIORITY_LOW).build();
+                .setPriority(NotificationCompat.PRIORITY_MIN).build();
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
                 startForeground(NOTIFICATION_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
