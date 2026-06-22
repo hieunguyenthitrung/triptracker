@@ -408,23 +408,17 @@ public final class TripTrackerAPIService {
 
                 Log.d(TAG, "📡 Sending trip-end: " + body.toString());
 
-                // Retry up to 3 times with 2s delay
-                boolean ok = false;
-                for (int attempt = 1; attempt <= 3; attempt++) {
-                    ok = post(endURL, body);
-                    if (ok) break;
-                    Log.d(TAG, "Trip-end attempt " + attempt + "/3 failed — retrying in 2s...");
-                    try { Thread.sleep(2000); } catch (InterruptedException ignored) {}
-                }
-
+                // Fire-and-forget — never queued or retried.
+                // Queueing trip-end risks re-sending it after reconnect, which causes
+                // the server to receive a duplicate end for an already-closed trip.
+                boolean ok = post(endURL, body);
                 includeVehicleId = false;
 
                 if (ok) {
                     Log.d(TAG, "Trip-end OK");
                     if (!pendingQueue.isEmpty()) flushQueue();
                 } else {
-                    Log.d(TAG, "Trip-end FAIL after 3 attempts — queued for retry");
-                    enqueue(endURL, body);
+                    Log.d(TAG, "Trip-end FAILED (not retried — fire-and-forget)");
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Trip-end error: " + e.getMessage());
