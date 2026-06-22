@@ -253,7 +253,7 @@ public class LocationTrackingService extends Service implements
         try {
             Notification n = new NotificationCompat.Builder(this, CHANNEL_ID)
                     // .setContentTitle("Trip Tracker")
-                    // .setContentText("Waiting for location permission…")
+                    .setContentText("Waiting for location permission…")
                     .setSilent(true)
                     .setSmallIcon(android.R.drawable.ic_menu_mylocation)
                     .setOngoing(true)
