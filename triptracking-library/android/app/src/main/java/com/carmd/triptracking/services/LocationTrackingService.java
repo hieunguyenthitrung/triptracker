@@ -311,9 +311,6 @@ public class LocationTrackingService extends Service implements
     public void activateLocationTracking() {
         locationTrackingActive = true;
 
-        // Upgrade to location-type foreground notification
-        startForegroundNotification("Trip Tracker", "Starting…");
-
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         if (sensorTracker == null) {
             sensorTracker = new SensorBasedLocationTracker(this, this);
@@ -770,7 +767,6 @@ public class LocationTrackingService extends Service implements
 
         saveCheckpoint();
         cancelWatchdog();
-        startForegroundNotification("Tracking…", "Auto-trip #" + currentTripId + " in progress");
         notifyTrackingStateChanged(true);
     }
 
@@ -924,7 +920,6 @@ public class LocationTrackingService extends Service implements
         // After 20s, resume GPS at low-power for next trip detection.
         stopGpsUpdates();
         cancelWatchdog();
-        startForegroundNotification("Trip Tracker", "Waiting for vehicle speed…");
         notifyTrackingStateChanged(false);
 
         // Resume GPS at low-power after 20s cooldown
@@ -1784,7 +1779,6 @@ public class LocationTrackingService extends Service implements
         }
 
         cancelWatchdog();
-        startForegroundNotification("Tracking resumed", "Trip #" + savedTripId + " continuing");
         notifyTrackingStateChanged(true);
     }
 
@@ -1831,32 +1825,6 @@ public class LocationTrackingService extends Service implements
 
     private boolean hasPermission(String perm) {
         return ActivityCompat.checkSelfPermission(this, perm) == PackageManager.PERMISSION_GRANTED;
-    }
-
-    private void startForegroundNotification(String title, String text) {
-        Intent launch = getPackageManager().getLaunchIntentForPackage(getPackageName());
-        PendingIntent pi = PendingIntent.getActivity(this, 0, launch,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-        Notification n = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle(title).setContentText(text)
-                .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-                .setContentIntent(pi).setOngoing(true)
-                .setPriority(NotificationCompat.PRIORITY_LOW).build();
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-                startForeground(NOTIFICATION_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
-            else
-                startForeground(NOTIFICATION_ID, n);
-        } catch (SecurityException e) {
-            // Location permission not granted — fall back to basic notification (no type).
-            // The service stays alive; location APIs will be activated when permission arrives.
-            Log.w(TAG, "startForeground with LOCATION type failed (no permission), using basic: " + e.getMessage());
-            try { startForeground(NOTIFICATION_ID, n); } catch (Exception e2) {
-                Log.e(TAG, "startForeground basic fallback failed: " + e2.getMessage());
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "startForeground error: " + e.getMessage());
-        }
     }
 
     /**
