@@ -252,21 +252,35 @@ public class LocationTrackingService extends Service implements
         // Restore API config from SharedPreferences (survives app kill)
         TripTrackerSDK.restoreAPIConfigFromPrefs(this);
 
-        // ALWAYS start foreground — minimal notification WITHOUT location type
-        // so it works even without location permission on Android 14+.
+        // MUST call startForeground() within 5 seconds of startForegroundService().
+        // On Android 14+ (API 34), the type must match foregroundServiceType declared
+        // in the manifest. Calling without a type throws IllegalArgumentException,
+        // which was caught → stopSelf() → service exits → ANR fires.
+        // FOREGROUND_SERVICE_TYPE_LOCATION does NOT require location permission to
+        // declare — permission is only needed to use location APIs, not for the type.
+        Notification n = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("Trip Tracker")
+                .setContentText("Starting…")
+                .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+                .setOngoing(true)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .build();
         try {
-            Notification n = new NotificationCompat.Builder(this, CHANNEL_ID)
-                    .setContentTitle("Trip Tracker")
-                    .setContentText("Waiting for location permission…")
-                    .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-                    .setOngoing(true)
-                    .setPriority(NotificationCompat.PRIORITY_LOW)
-                    .build();
-            startForeground(NOTIFICATION_ID, n);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(NOTIFICATION_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
+            } else {
+                startForeground(NOTIFICATION_ID, n);
+            }
         } catch (Exception e) {
-            Log.e(TAG, "startForeground failed: " + e.getMessage());
-            stopSelf();
-            return;
+            // Log but do NOT call stopSelf() — that would cause the ANR by exiting
+            // without satisfying the startForeground requirement. Fall back to basic
+            // notification (no type) which works on older Android.
+            Log.e(TAG, "startForeground with type failed, retrying without type: " + e.getMessage());
+            try {
+                startForeground(NOTIFICATION_ID, n);
+            } catch (Exception e2) {
+                Log.e(TAG, "startForeground fallback also failed: " + e2.getMessage());
+            }
         }
 
         // If permission already granted → activate full tracking now
@@ -1820,12 +1834,6 @@ public class LocationTrackingService extends Service implements
     }
 
     private void startForegroundNotification(String title, String text) {
-        // Safety guard: don't even try if permission not granted
-        if (!hasLocationPermissions()) {
-            Log.w(TAG, "Skipping startForeground — location permission not granted");
-            return;
-        }
-
         Intent launch = getPackageManager().getLaunchIntentForPackage(getPackageName());
         PendingIntent pi = PendingIntent.getActivity(this, 0, launch,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
@@ -1840,7 +1848,12 @@ public class LocationTrackingService extends Service implements
             else
                 startForeground(NOTIFICATION_ID, n);
         } catch (SecurityException e) {
-            Log.e(TAG, "startForeground SecurityException: " + e.getMessage());
+            // Location permission not granted — fall back to basic notification (no type).
+            // The service stays alive; location APIs will be activated when permission arrives.
+            Log.w(TAG, "startForeground with LOCATION type failed (no permission), using basic: " + e.getMessage());
+            try { startForeground(NOTIFICATION_ID, n); } catch (Exception e2) {
+                Log.e(TAG, "startForeground basic fallback failed: " + e2.getMessage());
+            }
         } catch (Exception e) {
             Log.e(TAG, "startForeground error: " + e.getMessage());
         }
