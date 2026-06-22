@@ -113,22 +113,17 @@ public final class TripTrackerSDK {
         LogcatWriter.start(appContext);
         LocationDatabase.getInstance(appContext);
 
-        // Only start the foreground service when location permission is already granted.
-        // On Android 14+, startForeground() with FOREGROUND_SERVICE_TYPE_LOCATION throws
-        // SecurityException if the permission is not held at call time, causing an ANR.
-        // Ionic handles permission requests — call onPermissionGranted() after the user grants.
-        if (hasLocationPermission(appContext)) {
-            try {
-                Intent si = new Intent(appContext, LocationTrackingService.class);
-                appContext.startForegroundService(si);
-                Log.i(TAG, "✅ Service started");
-            } catch (Exception e) {
-                Log.e(TAG, "Service start failed: " + e.getMessage());
-            }
-        } else {
-            Log.i(TAG, "⏳ Location permission not granted yet — service will start after onPermissionGranted()");
+        // ALWAYS start the service — it handles permission internally.
+        // Service starts with minimal notification if no permission,
+        // then upgrades to full location tracking when permission granted.
+        try {
+            Intent si = new Intent(appContext, LocationTrackingService.class);
+            appContext.startForegroundService(si);
+            Log.i(TAG, "✅ Service started");
+        } catch (Exception e) {
+            Log.e(TAG, "Service start failed: " + e.getMessage());
         }
-        
+
         VoiceFeedback.getInstance(appContext);
         if (config.geofenceEnabled && hasLocationPermission(appContext)) {
             GeofenceManager.registerAll(appContext);
