@@ -245,19 +245,13 @@ public class LocationTrackingService extends Service implements
     public void onCreate() {
         super.onCreate();
 
+        // createNotificationChannel() MUST come before startForeground().
+        // startForeground() MUST come as early as possible — before any I/O or
+        // slow init — to satisfy the 5-second OS requirement. On Android 14+,
+        // calling without FOREGROUND_SERVICE_TYPE_LOCATION (when declared in
+        // manifest) throws IllegalArgumentException. The catch falls back to
+        // no-type (works on older Android). Never call stopSelf() here.
         createNotificationChannel();
-        instance = this;
-        database = LocationDatabase.getInstance(this);
-
-        // Restore API config from SharedPreferences (survives app kill)
-        TripTrackerSDK.restoreAPIConfigFromPrefs(this);
-
-        // MUST call startForeground() within 5 seconds of startForegroundService().
-        // On Android 14+ (API 34), the type must match foregroundServiceType declared
-        // in the manifest. Calling without a type throws IllegalArgumentException,
-        // which was caught → stopSelf() → service exits → ANR fires.
-        // FOREGROUND_SERVICE_TYPE_LOCATION does NOT require location permission to
-        // declare — permission is only needed to use location APIs, not for the type.
         Notification n = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_menu_mylocation)
                 .setOngoing(true)
@@ -270,16 +264,17 @@ public class LocationTrackingService extends Service implements
                 startForeground(NOTIFICATION_ID, n);
             }
         } catch (Exception e) {
-            // Log but do NOT call stopSelf() — that would cause the ANR by exiting
-            // without satisfying the startForeground requirement. Fall back to basic
-            // notification (no type) which works on older Android.
-            Log.e(TAG, "startForeground with type failed, retrying without type: " + e.getMessage());
+            Log.e(TAG, "startForeground with type failed, retrying: " + e.getMessage());
             try {
                 startForeground(NOTIFICATION_ID, n);
             } catch (Exception e2) {
-                Log.e(TAG, "startForeground fallback also failed: " + e2.getMessage());
+                Log.e(TAG, "startForeground fallback failed: " + e2.getMessage());
             }
         }
+
+        instance = this;
+        database = LocationDatabase.getInstance(this);
+        TripTrackerSDK.restoreAPIConfigFromPrefs(this);
 
         // If permission already granted → activate full tracking now
         if (hasLocationPermissions()) {
