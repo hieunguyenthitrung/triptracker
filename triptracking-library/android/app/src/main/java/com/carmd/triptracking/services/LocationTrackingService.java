@@ -1824,26 +1824,6 @@ public class LocationTrackingService extends Service implements
         return ActivityCompat.checkSelfPermission(this, perm) == PackageManager.PERMISSION_GRANTED;
     }
 
-    /**
-     * Start foreground with a minimal notification (called first to satisfy the
-     * 5-second rule). No FOREGROUND_SERVICE_TYPE — works without location
-     * permission.
-     */
-    private void startMinimalForeground() {
-        try {
-            Notification n = new NotificationCompat.Builder(this, CHANNEL_ID)
-                    .setContentTitle("Trip Tracker")
-                    .setContentText("Initializing…")
-                    .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-                    .setOngoing(true)
-                    .setPriority(NotificationCompat.PRIORITY_LOW)
-                    .build();
-            startForeground(NOTIFICATION_ID, n);
-        } catch (Exception e) {
-            Log.e(TAG, "startMinimalForeground failed: " + e.getMessage());
-        }
-    }
-
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager nm = getSystemService(NotificationManager.class);
