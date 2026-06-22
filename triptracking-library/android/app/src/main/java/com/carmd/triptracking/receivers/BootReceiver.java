@@ -3,8 +3,11 @@ package com.carmd.triptracking.receivers;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.Manifest;
 import android.os.Build;
 import android.util.Log;
+import androidx.core.content.ContextCompat;
 import com.carmd.triptracking.services.LocationTrackingService;
 
 /**
@@ -21,17 +24,28 @@ public class BootReceiver extends BroadcastReceiver {
                 || "android.intent.action.LOCKED_BOOT_COMPLETED".equals(action)) {
             Log.d(TAG, "📱 Device booted - Starting location tracking service");
             
+            boolean hasPermission =
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
+                            == PackageManager.PERMISSION_GRANTED
+                    || ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION)
+                            == PackageManager.PERMISSION_GRANTED;
+
+            if (!hasPermission) {
+                Log.w(TAG, "⚠️ Location permission not granted — skipping service start on boot");
+                return;
+            }
+
             Intent serviceIntent = new Intent(context, LocationTrackingService.class);
             // On boot, try to resume any trip that was active before the reboot.
             // tryResumeFromCheckpoint() will do nothing if no checkpoint exists.
             serviceIntent.setAction(LocationTrackingService.ACTION_RESUME_TRACKING);
-            
+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(serviceIntent);
             } else {
                 context.startService(serviceIntent);
             }
-            
+
             Log.d(TAG, "✅ Location tracking service started automatically");
         }
     }
