@@ -245,11 +245,7 @@ public class LocationTrackingService extends Service implements
         super.onCreate();
 
         createNotificationChannel();
-        instance = this;
-        database = LocationDatabase.getInstance(this);
-
-        // Restore API config from SharedPreferences (survives app kill)
-        TripTrackerSDK.restoreAPIConfigFromPrefs(this);
+        
 
         // ALWAYS start foreground — minimal notification WITHOUT location type
         // so it works even without location permission on Android 14+.
@@ -272,6 +268,12 @@ public class LocationTrackingService extends Service implements
                 Log.e(TAG, "startForeground fallback failed: " + e2.getMessage());
             }
         }
+
+        instance = this;
+        database = LocationDatabase.getInstance(this);
+
+        // Restore API config from SharedPreferences (survives app kill)
+        TripTrackerSDK.restoreAPIConfigFromPrefs(this);
 
         // If permission already granted → activate full tracking now
         if (hasLocationPermissions()) {
