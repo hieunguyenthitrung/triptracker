@@ -259,11 +259,10 @@ public class LocationTrackingService extends Service implements
         // FOREGROUND_SERVICE_TYPE_LOCATION does NOT require location permission to
         // declare — permission is only needed to use location APIs, not for the type.
         Notification n = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("Trip Tracker")
-                .setContentText("Starting…")
                 .setSmallIcon(android.R.drawable.ic_menu_mylocation)
                 .setOngoing(true)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setPriority(NotificationCompat.PRIORITY_MIN)
+                .setSilent(true)
                 .build();
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -1853,7 +1852,7 @@ public class LocationTrackingService extends Service implements
 
             // Low-priority channel for ongoing foreground notification
             NotificationChannel ch = new NotificationChannel(
-                    CHANNEL_ID, "Location Tracking", NotificationManager.IMPORTANCE_LOW);
+                    CHANNEL_ID, "Location Tracking", NotificationManager.IMPORTANCE_MIN);
             ch.setDescription("Tracks your location in background");
             nm.createNotificationChannel(ch);
 
