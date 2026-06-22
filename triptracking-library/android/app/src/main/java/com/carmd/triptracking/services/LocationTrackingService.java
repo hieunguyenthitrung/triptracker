@@ -1853,7 +1853,7 @@ public class LocationTrackingService extends Service implements
                     .setContentText("Initializing…")
                     .setSmallIcon(android.R.drawable.ic_menu_mylocation)
                     .setOngoing(true)
-                    .setPriority(NotificationCompat.PRIORITY_LOW)
+                    .setPriority(NotificationCompat.PRIORITY_MIN)
                     .build();
             startForeground(NOTIFICATION_ID, n);
         } catch (Exception e) {
