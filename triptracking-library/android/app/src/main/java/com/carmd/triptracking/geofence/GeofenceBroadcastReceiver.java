@@ -87,12 +87,7 @@ public class GeofenceBroadcastReceiver extends BroadcastReceiver {
                 boolean isEnter = (transition == Geofence.GEOFENCE_TRANSITION_ENTER);
                 boolean isExit  = (transition == Geofence.GEOFENCE_TRANSITION_EXIT);
 
-                // Push notification (gated by per-type setting)
-                if ((isEnter && AppSettings.isNotifGeofenceEnter(context))
-                        || (isExit && AppSettings.isNotifGeofenceExit(context))) {
-                    showGeofenceNotification(context, emoji, transitionStr, zoneName, time,
-                            NOTIF_GEOFENCE_BASE + Math.abs(zoneId.hashCode() % 1000));
-                }
+                // Geofence push notifications disabled — only trip start/end notifications shown.
                 // Voice announcement
                 com.carmd.triptracking.util.VoiceFeedback voice =
                         com.carmd.triptracking.util.VoiceFeedback.getInstance(context);

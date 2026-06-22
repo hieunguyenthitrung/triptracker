@@ -23,34 +23,8 @@ public class DailyReminderReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        Log.d(TAG, "Daily reminder fired at 6:00 AM");
+        Log.d(TAG, "Daily reminder fired at 6:00 AM — notification suppressed");
+        // Only trip start/end notifications are shown.
 
-        // Tapping the notification opens Daily Locations screen
-        Intent launch = new Intent(context, DailyLocationsActivity.class);
-        launch.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        PendingIntent pi = PendingIntent.getActivity(context, NOTIF_DAILY_REMINDER, launch,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-
-        // Build yesterday's date string for the notification body
-        java.util.Calendar cal = java.util.Calendar.getInstance();
-        cal.add(java.util.Calendar.DAY_OF_YEAR, -1);
-        String yesterday = new java.text.SimpleDateFormat("EEE, MMM d", java.util.Locale.US)
-                .format(cal.getTime());
-
-        Notification n = new NotificationCompat.Builder(context, CHANNEL_TRIP_EVENTS)
-                .setContentTitle("📅 Check Yesterday's Route")
-                .setContentText("Review your trips from " + yesterday)
-                .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-                .setContentIntent(pi)
-                .setAutoCancel(true)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setDefaults(NotificationCompat.DEFAULT_ALL)
-                .extend(new androidx.car.app.notification.CarAppExtender.Builder()
-                        .setImportance(NotificationManager.IMPORTANCE_HIGH)
-                        .build())
-                .build();
-
-        NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        nm.notify(NOTIF_DAILY_REMINDER, n);
     }
 }

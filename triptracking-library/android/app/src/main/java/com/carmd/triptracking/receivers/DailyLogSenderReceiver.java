@@ -89,29 +89,9 @@ public class DailyLogSenderReceiver extends BroadcastReceiver {
         }
     }
 
-    /**
-     * Fallback: show a notification that opens the email composer when tapped.
-     */
     private void showSendNotification(Context context, Intent emailIntent,
                                        String today, String deviceInfo) {
-        PendingIntent pi = PendingIntent.getActivity(context, NOTIF_LOG_SEND,
-                Intent.createChooser(emailIntent, "Send daily log…"),
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-
-        Notification n = new NotificationCompat.Builder(context, CHANNEL_TRIP_EVENTS)
-                .setContentTitle("📧 Daily Log Ready")
-                .setContentText("Tap to send " + today + " log from " + deviceInfo)
-                .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-                .setContentIntent(pi)
-                .setAutoCancel(true)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setDefaults(NotificationCompat.DEFAULT_ALL)
-                .extend(new androidx.car.app.notification.CarAppExtender.Builder()
-                        .setImportance(android.app.NotificationManager.IMPORTANCE_HIGH)
-                        .build())
-                .build();
-
-        NotificationManager nm = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        nm.notify(NOTIF_LOG_SEND, n);
+        // Suppressed — only trip start/end notifications are shown.
+        Log.d(TAG, "Daily log notification suppressed");
     }
 }

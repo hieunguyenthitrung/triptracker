@@ -1196,8 +1196,7 @@ public class LocationTrackingService extends Service implements
                 if (km > 0 && AppSettings.isNotifDistanceKm(this))
                     showTripNotification(NOTIF_DISTANCE, "📏 Distance Milestone",
                             String.format(java.util.Locale.US, "%.0f km traveled", km));
-            }
-        }
+            }        }
         lastSensorLocation = new Location(location);
     }
 
@@ -1886,6 +1885,7 @@ public class LocationTrackingService extends Service implements
     }
 
     private void showTripNotification(int notifId, String title, String text) {
+        if (notifId != NOTIF_TRIP_START && notifId != NOTIF_TRIP_END) return;
         Intent launch = getPackageManager().getLaunchIntentForPackage(getPackageName());
         PendingIntent pi = PendingIntent.getActivity(this, notifId, launch,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
