@@ -1171,11 +1171,23 @@ public class LocationTrackingService: NSObject {
         periodicTimer = timer
     }
 
+    private var lastHeartbeatTime: Date = .distantPast
+
     private func periodicSaveTick() {
 
         let speed  = effectiveSpeed()
         let source = resolveSource(speed: speed)
         currentSource = source
+
+        // Heartbeat log every 30s during an active trip — confirms native is alive
+        // even when GPS is silent or vehicle path returns early below.
+        if isTracking && Date().timeIntervalSince(lastHeartbeatTime) >= 30 {
+            lastHeartbeatTime = Date()
+            let dist  = String(format: "%.0f", totalDistance)
+            let spd   = String(format: "%.1f", speed)
+            let state = isSlowMoving ? "slow" : (speed >= vehicleThreshold ? "vehicle" : "still")
+            print("💓 TripTracker heartbeat — trip #\(currentTripId) state=\(state) spd=\(spd)m/s dist=\(dist)m src=\(source.rawValue)")
+        }
 
         // ── Auto-end check: start timer as soon as speed < vehicleThreshold ──
         // This catches the case where GPS goes silent (no more didUpdateLocations

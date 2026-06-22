@@ -1056,9 +1056,23 @@ public class LocationTrackingService extends Service implements
      * vehicle (>= vehicleThreshold) : skip — saves are handled by onLocationChanged
      * distance-based via the distance gate.
      */
+    private long lastHeartbeatMs = 0L;
+
     private void runSaveTick() {
         float speed = getEffectiveSpeed();
         boolean sensorStill = sensorTracker == null || !sensorTracker.getStats().isMoving();
+
+        // Heartbeat log every 30s during an active trip — confirms native service
+        // is alive even when GPS is silent or vehicle path returns early below.
+        long nowMs = System.currentTimeMillis();
+        if (isTracking && nowMs - lastHeartbeatMs >= 30_000L) {
+            lastHeartbeatMs = nowMs;
+            String state = speed >= vehicleThreshold() ? "vehicle" : (sensorStill ? "still" : "slow");
+            Log.i(TAG, "💓 heartbeat — trip #" + currentTripId
+                    + " state=" + state
+                    + " spd=" + String.format("%.1f", speed) + "m/s"
+                    + " dist=" + String.format("%.0f", totalDistance) + "m");
+        }
 
         // ── Auto-trip: still timer management ─────────────────────────────
         boolean isStill = speed < STATIONARY_THRESHOLD && sensorStill;
