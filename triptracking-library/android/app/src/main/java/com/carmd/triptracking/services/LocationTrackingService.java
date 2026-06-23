@@ -253,21 +253,21 @@ public class LocationTrackingService extends Service implements
 
         // ALWAYS start foreground — minimal notification WITHOUT location type
         // so it works even without location permission on Android 14+.
-        // try {
-        // Notification n = new NotificationCompat.Builder(this, CHANNEL_ID)
-        // // .setContentTitle("Trip Tracker")
-        // // .setContentText("Waiting for location permission…")
-        // .setSilent(true)
-        // .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-        // .setOngoing(true)
-        // .setPriority(NotificationCompat.PRIORITY_MIN)
-        // .build();
-        // startForeground(NOTIFICATION_ID, n);
-        // } catch (Exception e) {
-        // Log.e(TAG, "startForeground failed: " + e.getMessage());
-        // stopSelf();
-        // return;
-        // }
+        try {
+            Notification n = new NotificationCompat.Builder(this, CHANNEL_ID)
+                    // .setContentTitle("Trip Tracker")
+                    // .setContentText("Waiting for location permission…")
+                    .setSilent(true)
+                    .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+                    .setOngoing(true)
+                    .setPriority(NotificationCompat.PRIORITY_MIN)
+                    .build();
+            startForeground(NOTIFICATION_ID, n);
+        } catch (Exception e) {
+            Log.e(TAG, "startForeground failed: " + e.getMessage());
+            stopSelf();
+            return;
+        }
 
         // If permission already granted → activate full tracking now
         if (hasLocationPermissions()) {
@@ -1878,7 +1878,7 @@ public class LocationTrackingService extends Service implements
         Notification n = new NotificationCompat.Builder(this, CHANNEL_ID)
                 // .setContentTitle(title).setContentText(text)
                 .setSilent(true)
-                // .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+                .setSmallIcon(android.R.drawable.ic_menu_mylocation)
                 .setOngoing(true)
                 .setPriority(NotificationCompat.PRIORITY_MIN).build();
         try {
@@ -1903,7 +1903,7 @@ public class LocationTrackingService extends Service implements
             Notification n = new NotificationCompat.Builder(this, CHANNEL_ID)
                     // .setContentTitle("Trip Tracker")
                     // .setContentText("Initializing…")
-                    // .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+                    .setSmallIcon(android.R.drawable.ic_menu_mylocation)
                     .setOngoing(true)
                     .setPriority(NotificationCompat.PRIORITY_MIN)
                     .build();
