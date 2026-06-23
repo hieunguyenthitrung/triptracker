@@ -253,6 +253,8 @@ public class LocationTrackingService extends Service implements
         // no-type (works on older Android). Never call stopSelf() here.
         createNotificationChannel();
         Notification n = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("CarMD Connect")
+                .setContentText("Running in background")
                 .setSmallIcon(android.R.drawable.ic_menu_mylocation)
                 .setOngoing(true)
                 .setPriority(NotificationCompat.PRIORITY_MIN)
