@@ -143,7 +143,6 @@ public final class TripTrackerAPIService {
             // Separate pings from endTrip
             JSONArray allLocations = new JSONArray();
             JSONObject pingTemplate = null;
-            List<String> endTripEntries = new ArrayList<>();
             List<String> pingEntries = new ArrayList<>();
 
             for (String entry : pendingQueue) {
@@ -399,7 +398,7 @@ public final class TripTrackerAPIService {
                     if (!pendingQueue.isEmpty()) flushQueue();
                 } else {
                     Log.d(TAG, "Trip-end FAIL after 3 attempts — queued for retry");
-                    enqueue(endURL, body);
+                    // enqueue(endURL, body);
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Trip-end error: " + e.getMessage());

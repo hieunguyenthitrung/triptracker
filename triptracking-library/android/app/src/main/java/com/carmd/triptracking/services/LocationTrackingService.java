@@ -90,7 +90,7 @@ public class LocationTrackingService extends Service implements
         }
 
         stopTracking();
-        TripTrackerAPIService.getInstance().flushQueue();
+        // TripTrackerAPIService.getInstance().flushQueue();
         Log.d(TAG, "🛑 Trip force-ended");
     }
 
