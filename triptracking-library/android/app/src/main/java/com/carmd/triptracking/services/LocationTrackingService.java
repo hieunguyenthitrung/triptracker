@@ -596,21 +596,48 @@ public class LocationTrackingService extends Service implements
             }
         };
 
-        // Timeout — fall back to last known location if accurate enough, otherwise error
+        // Timeout — fall back through multiple location sources, then error
         handler.postDelayed(() -> {
             if (resolved[0]) return;
             resolved[0] = true;
             locationManager.removeUpdates(listener);
-            Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: timed out after " + (timeoutMs / 1000) + "s");
-            // Fallback: use last known GPS fix if accuracy ≤ 100m and age < 60s
+            Log.d(TAG, "requestCurrentLocation: timed out after " + (timeoutMs / 1000) + "s — trying fallbacks");
+
+            // Fallback 1: in-memory lastGpsLocation (any age, acc ≤ 200m)
             if (lastGpsLocation != null && lastGpsLocation.getAccuracy() > 0
-                    && lastGpsLocation.getAccuracy() <= 100f
-                    && (System.currentTimeMillis() - lastGpsLocation.getTime()) < 60_000L) {
-                Log.d(TAG, "requestCurrentLocation: timeout fallback acc=" + lastGpsLocation.getAccuracy() + "m");
+                    && lastGpsLocation.getAccuracy() <= 200f) {
+                Log.d(TAG, "requestCurrentLocation: fallback1 lastGpsLocation acc="
+                        + lastGpsLocation.getAccuracy() + "m age="
+                        + (System.currentTimeMillis() - lastGpsLocation.getTime()) / 1000 + "s");
                 pingAndReturn(lastGpsLocation, callback);
-            } else {
-                callback.onError("getCurrentLocation timed out after " + (timeoutMs / 1000) + "s");
+                return;
             }
+
+            // Fallback 2: LocationManager last known GPS
+            try {
+                Location lk = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                if (lk != null && lk.getAccuracy() > 0 && lk.getAccuracy() <= 200f) {
+                    Log.d(TAG, "requestCurrentLocation: fallback2 lastKnown GPS acc="
+                            + lk.getAccuracy() + "m");
+                    pingAndReturn(lk, callback);
+                    return;
+                }
+            } catch (SecurityException ignored) {}
+
+            // Fallback 3: network / passive provider
+            try {
+                Location net = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+                if (net == null)
+                    net = locationManager.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER);
+                if (net != null) {
+                    Log.d(TAG, "requestCurrentLocation: fallback3 network/passive acc="
+                            + net.getAccuracy() + "m");
+                    pingAndReturn(net, callback);
+                    return;
+                }
+            } catch (SecurityException ignored) {}
+
+            callback.onError("getCurrentLocation timed out after " + (timeoutMs / 1000) + "s — no fallback available");
         }, timeoutMs);
 
         try {
