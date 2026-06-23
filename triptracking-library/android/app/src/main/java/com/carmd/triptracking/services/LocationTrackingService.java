@@ -653,7 +653,8 @@ public class LocationTrackingService extends Service implements
         Log.d(TAG, "requestCurrentLocation: fix ok acc=" + loc.getAccuracy() + "m spd=" + loc.getSpeed() + " m/s");
         TripTrackerAPIService api = TripTrackerAPIService.getInstance();
         if (api != null && api.isEnabled()) {
-            float speed = loc.getSpeed();
+            // Use staleness-aware effective speed, not the cached loc.getSpeed() which may be stale
+            float speed = getEffectiveSpeed();
             float threshold = AppSettings.getVehicleSpeed(getApplicationContext());
             String activityType = speed >= threshold ? "in_vehicle" : (speed > 0 ? "walking" : "still");
             api.sendPing(loc, speed > 0, speed, activityType);
