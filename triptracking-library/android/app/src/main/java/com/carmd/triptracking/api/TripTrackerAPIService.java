@@ -143,6 +143,7 @@ public final class TripTrackerAPIService {
             // Separate pings from endTrip
             JSONArray allLocations = new JSONArray();
             JSONObject pingTemplate = null;
+            List<String> endTripEntries = new ArrayList<>();
             List<String> pingEntries = new ArrayList<>();
 
             for (String entry : pendingQueue) {
