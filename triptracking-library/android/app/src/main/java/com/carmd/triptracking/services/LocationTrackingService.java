@@ -663,7 +663,7 @@ public class LocationTrackingService extends Service implements
                 + "m spd=" + loc.getSpeed() + " m/s");
         TripTrackerAPIService api = TripTrackerAPIService.getInstance();
         if (api != null && api.isEnabled()) {
-            float speed = loc.getSpeed();
+            float speed = getEffectiveSpeed();
             float threshold = AppSettings.getVehicleSpeed(getApplicationContext());
             String activityType = speed >= threshold ? "in_vehicle" : (speed > 0 ? "walking" : "still");
             api.sendPing(loc, speed > 0, speed, activityType);
@@ -1423,6 +1423,7 @@ public class LocationTrackingService extends Service implements
                             : speed >= 1.5f ? "running" : "walking";
                     Log.d(TAG, "Pedestrian ping @ " + SLOW_PING_DISTANCE_M + "m — activity=" + actType
                             + " speed=" + String.format("%.1f", speed) + " m/s");
+                    lastGpsLocation = lastSlowPingLocation;
                     TripTrackerAPIService.getInstance().sendPing(location, true, speed, actType);
                 }
             }
