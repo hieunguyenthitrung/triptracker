@@ -81,7 +81,7 @@ public class LocationTrackingService extends Service implements
             return;
         Log.d(TAG, "🛑 forceEndTrip called — ending trip #" + currentTripId);
 
-        // Send 3 final pings at speed=0
+        // Send final ping at speed=0
         Location finalLoc = getCurrentLocation();
         if (finalLoc != null) {
             TripTrackerAPIService.getInstance().sendPing(
@@ -90,7 +90,6 @@ public class LocationTrackingService extends Service implements
         }
 
         stopTracking();
-        TripTrackerAPIService.getInstance().flushQueue();
         Log.d(TAG, "🛑 Trip force-ended");
     }
 
