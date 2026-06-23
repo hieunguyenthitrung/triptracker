@@ -1849,9 +1849,9 @@ public class LocationTrackingService extends Service implements
     private void startMinimalForeground() {
         try {
             Notification n = new NotificationCompat.Builder(this, CHANNEL_ID)
-                    .setContentTitle("Trip Tracker")
-                    .setContentText("Initializing…")
-                    .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+                    //.setContentTitle("Trip Tracker")
+                    //.setContentText("Initializing…")
+                    //.setSmallIcon(android.R.drawable.ic_menu_mylocation)
                     .setOngoing(true)
                     .setPriority(NotificationCompat.PRIORITY_MIN)
                     .build();
