@@ -123,17 +123,22 @@ public class TripTrackerCapPlugin extends Plugin {
             if (!serviceBound) bindToServiceIfRunning();
         }
         // Ping server with current location when app returns to foreground.
-        if (TripTrackerSDK.isInitialized() && TripTrackerSDK.hasLocationPermission(getContext())
-                && trackingService != null) {
-            trackingService.requestCurrentLocation(15_000, new LocationTrackingService.LocationCallback() {
-                @Override public void onLocation(android.location.Location loc) {
-                    android.util.Log.d("TripTrackerCap", "handleOnResume — location pinged ("
-                            + loc.getLatitude() + ", " + loc.getLongitude() + ")");
-                }
-                @Override public void onError(String error) {
-                    android.util.Log.d("TripTrackerCap", "handleOnResume — location unavailable: " + error);
-                }
-            });
+        // Bind first if not yet bound, then post the ping so the bind has time to complete.
+        if (TripTrackerSDK.isInitialized() && TripTrackerSDK.hasLocationPermission(getContext())) {
+            if (!serviceBound) bindToServiceIfRunning();
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                LocationTrackingService svc = LocationTrackingService.getInstance();
+                if (svc == null) return;
+                svc.requestCurrentLocation(15_000, new LocationTrackingService.LocationCallback() {
+                    @Override public void onLocation(android.location.Location loc) {
+                        android.util.Log.d("TripTrackerCap", "foreground ping OK ("
+                                + loc.getLatitude() + ", " + loc.getLongitude() + ")");
+                    }
+                    @Override public void onError(String error) {
+                        android.util.Log.d("TripTrackerCap", "foreground ping failed: " + error);
+                    }
+                });
+            }, 500);
         }
     }
 
