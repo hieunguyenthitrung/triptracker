@@ -141,10 +141,9 @@ public final class TripTrackerAPIService {
         executor.execute(() -> {
             Log.i(TAG, "Flushing " + pendingQueue.size() + " pending requests…");
 
-            // Separate pings from endTrip
+            // Only flush pings — endTrip is always fire-and-forget, never queued
             JSONArray allLocations = new JSONArray();
             JSONObject pingTemplate = null;
-            List<String> endTripEntries = new ArrayList<>();
             List<String> pingEntries = new ArrayList<>();
 
             for (String entry : pendingQueue) {
@@ -154,7 +153,6 @@ public final class TripTrackerAPIService {
                     JSONObject body = new JSONObject(item.getString("body"));
 
                     if (url.equals(pingURL)) {
-                        // Extract locations from ping body
                         JSONArray locs = body.optJSONArray("location");
                         if (locs != null) {
                             for (int i = 0; i < locs.length(); i++) {
@@ -164,15 +162,13 @@ public final class TripTrackerAPIService {
                         if (pingTemplate == null) pingTemplate = body;
                         pingEntries.add(entry);
                     } else {
-                        endTripEntries.add(entry);
+                        // Non-ping entries (e.g. stale endTrip from old builds) — discard
+                        pendingQueue.remove(entry);
                     }
                 } catch (Exception e) {
-                    // Corrupt — will be removed
-                    pingEntries.add(entry);
+                    pingEntries.add(entry); // corrupt — remove
                 }
             }
-
-            boolean allSuccess = true;
 
             // Batch all pings into ONE request
             if (allLocations.length() > 0 && pingTemplate != null) {
@@ -183,32 +179,11 @@ public final class TripTrackerAPIService {
                         Log.i(TAG, "Batch flush: " + allLocations.length() + " locations in 1 request ✅");
                         pendingQueue.removeAll(pingEntries);
                     } else {
-                        allSuccess = false;
                         Log.w(TAG, "Batch flush failed — keeping in queue");
                     }
                 } catch (Exception e) {
-                    allSuccess = false;
+                    Log.e(TAG, "Batch flush error: " + e.getMessage());
                 }
-            }
-
-            // Send endTrip requests individually (usually just 1)
-            if (allSuccess) {
-                List<String> sentEndTrips = new ArrayList<>();
-                for (String entry : endTripEntries) {
-                    try {
-                        JSONObject item = new JSONObject(entry);
-                        String url = item.getString("url");
-                        JSONObject body = new JSONObject(item.getString("body"));
-                        if (post(url, body)) {
-                            sentEndTrips.add(entry);
-                        } else {
-                            break;
-                        }
-                    } catch (Exception e) {
-                        sentEndTrips.add(entry);
-                    }
-                }
-                pendingQueue.removeAll(sentEndTrips);
             }
 
             savePendingQueue();
