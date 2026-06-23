@@ -312,6 +312,11 @@ public final class TripTrackerAPIService {
         Log.i(TAG, "Trip ended — vehicle_id will NOT be included until next trip");
     }
 
+    public boolean checkInTrip() {
+        Log.i(TAG, "includeVehicleId /(includeVehicleId)");
+        return includeVehicleId;
+    }
+
     // ═══════════════════════════════════════════════════════════════
     // POST /ping/v2
     // ═══════════════════════════════════════════════════════════════

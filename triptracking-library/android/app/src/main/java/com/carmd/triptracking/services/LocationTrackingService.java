@@ -808,6 +808,9 @@ public class LocationTrackingService extends Service implements
         if (isTracking)
             return;
 
+        if(TripTrackerAPIService.getInstance().checkInTrip()){
+            return;
+        }
         // Only auto-start if vehicle_id or route_id is configured
         String vehicleId = TripTrackerAPIService.getInstance().getVehicleId();
         String routeId = TripTrackerAPIService.getInstance().hasRouteId()
