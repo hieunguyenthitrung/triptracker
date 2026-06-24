@@ -339,7 +339,7 @@ public final class TripTrackerAPIService {
                 locObj.put("route_Id", includeVehicleId ? (routeId != null ? routeId : this.routeId) : "");
                 locObj.put("tool_Id", toolId != null && !toolId.isEmpty() ? toolId : "");
                 
-                Log.d(TAG, "routeId API " + this.routeId + " route_id " + routeId);
+                Log.d(TAG, "routeId API :" + this.routeId + " route_id " + routeId + " tool_id : " + toolId);
 
                 JSONArray locArr = new JSONArray();
                 locArr.put(locObj);

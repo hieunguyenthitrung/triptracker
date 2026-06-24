@@ -163,6 +163,7 @@ public class LocationTrackingService extends Service implements
      * threshold.
      */
     private boolean activityRecognitionVehicle = false;
+    private long lastPingAndReturnMs = 0L;
 
     // ── GPS staleness ─────────────────────────────────────────────────────────
     private static final long GPS_STALE_MS = 10_000L; // speed starts decaying after this
@@ -667,12 +668,21 @@ public class LocationTrackingService extends Service implements
                 + "m spd=" + loc.getSpeed() + " m/s");
         TripTrackerAPIService api = TripTrackerAPIService.getInstance();
         if (api != null && api.isEnabled()) {
-            float speed = getEffectiveSpeed();
-            float threshold = AppSettings.getVehicleSpeed(getApplicationContext());
-            String activityType = speed >= threshold ? "in_vehicle" : (speed > 0 ? "walking" : "still");
-            api.sendPing(loc, speed > 0, speed, activityType);
-            Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: pinged (" + loc.getLatitude()
-                    + ", " + loc.getLongitude() + ") spd=" + speed + " m/s");
+            long now = System.currentTimeMillis();
+            long sincePing = now - lastPingAndReturnMs;
+            if (sincePing >= 5_000L) {
+                lastPingAndReturnMs = now;
+                float effective = getEffectiveSpeed();
+                float speed = effective > 0 ? effective : (loc.getSpeed() > 0 ? Float(loc.getSpeed()) : 0);
+                float threshold = AppSettings.getVehicleSpeed(getApplicationContext());
+                String activityType = speed >= threshold ? "in_vehicle"
+                        : (speed >= 1.5f ? "running" : (speed >= 0.5f ? "walking" : "still"));
+                api.sendPing(loc, speed > 0, speed, activityType);
+                Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: pinged (" + loc.getLatitude()
+                        + ", " + loc.getLongitude() + ") spd=" + speed + " m/s");
+            } else {
+                Log.d(TAG, "requestCurrentLocation: ping skipped (" + (sincePing / 1000) + "s since last ping)");
+            }
         }
         callback.onLocation(loc);
     }
@@ -812,7 +822,7 @@ public class LocationTrackingService extends Service implements
         if (isTracking)
             return;
 
-        if(TripTrackerAPIService.getInstance().checkInTrip()){
+        if (TripTrackerAPIService.getInstance().checkInTrip()) {
             return;
         }
         // Only auto-start if vehicle_id or route_id is configured
@@ -1427,7 +1437,7 @@ public class LocationTrackingService extends Service implements
                 if (shouldPing) {
                     lastSlowPingLocation = new Location(location);
                     String actType = speed >= 3.0f ? "on_bicycle"
-                            : speed >= 1.5f ? "running" : "walking";
+                            : speed >= 1.5f ? "running" : (speed >= 0.5f ? "walking" : "still");
                     Log.d(TAG, "Pedestrian ping @ " + SLOW_PING_DISTANCE_M + "m — activity=" + actType
                             + " speed=" + String.format("%.1f", speed) + " m/s");
                     lastGpsLocation = lastSlowPingLocation;
@@ -2230,7 +2240,7 @@ public class LocationTrackingService extends Service implements
             case DetectedActivity.ON_FOOT:
                 return "ON_FOOT";
             default:
-                return "UNKNOWN(" + activityType + ")";
+                return "STILL";
         }
     }
 
