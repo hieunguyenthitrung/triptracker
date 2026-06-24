@@ -2166,6 +2166,15 @@ public class LocationTrackingService extends Service implements
 
         // Track current activity type for pingAndReturn
         if (transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER) {
+            String lastKnownActivityType = "still";
+            switch (activityType) {
+                case DetectedActivity.IN_VEHICLE:  lastKnownActivityType = "in_vehicle";  break;
+                case DetectedActivity.ON_BICYCLE:  lastKnownActivityType = "on_bicycle";  break;
+                case DetectedActivity.RUNNING:     lastKnownActivityType = "running";     break;
+                case DetectedActivity.WALKING:     lastKnownActivityType = "walking";     break;
+                case DetectedActivity.STILL:       lastKnownActivityType = "still";       break;
+            }
+
             // Send ping when user starts walking, running, or cycling
             if (activityType == DetectedActivity.WALKING
                     || activityType == DetectedActivity.RUNNING
