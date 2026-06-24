@@ -3,7 +3,7 @@ package = JSON.parse(File.read(File.join(__dir__, 'package.json')))
 
 Pod::Spec.new do |s|
   s.name         = 'CapacitorTripTracker'
-  s.version          = '4.0.10'
+  s.version          = '4.0.11'
   s.summary      = 'TripTracking Capacitor Plugin'
   s.license      = 'MIT'
   s.author           = { 'Hieu Nguyen' => 'hieu.nguyen@sw.innova.com' }

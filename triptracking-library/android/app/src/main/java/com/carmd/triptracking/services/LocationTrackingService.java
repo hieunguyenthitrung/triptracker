@@ -539,7 +539,15 @@ public class LocationTrackingService extends Service implements
      * Cancels automatically after timeoutMs.
      */
     public void requestCurrentLocation(int timeoutMs, LocationCallback callback) {
-        
+        // Guard: permission and locationManager must be available before any access.
+        if (!hasLocationPermissions()) {
+            callback.onError("Location permission not granted");
+            return;
+        }
+        if (locationManager == null) {
+            callback.onError("LocationManager not initialized");
+            return;
+        }
         long now = System.currentTimeMillis();
         // Fast-path: use cached fix if:
         // acc ≤ 20m and age < 30s — high-quality fix, covers the common 5-6s gap
@@ -554,14 +562,6 @@ public class LocationTrackingService extends Service implements
             }
         }
 
-        if (!hasLocationPermissions()) {
-            Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: no location permission");
-            callback.onError("Location permission not granted");
-            return;
-        }
-        if(locationManager == nil){
-            return;
-        }
         if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
             Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: GPS provider not enabled");
             callback.onError("GPS provider not enabled");
