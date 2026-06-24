@@ -1745,7 +1745,13 @@ extension LocationTrackingService: CLLocationManagerDelegate {
         if source == .gps && lastMotionState != .automotive {
             lastMotionState = .automotive
         } else if source == .sensors && lastMotionState == .automotive {
-            lastMotionState = .still  // slowed down — will be refined by CMMotionActivity
+            // Speed dropped below vehicle threshold.
+            // If CMMotionActivity already reported walking/running/cycling, keep it.
+            // Only fall back to .still if activity confirms the device is not moving.
+            if !isMovingByActivity {
+                lastMotionState = .still
+            }
+            // else: lastMotionState will be .walking/.running/.cycling from handleMotionActivity
         }
 
         // ── Always update UI on every GPS fix (speed, source, accel, distance) ──
