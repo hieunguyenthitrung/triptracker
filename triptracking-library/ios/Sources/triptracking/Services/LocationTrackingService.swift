@@ -425,7 +425,7 @@ public class LocationTrackingService: NSObject {
         //   • accuracy ≤ 20m and age ≤ 30s  (high-quality recent fix — covers the ~5s gap seen in logs)
         //   • accuracy ≤ 50m and age ≤  5s  (acceptable fix, very fresh)
         if let cached = cached, acc > 0,
-           (acc <= 20 && age < 30) || (acc <= 50 && age < 5) {
+           (acc <= 20 && age < 60) || (acc <= 50 && age < 30) || (acc <= 100 && age < 10) {
             print("📍 TripTracker requestCurrentLocation — using cached fix acc:\(Int(acc))m age:\(Int(age))s")
             pingAndReturn(cached, completion: completion)
             return
@@ -1924,7 +1924,7 @@ extension LocationTrackingService: CLLocationManagerDelegate {
             location: clLoc,
             isMoving: safeSpeed > 0 ? true : false,
             speed: safeSpeed,
-            activityType: safeSpeed > 0 ? (activityType != "still" ? activityType : "in_vehicle") : "still",
+            activityType: activityType,
         )
     }
 }
