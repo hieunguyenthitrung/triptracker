@@ -455,10 +455,9 @@ public class LocationTrackingService: NSObject {
             self.currentLocationCompletion = nil
             self.currentLocationTimer = nil
             if !self.isTracking { self.locationManager.stopUpdatingLocation() }
-            // Fallback: use last known location if accuracy is acceptable (≤ 100m, ≤ 60s old)
+            // Fallback: use last known location if accuracy is acceptable (≤ 200m, any age)
             if let fallback = self.locationManager.location,
-               fallback.horizontalAccuracy > 0, fallback.horizontalAccuracy <= 100,
-               abs(fallback.timestamp.timeIntervalSinceNow) < 60 {
+               fallback.horizontalAccuracy > 0, fallback.horizontalAccuracy <= 200 {
                 print("📍 TripTracker requestCurrentLocation — timeout, using fallback acc:\(Int(fallback.horizontalAccuracy))m")
                 self.pingAndReturn(fallback, completion: cb)
             } else {
@@ -477,7 +476,7 @@ public class LocationTrackingService: NSObject {
     /// Called from didUpdateLocations to resolve a pending requestCurrentLocation.
     private func resolveCurrentLocationIfNeeded(_ location: CLLocation) {
         guard let cb = currentLocationCompletion else { return }
-        guard location.horizontalAccuracy > 0, location.horizontalAccuracy <= 50 else { return }
+        guard location.horizontalAccuracy > 0, location.horizontalAccuracy <= 100 else { return }
         currentLocationTimer?.invalidate()
         currentLocationTimer = nil
         currentLocationCompletion = nil
