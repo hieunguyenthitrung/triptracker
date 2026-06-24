@@ -2084,7 +2084,7 @@ extension LocationTrackingService: CLLocationManagerDelegate {
         // Distance gate — threshold depends on activity:
         //   vehicle (≥ 6 m/s)               → saveDistanceVehicleM (30m)
         //   walking / running / cycling      → slowPingDistanceM (200m)
-        let pingThreshold: Double = isSlowMoving ? slowPingDistanceM : saveDistanceVehicleM
+        let pingThreshold: Double = speed > 3 ? saveDistanceVehicleM : slowPingDistanceM
         if let lastPinged = lastPingedLocation {
             let distSinceLastPing = clLoc.distance(from: lastPinged)
             if distSinceLastPing < pingThreshold {
