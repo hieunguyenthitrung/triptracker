@@ -673,7 +673,7 @@ public class LocationTrackingService extends Service implements
             if (sincePing >= 5_000L) {
                 lastPingAndReturnMs = now;
                 float effective = getEffectiveSpeed();
-                float speed = effective > 0 ? effective : (loc.getSpeed() > 0 ? loc.getSpeed() : 0);
+                float speed = (loc.getSpeed() > 0 ? loc.getSpeed() : 0);
                 float threshold = AppSettings.getVehicleSpeed(getApplicationContext());
                 String activityType = speed >= threshold ? "in_vehicle"
                         : (speed >= 1.5f ? "running" : (speed >= 0.5f ? "walking" : "still"));
