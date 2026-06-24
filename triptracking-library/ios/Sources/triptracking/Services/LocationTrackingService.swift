@@ -133,6 +133,7 @@ public class LocationTrackingService: NSObject {
     /// Pending one-shot location request from requestCurrentLocation().
     private var currentLocationCompletion: ((CLLocation?, Error?) -> Void)?
     private var currentLocationTimer: Timer?
+    private var lastCurrentLocationTime: Date = .distantPast
 
     /// Distance threshold for pedestrian (walking/running/cycling) API pings.
     private let slowPingDistanceM: Double = 200.0
@@ -428,6 +429,17 @@ public class LocationTrackingService: NSObject {
             }
             return
         }
+
+        // Debounce: if called multiple times on foreground resume, only run once per 2s
+        let sinceLastCall = abs(lastCurrentLocationTime.timeIntervalSinceNow)
+        if sinceLastCall < 2.0 {
+            print("📍 TripTracker requestCurrentLocation — debounced (\(String(format:"%.1f", sinceLastCall))s since last call)")
+            if let cached = locationManager.location {
+                completion(cached, nil)
+            }
+            return
+        }
+        lastCurrentLocationTime = Date()
 
         let cached = locationManager.location
         let age = cached.map { abs($0.timestamp.timeIntervalSinceNow) } ?? Double.infinity
