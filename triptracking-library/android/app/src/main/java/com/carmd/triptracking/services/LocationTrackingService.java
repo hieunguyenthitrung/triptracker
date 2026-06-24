@@ -166,6 +166,8 @@ public class LocationTrackingService extends Service implements
      * threshold.
      */
     private boolean activityRecognitionVehicle = false;
+    /** Last activity type from Activity Recognition: "in_vehicle","walking","running","on_bicycle","still" */
+    private String lastKnownActivityType = "still";
 
     // ── GPS staleness ─────────────────────────────────────────────────────────
     private static final long GPS_STALE_MS = 10_000L; // speed starts decaying after this
@@ -661,8 +663,11 @@ public class LocationTrackingService extends Service implements
         if (api != null && api.isEnabled()) {
             // Use staleness-aware effective speed, not the cached loc.getSpeed() which may be stale
             float speed = getEffectiveSpeed();
-            float threshold = AppSettings.getVehicleSpeed(getApplicationContext());
-            String activityType = speed >= threshold ? "in_vehicle" : (speed > 0 ? "walking" : "still");
+            // Use Activity Recognition activity type; fall back to speed-only if still unknown
+            String activityType = lastKnownActivityType;
+            if (speed == 0 && !"still".equals(activityType)) {
+                activityType = "still";
+            }
             api.sendPing(loc, speed > 0, speed, activityType);
             Log.d(TAG, "requestCurrentLocation: pinged (" + loc.getLatitude() + ", " + loc.getLongitude() + ") spd=" + speed + " m/s");
         }
@@ -2104,6 +2109,17 @@ public class LocationTrackingService extends Service implements
         String transitionName = transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER ? "ENTER" : "EXIT";
 
         Log.i(TAG, "🏃 Activity: " + activityName + " → " + transitionName);
+
+        // Track current activity type for pingAndReturn
+        if (transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER) {
+            switch (activityType) {
+                case DetectedActivity.IN_VEHICLE:  lastKnownActivityType = "in_vehicle";  break;
+                case DetectedActivity.ON_BICYCLE:  lastKnownActivityType = "on_bicycle";  break;
+                case DetectedActivity.RUNNING:     lastKnownActivityType = "running";     break;
+                case DetectedActivity.WALKING:     lastKnownActivityType = "walking";     break;
+                case DetectedActivity.STILL:       lastKnownActivityType = "still";       break;
+            }
+        }
 
         // Emit to Ionic via Capacitor bridge
         Log.i(TAG, "emitMotionChange - " + activityName + " " + transitionName);
