@@ -317,8 +317,10 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
 
     /// Request a fresh GPS fix via LocationTrackingService.requestCurrentLocation().
     @objc func getCurrentLocation(_ call: CAPPluginCall) {
-        print("📍 TripTrackerPlugin getCurrentLocation — requesting fresh GPS fix from LocationTrackingService")
-        LocationTrackingService.shared.requestCurrentLocation(timeout: 15) { loc, error in
+        call.keepAlive = true
+        let timeout = call.getDouble("timeout") ?? 15.0
+        LocationTrackingService.shared.requestCurrentLocation(timeout: timeout) { loc, error in
+            defer { call.keepAlive = false }
             if let error = error {
                 call.reject(error.localizedDescription)
                 print("📍 TripTrackerPlugin getCurrentLocation — error: \(error.localizedDescription)")
