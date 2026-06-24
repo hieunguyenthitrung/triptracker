@@ -412,9 +412,11 @@ public class LocationTrackingService: NSObject {
                                        completion: @escaping (CLLocation?, Error?) -> Void) {
         // CLLocationManager and Timers must run on the main thread.
         // Guard here so callers can invoke this from any thread safely.
-        guard Thread.isMainThread else {
-            DispatchQueue.main.async { self.requestCurrentLocation(timeout: timeout, completion: completion) }
-            return
+        // Always run on main thread — CLLocationManager and Timer require it.
+        if !Thread.isMainThread {
+            DispatchQueue.main.async { [weak self] in
+                self?.requestCurrentLocation(timeout: timeout, completion: completion)
+            }
         }
 
         let cached = locationManager.location
@@ -475,12 +477,13 @@ public class LocationTrackingService: NSObject {
 
     private func pingAndReturn(_ location: CLLocation, completion: (CLLocation?, Error?) -> Void) {
         print("TripTrackerPlugin getCurrentLocation pingAndReturn")
-        let speed = Float(max(0, location.speed))
+        // Use staleness-aware effective speed, not location.speed which may be stale on a cached fix
+        let speed = effectiveSpeed()
         let apiSvc = TripTrackerAPIService.shared
         if apiSvc.isEnabled {
             let activityType = speed >= vehicleThreshold ? "in_vehicle" : (speed > 0 ? "walking" : "still")
             apiSvc.sendPing(location: location, isMoving: speed > 0, speed: speed, activityType: activityType)
-            print("📡 TripTrackerPlugin getCurrentLocation — pinged (\(location.coordinate.latitude), \(location.coordinate.longitude)) spd=\(String(format:"%.1f", speed)) m/s")
+            print("📡 TripTrackerPlugin requestCurrentLocation getCurrentLocation — pinged (\(location.coordinate.latitude), \(location.coordinate.longitude)) spd=\(String(format:"%.1f", speed)) m/s")
         }
         completion(location, nil)
     }
