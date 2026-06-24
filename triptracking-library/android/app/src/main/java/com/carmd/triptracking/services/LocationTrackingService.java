@@ -547,6 +547,16 @@ public class LocationTrackingService extends Service implements
             return;
         }
 
+        // Guard: permission and locationManager must be available before any access.
+        if (!hasLocationPermissions()) {
+            callback.onError("Location permission not granted");
+            return;
+        }
+        if (locationManager == null) {
+            callback.onError("LocationManager not initialized");
+            return;
+        }
+
         long now = System.currentTimeMillis();
         // Fast-path: use cached fix if:
         //   acc ≤ 20m and age < 30s  — high-quality fix, covers the common 5-6s gap
@@ -561,10 +571,6 @@ public class LocationTrackingService extends Service implements
             }
         }
 
-        if (!hasLocationPermissions()) {
-            callback.onError("Location permission not granted");
-            return;
-        }
         if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
             callback.onError("GPS provider not enabled");
             return;
