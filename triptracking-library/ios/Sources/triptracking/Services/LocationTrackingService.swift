@@ -430,13 +430,12 @@ public class LocationTrackingService: NSObject {
             return
         }
 
-        // Debounce: if called multiple times on foreground resume, only run once per 2s
+        // Debounce: if called multiple times on foreground resume, only run once per 2s.
+        // Return location silently — no ping, the first call already sent one.
         let sinceLastCall = abs(lastCurrentLocationTime.timeIntervalSinceNow)
         if sinceLastCall < 2.0 {
             print("📍 TripTracker requestCurrentLocation — debounced (\(String(format:"%.1f", sinceLastCall))s since last call)")
-            if let cached = locationManager.location {
-                pingAndReturn(cached, completion: completion)
-            }
+            completion(locationManager.location, locationManager.location == nil ? NSError(domain: "TripTracker", code: -1, userInfo: [NSLocalizedDescriptionKey: "No location available"]) : nil)
             return
         }
         lastCurrentLocationTime = Date()
