@@ -502,8 +502,10 @@ public class LocationTrackingService: NSObject {
     }
 
     private func pingAndReturn(_ location: CLLocation, completion: (CLLocation?, Error?) -> Void) {
-        // Use staleness-aware effective speed, not location.speed which may be stale on a cached fix
-        let speed = effectiveSpeed()
+        // Prefer effectiveSpeed() (GPS-silence-aware). If GPS has been silent >10s (background),
+        // fall back to location.speed from the fix itself — it was accurate when recorded.
+        let effective = effectiveSpeed()
+        let speed: Float = effective > 0 ? effective : (location.speed > 0 ? Float(location.speed) : 0)
         let apiSvc = TripTrackerAPIService.shared
         if apiSvc.isEnabled {
             let activityType = speed >= vehicleThreshold ? "in_vehicle" : (speed > 0 ? "walking" : "still")
