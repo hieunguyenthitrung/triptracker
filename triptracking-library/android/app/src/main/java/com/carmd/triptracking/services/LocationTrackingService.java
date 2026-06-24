@@ -2164,33 +2164,6 @@ public class LocationTrackingService extends Service implements
 
         Log.i(TAG, "🏃 Activity: " + activityName + " → " + transitionName);
 
-        // Track current activity type for pingAndReturn
-        if (transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER) {
-            String lastKnownActivityType = "still";
-            switch (activityType) {
-                case DetectedActivity.IN_VEHICLE:  lastKnownActivityType = "in_vehicle";  break;
-                case DetectedActivity.ON_BICYCLE:  lastKnownActivityType = "on_bicycle";  break;
-                case DetectedActivity.RUNNING:     lastKnownActivityType = "running";     break;
-                case DetectedActivity.WALKING:     lastKnownActivityType = "walking";     break;
-                case DetectedActivity.STILL:       lastKnownActivityType = "still";       break;
-            }
-
-            // Send ping when user starts walking, running, or cycling
-            if (activityType == DetectedActivity.WALKING
-                    || activityType == DetectedActivity.RUNNING
-                    || activityType == DetectedActivity.ON_BICYCLE) {
-                Location loc = getCurrentLocation();
-                if (loc != null) {
-                    TripTrackerAPIService api = TripTrackerAPIService.getInstance();
-                    if (api != null && api.isEnabled()) {
-                        float speed = getEffectiveSpeed();
-                        api.sendPing(loc, true, speed, lastKnownActivityType);
-                        Log.i(TAG, "📡 Activity ping: " + lastKnownActivityType + " spd=" + speed + " m/s");
-                    }
-                }
-            }
-        }
-
         // Emit to Ionic via Capacitor bridge
         Log.i(TAG, "emitMotionChange - " + activityName + " " + transitionName);
         emitMotionChange(activityName, transitionName);
