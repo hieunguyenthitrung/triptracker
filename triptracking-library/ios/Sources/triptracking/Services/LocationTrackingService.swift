@@ -542,7 +542,15 @@ public class LocationTrackingService: NSObject {
             effective > 0 ? effective : (location.speed > 0 ? Float(location.speed) : 0)
         let apiSvc = TripTrackerAPIService.shared
         if apiSvc.isEnabled {
-            let activityType = location.acti
+            let activityType: String
+            switch lastMotionState {
+            case .automotive:          activityType = "in_vehicle"
+            case .running:             activityType = "running"
+            case .cycling:             activityType = "on_bicycle"
+            case .walking:             activityType = "walking"
+            default:                   activityType = speed > 0 ? "walking" : "still"
+            }
+
             apiSvc.sendPing(
                 location: location, isMoving: speed > 0, speed: speed, activityType: activityType)
             print(
@@ -2088,11 +2096,11 @@ extension LocationTrackingService: CLLocationManagerDelegate {
         let safeSpeed = max(0, speed)
         let activityType: String
         switch lastMotionState {
-        case .still, .unknown: activityType = "still"
         case .walking: activityType = "walking"
         case .running: activityType = "running"
         case .cycling: activityType = "on_bicycle"
         case .automotive: activityType = "in_vehicle"
+        default: safeSpeed > 0 ? "walking" : "still"
         }
 
         print(
