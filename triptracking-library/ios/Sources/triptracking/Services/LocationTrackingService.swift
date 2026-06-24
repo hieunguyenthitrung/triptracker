@@ -435,7 +435,7 @@ public class LocationTrackingService: NSObject {
         if sinceLastCall < 2.0 {
             print("📍 TripTracker requestCurrentLocation — debounced (\(String(format:"%.1f", sinceLastCall))s since last call)")
             if let cached = locationManager.location {
-                completion(cached, nil)
+                pingAndReturn(cached, completion: completion)
             }
             return
         }
