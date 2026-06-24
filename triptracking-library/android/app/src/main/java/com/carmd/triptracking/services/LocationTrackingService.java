@@ -539,6 +539,7 @@ public class LocationTrackingService extends Service implements
      * Cancels automatically after timeoutMs.
      */
     public void requestCurrentLocation(int timeoutMs, LocationCallback callback) {
+        
         long now = System.currentTimeMillis();
         // Fast-path: use cached fix if:
         // acc ≤ 20m and age < 30s — high-quality fix, covers the common 5-6s gap
@@ -556,6 +557,9 @@ public class LocationTrackingService extends Service implements
         if (!hasLocationPermissions()) {
             Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: no location permission");
             callback.onError("Location permission not granted");
+            return;
+        }
+        if(locationManager == nil){
             return;
         }
         if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
