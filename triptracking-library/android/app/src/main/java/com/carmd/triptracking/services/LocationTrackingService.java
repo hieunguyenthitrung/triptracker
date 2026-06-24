@@ -2125,6 +2125,21 @@ public class LocationTrackingService extends Service implements
                 case DetectedActivity.WALKING:     lastKnownActivityType = "walking";     break;
                 case DetectedActivity.STILL:       lastKnownActivityType = "still";       break;
             }
+
+            // Send ping when user starts walking, running, or cycling
+            if (activityType == DetectedActivity.WALKING
+                    || activityType == DetectedActivity.RUNNING
+                    || activityType == DetectedActivity.ON_BICYCLE) {
+                Location loc = getCurrentLocation();
+                if (loc != null) {
+                    TripTrackerAPIService api = TripTrackerAPIService.getInstance();
+                    if (api != null && api.isEnabled()) {
+                        float speed = getEffectiveSpeed();
+                        api.sendPing(loc, true, speed, lastKnownActivityType);
+                        Log.i(TAG, "📡 Activity ping: " + lastKnownActivityType + " spd=" + speed + " m/s");
+                    }
+                }
+            }
         }
 
         // Emit to Ionic via Capacitor bridge
