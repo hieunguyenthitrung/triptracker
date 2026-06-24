@@ -421,10 +421,11 @@ public class LocationTrackingService: NSObject {
     /// ≤ 50 m, or calls back with an error after `timeout` seconds.
     public func requestCurrentLocation(timeout: Double = 8.0,
                                        completion: @escaping (CLLocation?, Error?) -> Void) {
-        // CLLocationManager and Timers must run on the main thread.
-        // Guard here so callers can invoke this from any thread safely.
-        guard Thread.isMainThread else {
-            DispatchQueue.main.async { self.requestCurrentLocation(timeout: timeout, completion: completion) }
+        // Always run on main thread — CLLocationManager and Timer require it.
+        if !Thread.isMainThread {
+            DispatchQueue.main.async { [weak self] in
+                self?.requestCurrentLocation(timeout: timeout, completion: completion)
+            }
             return
         }
 
