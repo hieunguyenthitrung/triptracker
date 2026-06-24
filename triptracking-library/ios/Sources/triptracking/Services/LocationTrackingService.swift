@@ -507,7 +507,14 @@ public class LocationTrackingService: NSObject {
         let speed: Float = effective > 0 ? effective : (location.speed > 0 ? Float(location.speed) : 0)
         let apiSvc = TripTrackerAPIService.shared
         if apiSvc.isEnabled {
-            let activityType = speed >= vehicleThreshold ? "in_vehicle" : (speed > 0 ? "walking" : "still")
+            let activityType: String
+            switch lastMotionState {
+            case .automotive:          activityType = "in_vehicle"
+            case .running:             activityType = "running"
+            case .cycling:             activityType = "on_bicycle"
+            case .walking:             activityType = "walking"
+            default:                   activityType = speed > 0 ? "walking" : "still"
+            }
             apiSvc.sendPing(location: location, isMoving: speed > 0, speed: speed, activityType: activityType)
             print("📡 TripTracker requestCurrentLocation — pinged (\(location.coordinate.latitude), \(location.coordinate.longitude)) spd=\(String(format:"%.1f", speed)) m/s")
         }
