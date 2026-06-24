@@ -419,7 +419,7 @@ public class LocationTrackingService: NSObject {
     /// Uses a dedicated CLLocationManager so it never interferes with the
     /// background tracking manager. Resolves on the first fix with accuracy
     /// ≤ 50 m, or calls back with an error after `timeout` seconds.
-    public func requestCurrentLocation(timeout: Double = 15.0,
+    public func requestCurrentLocation(timeout: Double = 8.0,
                                        completion: @escaping (CLLocation?, Error?) -> Void) {
         // CLLocationManager and Timers must run on the main thread.
         // Guard here so callers can invoke this from any thread safely.
@@ -432,11 +432,12 @@ public class LocationTrackingService: NSObject {
         let age = cached.map { abs($0.timestamp.timeIntervalSinceNow) } ?? Double.infinity
         let acc  = cached?.horizontalAccuracy ?? -1
 
-        // Use cached fix immediately if:
-        //   • accuracy ≤ 20m and age ≤ 30s  (high-quality recent fix — covers the ~5s gap seen in logs)
-        //   • accuracy ≤ 50m and age ≤  5s  (acceptable fix, very fresh)
+        // Use cached fix immediately if good enough — avoids GPS wait entirely:
+        //   • accuracy ≤ 20m, any age up to 60s   (high-quality fix)
+        //   • accuracy ≤ 50m, age ≤ 30s           (good fix, recent)
+        //   • accuracy ≤ 100m, age ≤ 10s          (acceptable fix, very fresh)
         if let cached = cached, acc > 0,
-           (acc <= 20 && age < 30) || (acc <= 50 && age < 5) {
+           (acc <= 20 && age < 60) || (acc <= 50 && age < 30) || (acc <= 100 && age < 10) {
             print("📍 TripTracker requestCurrentLocation — using cached fix acc:\(Int(acc))m age:\(Int(age))s")
             pingAndReturn(cached, completion: completion)
             return
