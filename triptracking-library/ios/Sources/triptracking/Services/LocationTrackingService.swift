@@ -2100,7 +2100,7 @@ extension LocationTrackingService: CLLocationManagerDelegate {
         case .running: activityType = "running"
         case .cycling: activityType = "on_bicycle"
         case .automotive: activityType = "in_vehicle"
-        default: safeSpeed > 0 ? "walking" : "still"
+        default: activityType = safeSpeed > 0 ? "walking" : "still"
         }
 
         print(
