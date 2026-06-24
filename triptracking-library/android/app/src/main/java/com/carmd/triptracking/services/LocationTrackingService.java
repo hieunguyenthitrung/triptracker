@@ -168,6 +168,7 @@ public class LocationTrackingService extends Service implements
     private boolean activityRecognitionVehicle = false;
     /** Last activity type from Activity Recognition: "in_vehicle","walking","running","on_bicycle","still" */
     private String lastKnownActivityType = "still";
+    private long lastPingAndReturnMs = 0L;
 
     // ── GPS staleness ─────────────────────────────────────────────────────────
     private static final long GPS_STALE_MS = 10_000L; // speed starts decaying after this
@@ -661,15 +662,20 @@ public class LocationTrackingService extends Service implements
         Log.d(TAG, "requestCurrentLocation: fix ok acc=" + loc.getAccuracy() + "m spd=" + loc.getSpeed() + " m/s");
         TripTrackerAPIService api = TripTrackerAPIService.getInstance();
         if (api != null && api.isEnabled()) {
-            // Use staleness-aware effective speed, not the cached loc.getSpeed() which may be stale
-            float speed = getEffectiveSpeed();
-            // Use Activity Recognition activity type; fall back to speed-only if still unknown
-            String activityType = lastKnownActivityType;
-            if (speed == 0 && !"still".equals(activityType)) {
-                activityType = "still";
+            long now = System.currentTimeMillis();
+            long sincePing = now - lastPingAndReturnMs;
+            if (sincePing >= 5_000L) {
+                lastPingAndReturnMs = now;
+                float speed = getEffectiveSpeed();
+                String activityType = lastKnownActivityType;
+                if (speed == 0 && !"still".equals(activityType)) {
+                    activityType = "still";
+                }
+                api.sendPing(loc, speed > 0, speed, activityType);
+                Log.d(TAG, "requestCurrentLocation: pinged (" + loc.getLatitude() + ", " + loc.getLongitude() + ") spd=" + speed + " m/s");
+            } else {
+                Log.d(TAG, "requestCurrentLocation: ping skipped (" + (sincePing / 1000) + "s since last ping)");
             }
-            api.sendPing(loc, speed > 0, speed, activityType);
-            Log.d(TAG, "requestCurrentLocation: pinged (" + loc.getLatitude() + ", " + loc.getLongitude() + ") spd=" + speed + " m/s");
         }
         callback.onLocation(loc);
     }
