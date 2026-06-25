@@ -164,6 +164,7 @@ public class LocationTrackingService extends Service implements
      */
     private boolean activityRecognitionVehicle = false;
     private long lastPingAndReturnMs = 0L;
+    private String lastKnownActivityType = "still";
 
     // ── GPS staleness ─────────────────────────────────────────────────────────
     private static final long GPS_STALE_MS = 10_000L; // speed starts decaying after this
@@ -682,7 +683,7 @@ public class LocationTrackingService extends Service implements
                 float threshold = AppSettings.getVehicleSpeed(getApplicationContext());
                 String activityType = speed >= threshold ? "in_vehicle"
                         : (speed >= 1.5f ? "running" : (speed >= 0.5f ? "walking" : "still"));
-                api.sendPing(loc, speed > 0, speed, activityType);
+                api.sendPing(loc, speed > 0, speed, lastKnownActivityType);
                 Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: pinged (" + loc.getLatitude()
                         + ", " + loc.getLongitude() + ") spd=" + speed + " m/s");
             } else {
@@ -2233,16 +2234,22 @@ public class LocationTrackingService extends Service implements
     public String getActivityName(int activityType) {
         switch (activityType) {
             case DetectedActivity.IN_VEHICLE:
+                lastKnownActivityType = "in_vehicle"
                 return "IN_VEHICLE";
             case DetectedActivity.ON_BICYCLE:
+                lastKnownActivityType = "on_bicycle";
                 return "ON_BICYCLE";
             case DetectedActivity.WALKING:
+                lastKnownActivityType = "walking"; 
                 return "WALKING";
             case DetectedActivity.RUNNING:
+                lastKnownActivityType = "running";
                 return "RUNNING";
             case DetectedActivity.STILL:
+                lastKnownActivityType = "still";
                 return "STILL";
             case DetectedActivity.ON_FOOT:
+                lastKnownActivityType = "walking";
                 return "ON_FOOT";
             default:
                 return "STILL";
@@ -2290,27 +2297,34 @@ public class LocationTrackingService extends Service implements
         try {
             Log.i(TAG, "emitMotionChange: " + activity + " - " + transition);
             String activityChangeString = "";
+            lastKnownActivityType = "still";
             switch (activity) {
                 case "IN_VEHICLE":
                     activityChangeString = "automotive";
+                    lastKnownActivityType = "in_vehicle"
                     break;
                 case "ON_BICYCLE":
                     activityChangeString = "cycling";
+                    lastKnownActivityType = "on_bicycle";
                     break;
                 case "WALKING":
                     activityChangeString = "walking";
+                    lastKnownActivityType = "walking"; 
                     break;
                 case "RUNNING":
                     activityChangeString = "running";
+                    lastKnownActivityType = "running";
                     break;
                 case "STILL":
                     activityChangeString = "still";
+                    lastKnownActivityType = "still";
                     break;
                 case "ON_FOOT":
                     activityChangeString = "walking";
+                    lastKnownActivityType = "walking";
                     break;
                 default:
-                    activityChangeString = "Unknown";
+                    activityChangeString = "still";
             }
 
             String motion = "";
