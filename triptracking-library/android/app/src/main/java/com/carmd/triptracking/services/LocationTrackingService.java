@@ -553,7 +553,7 @@ public class LocationTrackingService extends Service implements
         // Fast-path: use cached fix if:
         Location loc = getCurrentLocation();
         if(loc != null){
-            Log.d(TAG, "requestCurrentLocation: using cached fix acc=" + acc + "m age=" + age + "ms");
+            Log.d(TAG, "requestCurrentLocation: using cached fix speed =" + loc.getSpeed());
                 pingAndReturn(loc, callback);
                 return;
         }
