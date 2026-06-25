@@ -19,6 +19,12 @@ public struct TripTrackerAPIConfig {
 
     public var isConfigured: Bool { !pingURL.isEmpty && !endURL.isEmpty && !userId.isEmpty }
 
+        public init() {
+        let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "4.0.30"
+        self.osInfo = "iOS \(UIDevice.current.systemVersion) - \(appVersion)"
+    }
+
+
     public init(from dict: [String: Any]) {
         self.init()
         if let v = dict["pingURL"] as? String         { pingURL = v }
@@ -335,12 +341,9 @@ public final class TripTrackerAPIService {
             return
         }
 
-        let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "4.0.29"
-        self.osInfo = "\(config.osInfo) - \(appVersion)"
-
         var body: [String: Any] = [
             "user_Id": config.userId,
-            "os_Info": config.osInfo,
+            "os_Info": config.osInfo + self.osInfo,
             "location": [[
                 "is_Moving": isMoving,
                 "timestamp": ISO8601DateFormatter().string(from: Date()),
