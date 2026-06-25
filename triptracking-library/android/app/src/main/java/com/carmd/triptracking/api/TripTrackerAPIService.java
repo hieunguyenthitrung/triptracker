@@ -275,7 +275,7 @@ public final class TripTrackerAPIService {
                 android.content.pm.PackageInfo pi = ctx.getPackageManager()
                         .getPackageInfo(ctx.getPackageName(), 0);
                 String appVersion = pi.versionName;
-                this.osInfo = "Android " + Build.VERSION.RELEASE + " TripTracker/" + appVersion;
+                this.osInfo = osInfo + " - " + appVersion;
             }
         } catch (Exception e) {
             if (osInfo != null && !osInfo.isEmpty()) this.osInfo = osInfo;
