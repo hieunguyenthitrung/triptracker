@@ -2234,7 +2234,7 @@ public class LocationTrackingService extends Service implements
     public String getActivityName(int activityType) {
         switch (activityType) {
             case DetectedActivity.IN_VEHICLE:
-                lastKnownActivityType = "in_vehicle"
+                lastKnownActivityType = "in_vehicle";
                 return "IN_VEHICLE";
             case DetectedActivity.ON_BICYCLE:
                 lastKnownActivityType = "on_bicycle";
@@ -2301,7 +2301,7 @@ public class LocationTrackingService extends Service implements
             switch (activity) {
                 case "IN_VEHICLE":
                     activityChangeString = "automotive";
-                    lastKnownActivityType = "in_vehicle"
+                    lastKnownActivityType = "in_vehicle";
                     break;
                 case "ON_BICYCLE":
                     activityChangeString = "cycling";
