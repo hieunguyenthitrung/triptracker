@@ -397,11 +397,13 @@ public class LocationTrackingService: NSObject {
                 locationManager.startUpdatingLocation()
                 print("📡 TripTracker GPS ON → \(state.rawValue) (active trip — keeping Best/none to avoid gap)")
             } else {
-                // No active trip: pedestrian/cycling power profile is fine.
+                // No active trip: set distanceFilter to slowPingDistanceM so iOS wakes
+                // the app every 200m — matching the ping threshold exactly.
+                // 10m filter was unreliable in background (iOS batched/delayed to 500m gaps).
                 locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
-                locationManager.distanceFilter  = 10.0
+                locationManager.distanceFilter  = slowPingDistanceM   // 200m
                 locationManager.startUpdatingLocation()
-                print("📡 TripTracker GPS ON → \(state.rawValue): accuracy=10m filter=10m (survives termination)")
+                print("📡 TripTracker GPS ON → \(state.rawValue): accuracy=10m filter=\(Int(slowPingDistanceM))m (no trip — ping every 200m)")
             }
 
         case .automotive:
@@ -1980,11 +1982,9 @@ extension LocationTrackingService: CLLocationManagerDelegate {
         //   vehicle (≥ 6 m/s)               → saveDistanceVehicleM (30m)
         //   walking / running / cycling      → slowPingDistanceM (200m)
         let pingThreshold: Double = isSlowMoving ? slowPingDistanceM : saveDistanceVehicleM
-        if let lastPinged = lastPingedLocation {
-            let distSinceLastPing = clLoc.distance(from: lastPinged)
-            if distSinceLastPing < pingThreshold {
-                return
-            }
+        let distFromLast = lastPingedLocation.map { clLoc.distance(from: $0) }
+        if let dist = distFromLast, dist < pingThreshold {
+            return
         }
         lastPingedLocation = clLoc
 
@@ -1998,8 +1998,8 @@ extension LocationTrackingService: CLLocationManagerDelegate {
             case .cycling:            activityType = "on_bicycle"
             case .automotive:         activityType = "in_vehicle"
         }
-        
-        print("📡 TripTracker Sending ping — dist from last: \(String(format:"%.0f", lastPingedLocation.map { clLoc.distance(from: $0) } ?? 0))m")
+
+        print("📡 TripTracker Sending ping — dist from last: \(String(format:"%.0f", distFromLast ?? 0))m")
 
         TripTrackerAPIService.shared.sendPing(
             location: clLoc,
