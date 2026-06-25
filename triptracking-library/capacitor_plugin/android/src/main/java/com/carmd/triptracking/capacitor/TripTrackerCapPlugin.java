@@ -140,6 +140,8 @@ public class TripTrackerCapPlugin extends Plugin {
                 });
             }, 500);
         }
+        // Notify JS so it can re-run dongle/BLE logic that couldn't run while backgrounded
+        notifyListeners("appForeground", new com.getcapacitor.JSObject());
     }
 
     /** Bind to service if it's running. */

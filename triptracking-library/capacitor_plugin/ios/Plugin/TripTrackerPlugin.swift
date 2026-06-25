@@ -135,6 +135,8 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         if TripTrackerSDK.isInitialized {
             LocationTrackingService.shared.startBackgroundTracking()
         }
+        // Notify JS so it can re-run dongle/BLE logic that couldn't run while backgrounded
+        notifyListeners("appForeground", data: [:])
     }
 
     @objc private func handleAppDidEnterBackground() {
