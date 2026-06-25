@@ -33,7 +33,7 @@ public final class TripTrackerAPIService {
     private String endURL = "";
     private String userId = "";
     private String vehicleId = "";           // Optional
-    private String osInfo = "Android " + Build.VERSION.RELEASE + " TripTracker/" + com.carmd.triptracking.TripTrackerSDK.SDK_VERSION;
+    private String osInfo = "Android " + Build.VERSION.RELEASE;
     private String routeId = "";
     private String authorizationKey = "";
     private String apiAuthKey = "";          // Legacy
@@ -269,7 +269,19 @@ public final class TripTrackerAPIService {
         this.endURL = endURL != null ? endURL : "";
         this.userId = userId != null ? userId : "";
         this.vehicleId = vehicleId != null ? vehicleId : "";
-        if (osInfo != null && !osInfo.isEmpty()) this.osInfo = osInfo;
+        // Build osInfo with live app version so it updates automatically on every release
+        try {
+            android.content.Context ctx = com.carmd.triptracking.services.LocationTrackingService.getInstance();
+            if (ctx == null) ctx = android.app.Application.class.cast(null); // fallback handled below
+            if (ctx != null) {
+                android.content.pm.PackageInfo pi = ctx.getPackageManager()
+                        .getPackageInfo(ctx.getPackageName(), 0);
+                String appVersion = pi.versionName;
+                this.osInfo = "Android " + Build.VERSION.RELEASE + " TripTracker/" + appVersion;
+            }
+        } catch (Exception e) {
+            if (osInfo != null && !osInfo.isEmpty()) this.osInfo = osInfo;
+        }
         this.routeId = routeId != null ? routeId : "";
         this.authorizationKey = authorizationKey != null ? authorizationKey : "";
         this.apiAuthKey = apiAuthKey != null ? apiAuthKey : "";
