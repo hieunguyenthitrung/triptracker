@@ -340,11 +340,9 @@ public final class TripTrackerAPIService {
             return
         }
 
-        
-        let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "4.0.32"
         var body: [String: Any] = [
             "user_Id": config.userId,
-            "os_Info": config.osInfo + " - " + appVersion,
+            "os_Info": config.osInfo + " - " + "4.0.33",
             "location": [[
                 "is_Moving": isMoving,
                 "timestamp": ISO8601DateFormatter().string(from: Date()),
