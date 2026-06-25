@@ -33,7 +33,7 @@ public final class TripTrackerAPIService {
     private String endURL = "";
     private String userId = "";
     private String vehicleId = "";           // Optional
-    private String osInfo = "Android " + Build.VERSION.RELEASE;
+    private String osInfo = "Android " + Build.VERSION.RELEASE + " TripTracker/" + com.carmd.triptracking.TripTrackerSDK.SDK_VERSION;
     private String routeId = "";
     private String authorizationKey = "";
     private String apiAuthKey = "";          // Legacy

@@ -17,6 +17,7 @@ import com.carmd.triptracking.util.VoiceFeedback;
 
 public final class TripTrackerSDK {
     private static final String TAG = "TripTrackerSDK";
+    public static final String SDK_VERSION = "1.0.40";
     private static Context appContext;
     private static boolean initialized = false;
     private TripTrackerSDK() {}
