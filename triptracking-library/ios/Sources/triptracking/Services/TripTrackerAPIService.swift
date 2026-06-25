@@ -20,7 +20,7 @@ public struct TripTrackerAPIConfig {
     public var isConfigured: Bool { !pingURL.isEmpty && !endURL.isEmpty && !userId.isEmpty }
 
     public init() {
-        let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "4.0.27"
+        let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "4.0.28"
         self.osInfo = "iOS \(UIDevice.current.systemVersion) TripTracker/\(appVersion)"
     }
 
@@ -293,7 +293,6 @@ public final class TripTrackerAPIService {
                     // Network just dropped
                     print("⚠️ TripTracker Network lost")
                     self.isNetworkAvailable = false
-                    NotificationManager.shared.notifyNetworkLost()
                 }
             }
             // Run on main queue so callbacks fire when GPS wakes app in background
