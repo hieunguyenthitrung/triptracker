@@ -20,7 +20,7 @@ public struct TripTrackerAPIConfig {
     public var isConfigured: Bool { !pingURL.isEmpty && !endURL.isEmpty && !userId.isEmpty }
 
     public init() {
-        let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? TripTrackerSDK.sdkVersion
+        let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "4.0.27"
         self.osInfo = "iOS \(UIDevice.current.systemVersion) TripTracker/\(appVersion)"
     }
 
@@ -281,7 +281,6 @@ public final class TripTrackerAPIService {
                     // Network just came back
                     print("📡 TripTracker Network restored")
                     self.isNetworkAvailable = true
-                    NotificationManager.shared.notifyNetworkRestored()
                     if !self.pendingQueue.isEmpty {
                         print("📡 TripTracker API network restored — will flush in 3s")
                         DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
