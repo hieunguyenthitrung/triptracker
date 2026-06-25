@@ -84,6 +84,7 @@ public class LocationTrackingService extends Service implements
         // Send 3 final pings at speed=0
         Location finalLoc = getCurrentLocation();
         if (finalLoc != null) {
+            lastKnownActivityType = "still";
             TripTrackerAPIService.getInstance().sendPing(
                     finalLoc, false, 0f, "still", null);
             Log.d(TAG, "📡 Final ping before forced trip end");
@@ -338,6 +339,7 @@ public class LocationTrackingService extends Service implements
 
                 // Send one initial ping so server knows device position on app open
                 if (initLoc.getAccuracy() <= 50) {
+                    lastKnownActivityType = "still";
                     TripTrackerAPIService.getInstance().sendPing(
                             initLoc, false, 0f, "still", null);
                     Log.d(TAG, "📡 Initial ping sent on app open — " +
@@ -1450,6 +1452,7 @@ public class LocationTrackingService extends Service implements
                     Log.d(TAG, "Pedestrian ping @ " + SLOW_PING_DISTANCE_M + "m — activity=" + actType
                             + " speed=" + String.format("%.1f", speed) + " m/s");
                     lastGpsLocation = lastSlowPingLocation;
+                    lastKnownActivityType = actType;
                     TripTrackerAPIService.getInstance().sendPing(location, true, speed, actType);
                 }
             }
@@ -1560,6 +1563,7 @@ public class LocationTrackingService extends Service implements
             moving = false;
             activityType = "still";
         }
+        lastKnownActivityType = activityType;
         TripTrackerAPIService.getInstance().sendPing(location, moving, speed, activityType);
 
         Log.d(TAG, "Saved: source=" + sourceStr +
