@@ -551,116 +551,122 @@ public class LocationTrackingService extends Service implements
         }
         long now = System.currentTimeMillis();
         // Fast-path: use cached fix if:
+        Location loc = getCurrentLocation();
+        if(loc != null){
+            Log.d(TAG, "requestCurrentLocation: using cached fix acc=" + acc + "m age=" + age + "ms");
+                pingAndReturn(loc, callback);
+                return;
+        }
         // acc ≤ 20m and age < 30s — high-quality fix, covers the common 5-6s gap
         // acc ≤ 50m and age < 5s — acceptable fix, very fresh
-        if (lastGpsLocation != null && lastGpsLocation.getAccuracy() > 0) {
-            long age = now - lastGpsLocation.getTime();
-            float acc = lastGpsLocation.getAccuracy();
-            if ((acc <= 20f && age < 30_000L) || (acc <= 50f && age < 5_000L)) {
-                Log.d(TAG, "requestCurrentLocation: using cached fix acc=" + acc + "m age=" + age + "ms");
-                pingAndReturn(lastGpsLocation, callback);
-                return;
-            }
-        }
+        // if (lastGpsLocation != null && lastGpsLocation.getAccuracy() > 0) {
+        //     long age = now - lastGpsLocation.getTime();
+        //     float acc = lastGpsLocation.getAccuracy();
+        //     if ((acc <= 20f && age < 30_000L) || (acc <= 50f && age < 5_000L)) {
+        //         Log.d(TAG, "requestCurrentLocation: using cached fix acc=" + acc + "m age=" + age + "ms");
+        //         pingAndReturn(lastGpsLocation, callback);
+        //         return;
+        //     }
+        // }
 
-        if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-            Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: GPS provider not enabled");
-            callback.onError("GPS provider not enabled");
-            return;
-        }
+        // if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+        //     Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: GPS provider not enabled");
+        //     callback.onError("GPS provider not enabled");
+        //     return;
+        // }
 
-        android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
-        final boolean[] resolved = { false };
+        // android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+        // final boolean[] resolved = { false };
 
-        android.location.LocationListener listener = new android.location.LocationListener() {
-            @Override
-            public void onLocationChanged(@NonNull Location loc) {
-                if (resolved[0])
-                    return;
-                // Wait for an accurate fix
-                if (loc.getAccuracy() > 50) {
-                    Log.d(TAG, "TripTrackerPlugin getCurrentLocation equestCurrentLocation: inaccurate fix "
-                            + loc.getAccuracy() + "m — waiting");
-                    return;
-                }
-                Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: got accurate fix "
-                        + loc.getAccuracy() + "m — returning");
-                resolved[0] = true;
-                locationManager.removeUpdates(this);
-                handler.removeCallbacksAndMessages(null);
-                pingAndReturn(loc, callback);
-            }
+        // android.location.LocationListener listener = new android.location.LocationListener() {
+        //     @Override
+        //     public void onLocationChanged(@NonNull Location loc) {
+        //         if (resolved[0])
+        //             return;
+        //         // Wait for an accurate fix
+        //         if (loc.getAccuracy() > 50) {
+        //             Log.d(TAG, "TripTrackerPlugin getCurrentLocation equestCurrentLocation: inaccurate fix "
+        //                     + loc.getAccuracy() + "m — waiting");
+        //             return;
+        //         }
+        //         Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: got accurate fix "
+        //                 + loc.getAccuracy() + "m — returning");
+        //         resolved[0] = true;
+        //         locationManager.removeUpdates(this);
+        //         handler.removeCallbacksAndMessages(null);
+        //         pingAndReturn(loc, callback);
+        //     }
 
-            @Override
-            public void onProviderDisabled(@NonNull String provider) {
-                if (resolved[0])
-                    return;
-                resolved[0] = true;
-                locationManager.removeUpdates(this);
-                handler.removeCallbacksAndMessages(null);
-                Log.d(TAG,
-                        "TripTrackerPlugin getCurrentLocation requestCurrentLocation: GPS provider disabled during request");
-                callback.onError("GPS provider disabled");
-            }
-        };
+        //     @Override
+        //     public void onProviderDisabled(@NonNull String provider) {
+        //         if (resolved[0])
+        //             return;
+        //         resolved[0] = true;
+        //         locationManager.removeUpdates(this);
+        //         handler.removeCallbacksAndMessages(null);
+        //         Log.d(TAG,
+        //                 "TripTrackerPlugin getCurrentLocation requestCurrentLocation: GPS provider disabled during request");
+        //         callback.onError("GPS provider disabled");
+        //     }
+        // };
 
-        // Timeout — fall back through multiple location sources, then error
-        handler.postDelayed(() -> {
-            if (resolved[0])
-                return;
-            resolved[0] = true;
-            locationManager.removeUpdates(listener);
-            Log.d(TAG, "requestCurrentLocation: timed out after " + (timeoutMs / 1000) + "s — trying fallbacks");
+        // // Timeout — fall back through multiple location sources, then error
+        // handler.postDelayed(() -> {
+        //     if (resolved[0])
+        //         return;
+        //     resolved[0] = true;
+        //     locationManager.removeUpdates(listener);
+        //     Log.d(TAG, "requestCurrentLocation: timed out after " + (timeoutMs / 1000) + "s — trying fallbacks");
 
-            // Fallback 1: in-memory lastGpsLocation (any age, acc ≤ 200m)
-            if (lastGpsLocation != null && lastGpsLocation.getAccuracy() > 0
-                    && lastGpsLocation.getAccuracy() <= 200f) {
-                Log.d(TAG, "requestCurrentLocation: fallback1 lastGpsLocation acc="
-                        + lastGpsLocation.getAccuracy() + "m age="
-                        + (System.currentTimeMillis() - lastGpsLocation.getTime()) / 1000 + "s");
-                pingAndReturn(lastGpsLocation, callback);
-                return;
-            } else {
-                // Fallback 2: LocationManager last known GPS
-                try {
-                    Location lk = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-                    if (lk != null && lk.getAccuracy() > 0 && lk.getAccuracy() <= 200f) {
-                        Log.d(TAG, "requestCurrentLocation: fallback2 lastKnown GPS acc="
-                                + lk.getAccuracy() + "m");
-                        pingAndReturn(lk, callback);
-                        return;
-                    } else {
-                        // Fallback 3: network / passive provider
-                        try {
-                            Location net = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-                            if (net == null)
-                                net = locationManager.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER);
-                            if (net != null) {
-                                Log.d(TAG, "requestCurrentLocation: fallback3 network/passive acc="
-                                        + net.getAccuracy() + "m");
-                                pingAndReturn(net, callback);
-                                return;
-                            }
-                        } catch (SecurityException ignored) {
-                        }
-                    }
-                } catch (SecurityException ignored) {
-                }
-            }
+        //     // Fallback 1: in-memory lastGpsLocation (any age, acc ≤ 200m)
+        //     if (lastGpsLocation != null && lastGpsLocation.getAccuracy() > 0
+        //             && lastGpsLocation.getAccuracy() <= 200f) {
+        //         Log.d(TAG, "requestCurrentLocation: fallback1 lastGpsLocation acc="
+        //                 + lastGpsLocation.getAccuracy() + "m age="
+        //                 + (System.currentTimeMillis() - lastGpsLocation.getTime()) / 1000 + "s");
+        //         pingAndReturn(lastGpsLocation, callback);
+        //         return;
+        //     } else {
+        //         // Fallback 2: LocationManager last known GPS
+        //         try {
+        //             Location lk = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+        //             if (lk != null && lk.getAccuracy() > 0 && lk.getAccuracy() <= 200f) {
+        //                 Log.d(TAG, "requestCurrentLocation: fallback2 lastKnown GPS acc="
+        //                         + lk.getAccuracy() + "m");
+        //                 pingAndReturn(lk, callback);
+        //                 return;
+        //             } else {
+        //                 // Fallback 3: network / passive provider
+        //                 try {
+        //                     Location net = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+        //                     if (net == null)
+        //                         net = locationManager.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER);
+        //                     if (net != null) {
+        //                         Log.d(TAG, "requestCurrentLocation: fallback3 network/passive acc="
+        //                                 + net.getAccuracy() + "m");
+        //                         pingAndReturn(net, callback);
+        //                         return;
+        //                     }
+        //                 } catch (SecurityException ignored) {
+        //                 }
+        //             }
+        //         } catch (SecurityException ignored) {
+        //         }
+        //     }
 
-            callback.onError("getCurrentLocation timed out after " + (timeoutMs / 1000) + "s — no fallback available");
-        }, timeoutMs);
+        //     callback.onError("getCurrentLocation timed out after " + (timeoutMs / 1000) + "s — no fallback available");
+        // }, timeoutMs);
 
-        try {
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0L, 0f, listener,
-                    android.os.Looper.getMainLooper());
-            Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: waiting for GPS fix (timeout "
-                    + (timeoutMs / 1000) + "s)");
-        } catch (SecurityException e) {
-            handler.removeCallbacksAndMessages(null);
-            Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: GPS permission error");
-            callback.onError("GPS permission error: " + e.getMessage());
-        }
+        // try {
+        //     locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0L, 0f, listener,
+        //             android.os.Looper.getMainLooper());
+        //     Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: waiting for GPS fix (timeout "
+        //             + (timeoutMs / 1000) + "s)");
+        // } catch (SecurityException e) {
+        //     handler.removeCallbacksAndMessages(null);
+        //     Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: GPS permission error");
+        //     callback.onError("GPS permission error: " + e.getMessage());
+        // }
     }
 
     private void pingAndReturn(Location loc, LocationCallback callback) {
@@ -672,7 +678,6 @@ public class LocationTrackingService extends Service implements
             long sincePing = now - lastPingAndReturnMs;
             if (sincePing >= 5_000L) {
                 lastPingAndReturnMs = now;
-                float effective = getEffectiveSpeed();
                 float speed = (loc.getSpeed() > 0 ? loc.getSpeed() : 0);
                 float threshold = AppSettings.getVehicleSpeed(getApplicationContext());
                 String activityType = speed >= threshold ? "in_vehicle"
