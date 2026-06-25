@@ -19,7 +19,10 @@ public struct TripTrackerAPIConfig {
 
     public var isConfigured: Bool { !pingURL.isEmpty && !endURL.isEmpty && !userId.isEmpty }
 
-    public init() { self.osInfo = "iOS \(UIDevice.current.systemVersion)" }
+    public init() {
+        let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? TripTrackerSDK.sdkVersion
+        self.osInfo = "iOS \(UIDevice.current.systemVersion) TripTracker/\(appVersion)"
+    }
 
     public init(from dict: [String: Any]) {
         self.init()
@@ -265,19 +268,33 @@ public final class TripTrackerAPIService {
     // ═══════════════════════════════════════════════════════════════
 
     private var networkMonitor: Any?  // NWPathMonitor (stored as Any to avoid import issues)
+    private var isNetworkAvailable: Bool = true  // assume online until first update
 
     private func startNetworkMonitor() {
         if #available(iOS 12.0, *) {
             let monitor = NWPathMonitor()
             monitor.pathUpdateHandler = { [weak self] path in
-                if path.status == .satisfied && (self?.pendingQueue.isEmpty == false) {
-                    print("📡  TripTracker API network restored — will flush in 3s")
-                    // Use main queue — background utility queues get suspended by iOS
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
-                        guard self?.pendingQueue.isEmpty == false else { return }
-                        print("📡  TripTracker API flushing pending queue")
-                        self?.flushQueue()
+                guard let self = self else { return }
+                let nowAvailable = path.status == .satisfied
+
+                if nowAvailable && !self.isNetworkAvailable {
+                    // Network just came back
+                    print("📡 TripTracker Network restored")
+                    self.isNetworkAvailable = true
+                    NotificationManager.shared.notifyNetworkRestored()
+                    if !self.pendingQueue.isEmpty {
+                        print("📡 TripTracker API network restored — will flush in 3s")
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+                            guard self?.pendingQueue.isEmpty == false else { return }
+                            print("📡 TripTracker API flushing pending queue")
+                            self?.flushQueue()
+                        }
                     }
+                } else if !nowAvailable && self.isNetworkAvailable {
+                    // Network just dropped
+                    print("⚠️ TripTracker Network lost")
+                    self.isNetworkAvailable = false
+                    NotificationManager.shared.notifyNetworkLost()
                 }
             }
             // Run on main queue so callbacks fire when GPS wakes app in background
@@ -409,27 +426,42 @@ public final class TripTrackerAPIService {
     // ═══════════════════════════════════════════════════════════════
 
     private func postWithRetry(url: String, body: [String: Any], completion: ((Bool) -> Void)?) {
-        // If queue has old pings, flush them FIRST to maintain chronological order on server.
-        // Old pings must arrive before new ping.
-        // if !pendingQueue.isEmpty {
-        //     flushQueue()
-        // }
-        
-        // post(url: url, body: body) { [weak self] ok in
-        //     if !ok {
-        //         self?.enqueue(url: url, body: body)
-        //     }
-        //     completion?(ok)
-        // }
+        // Fast path: try to send immediately (async, non-blocking).
+        // Only fall back to the queue if the request fails — avoids the 65s delay
+        // caused by the old "always enqueue first, then flush" pattern where a slow
+        // flush session with waitsForConnectivity=true held everything up.
+        guard let urlObj = URL(string: url),
+              let httpBody = try? JSONSerialization.data(withJSONObject: body) else {
+            enqueue(url: url, body: body)
+            completion?(false)
+            return
+        }
 
-        // Always enqueue first, then flush. This guarantees strict FIFO order on the
-        // server regardless of network conditions — no more "send latest directly while
-        // old pings are still queued" race that produces out-of-order timestamps.
-        // flushQueue is a no-op while a flush is already in progress, so calling it
-        // here adds no overhead when network is healthy (items flush one after another).
-        enqueue(url: url, body: body)
-        completion?(true)   // item is safely persisted to queue
-        flushQueue()        // attempt delivery now; skipped silently if offline or flushing
+        var req = URLRequest(url: urlObj)
+        req.httpMethod = "POST"
+        req.httpBody = httpBody
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.cachePolicy = .reloadIgnoringLocalCacheData
+        if !config.authorizationKey.isEmpty { req.setValue(config.authorizationKey, forHTTPHeaderField: "AuthorizationKey") }
+        if !config.apiAuthKey.isEmpty      { req.setValue(config.apiAuthKey,       forHTTPHeaderField: "api-auth-key") }
+        if !config.apiAuthToken.isEmpty    { req.setValue(config.apiAuthToken,     forHTTPHeaderField: "api-auth-token") }
+
+        session.dataTask(with: req) { [weak self] _, response, error in
+            let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+            let ok = (200...299).contains(code)
+            if ok {
+                print("📡 TripTrackerAPI ping OK: \(body["user_Id"] ?? "") lat=\(((body["location"] as? [[String:Any]])?.first?["latitude"]) ?? "")")
+                completion?(true)
+                // If there are queued items from a prior offline period, flush them now
+                if self?.pendingQueue.isEmpty == false {
+                    self?.flushQueue()
+                }
+            } else {
+                print("📡 TripTrackerAPI ping FAILED (code=\(code)) — queuing for retry")
+                self?.enqueue(url: url, body: body)
+                completion?(false)
+            }
+        }.resume()
     }
 
     private func post(url: String, body: [String: Any], completion: ((Bool) -> Void)?) {
