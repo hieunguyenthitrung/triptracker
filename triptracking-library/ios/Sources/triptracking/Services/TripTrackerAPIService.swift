@@ -143,9 +143,8 @@ public final class TripTrackerAPIService {
         let flushConfig = URLSessionConfiguration.default
         flushConfig.timeoutIntervalForRequest = 15
         flushConfig.requestCachePolicy = .reloadIgnoringLocalCacheData
-        if #available(iOS 11.0, *) {
-            flushConfig.waitsForConnectivity = true
-        }
+        // Do NOT set waitsForConnectivity — flush must fail fast if offline
+        // so it doesn't block the background thread for 65+ seconds
         let flushSession = URLSession(configuration: flushConfig)
 
         DispatchQueue.global(qos: .utility).async { [weak self] in
@@ -424,14 +423,42 @@ public final class TripTrackerAPIService {
     // ═══════════════════════════════════════════════════════════════
 
     private func postWithRetry(url: String, body: [String: Any], completion: ((Bool) -> Void)?) {
-        // Always enqueue first, then flush. This guarantees strict FIFO order on the
-        // server regardless of network conditions — no more "send latest directly while
-        // old pings are still queued" race that produces out-of-order timestamps.
-        // flushQueue is a no-op while a flush is already in progress, so calling it
-        // here adds no overhead when network is healthy (items flush one after another).
-        enqueue(url: url, body: body)
-        completion?(true)   // item is safely persisted to queue
-        flushQueue()        // attempt delivery now; skipped silently if offline or flushing
+        // Fast path: try to send immediately (async, non-blocking).
+        // Only fall back to the queue if the request fails — avoids the 65s delay
+        // caused by the old "always enqueue first, then flush" pattern where a slow
+        // flush session with waitsForConnectivity=true held everything up.
+        guard let urlObj = URL(string: url),
+              let httpBody = try? JSONSerialization.data(withJSONObject: body) else {
+            enqueue(url: url, body: body)
+            completion?(false)
+            return
+        }
+
+        var req = URLRequest(url: urlObj)
+        req.httpMethod = "POST"
+        req.httpBody = httpBody
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.cachePolicy = .reloadIgnoringLocalCacheData
+        if !config.authorizationKey.isEmpty { req.setValue(config.authorizationKey, forHTTPHeaderField: "AuthorizationKey") }
+        if !config.apiAuthKey.isEmpty      { req.setValue(config.apiAuthKey,       forHTTPHeaderField: "api-auth-key") }
+        if !config.apiAuthToken.isEmpty    { req.setValue(config.apiAuthToken,     forHTTPHeaderField: "api-auth-token") }
+
+        session.dataTask(with: req) { [weak self] _, response, error in
+            let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+            let ok = (200...299).contains(code)
+            if ok {
+                print("📡 TripTrackerAPI ping OK: \(body["user_Id"] ?? "") lat=\(((body["location"] as? [[String:Any]])?.first?["latitude"]) ?? "")")
+                completion?(true)
+                // If there are queued items from a prior offline period, flush them now
+                if self?.pendingQueue.isEmpty == false {
+                    self?.flushQueue()
+                }
+            } else {
+                print("📡 TripTrackerAPI ping FAILED (code=\(code)) — queuing for retry")
+                self?.enqueue(url: url, body: body)
+                completion?(false)
+            }
+        }.resume()
     }
 
     private func post(url: String, body: [String: Any], completion: ((Bool) -> Void)?) {
