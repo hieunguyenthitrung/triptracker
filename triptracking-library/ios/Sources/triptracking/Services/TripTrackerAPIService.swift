@@ -19,7 +19,7 @@ public struct TripTrackerAPIConfig {
 
     public var isConfigured: Bool { !pingURL.isEmpty && !endURL.isEmpty && !userId.isEmpty }
 
-    public init() { self.osInfo = "iOS \(UIDevice.current.systemVersion)" }
+    public init() { self.osInfo = "iOS \(UIDevice.current.systemVersion) TripTracker/\(TripTrackerSDK.sdkVersion)" }
 
     public init(from dict: [String: Any]) {
         self.init()

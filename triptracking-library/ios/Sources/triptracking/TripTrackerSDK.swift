@@ -73,6 +73,8 @@ public struct TripTrackerConfig {
 
 public final class TripTrackerSDK {
 
+    public static let sdkVersion = "1.0.40"
+
     public static var webServer: LocationWebServer?
     private static var _initialized = false
     public static var isInitialized: Bool { _initialized }
