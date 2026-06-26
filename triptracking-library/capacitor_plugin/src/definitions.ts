@@ -205,14 +205,12 @@ export interface TripTrackerPlugin {
 
     /**
      * Fired every 30 seconds from the native location service.
-     * Wakes the WKWebView JS engine in background — use this to run
-     * BLE/dongle connection logic that can't execute while backgrounded.
+     * Wakes the WKWebView JS engine so Ionic code can run in background.
      */
     addListener(eventName: 'heartbeat', listener: (event: HeartbeatEvent) => void): Promise<PluginListenerHandle>;
 
     /**
      * Fired when the app returns to the foreground.
-     * Use this to re-run dongle/BLE logic that couldn't run while backgrounded.
      */
     addListener(eventName: 'appForeground', listener: () => void): Promise<PluginListenerHandle>;
 
