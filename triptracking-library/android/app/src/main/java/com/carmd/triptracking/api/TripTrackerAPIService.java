@@ -336,7 +336,7 @@ public final class TripTrackerAPIService {
                 locObj.put("longitude", location.getLongitude());
                 locObj.put("speed", speed);
                 locObj.put("activityType", activityType);
-                locObj.put("route_Id", toolId != null && !toolId.isEmpty() ? (routeId != null ? routeId : this.routeId ) : (includeVehicleId ? (routeId != null ? routeId : this.routeId) : ""));
+                locObj.put("route_Id", toolId != null && !toolId.isEmpty() ? this.vehicleId : (includeVehicleId ? vehicleId : ""));
                 locObj.put("tool_Id", toolId != null && !toolId.isEmpty() ? toolId : "");
                 
                 Log.d(TAG, "routeId API :" + this.routeId + " route_id " + routeId + " tool_id : " + toolId);
