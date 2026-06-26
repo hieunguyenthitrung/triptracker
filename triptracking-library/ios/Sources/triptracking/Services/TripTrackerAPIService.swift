@@ -351,8 +351,8 @@ public final class TripTrackerAPIService {
                 "longitude": location.coordinate.longitude,
                 "speed": speed,
                 "activityType": activityType,
-                "route_Id": includeVehicleId ? routeId ?? config.vehicleId : "",
-                "tool_Id": !config.toolId.isEmpty ? config.toolId : ""
+                "route_Id": config.toolId ? (routeId ? config.vehicleId : "") : (includeVehicleId ? routeId ?? config.vehicleId : ""),
+                "tool_Id": config.toolId ? config.toolId : ""
             ]]
         ]
         print("📡  TripTracker API ping route: \(body) (vehicleId included: \(includeVehicleId))")
@@ -378,11 +378,12 @@ public final class TripTrackerAPIService {
         let arr: [[String: Any]] = locations.map { loc, moving, spd, activity, ts in
             ["is_Moving": moving, "timestamp": fmt.string(from: ts),
              "latitude": loc.coordinate.latitude, "longitude": loc.coordinate.longitude,
-             "speed": spd, "activityType": activity, "route_Id": includeVehicleId ? routeId ?? config.vehicleId : "",
-             "tool_Id": !config.toolId.isEmpty ? config.toolId : ""
+             "speed": spd, "activityType": activity, 
+             "route_Id": config.toolId ? (routeId ? config.vehicleId : "") : (includeVehicleId ? routeId ?? config.vehicleId : ""),
+             "tool_Id": config.toolId ? config.toolId : ""
              ]
         }
-        print("📡  TripTracker API ping route sendPingBatch: \(includeVehicleId ? routeId ?? config.vehicleId : "") (vehicleId included: \(includeVehicleId))")
+        print("📡  TripTracker API ping route sendPingBatch: \(includeVehicleId ? routeId ?? config.vehicleId : "") (vehicleId included: \(includeVehicleId)) (toolId \(config.toolId))")
         var body: [String: Any] = ["user_Id": config.userId, "os_Info": config.osInfo, "location": arr]
         if includeVehicleId && !config.vehicleId.isEmpty {
             body["vehicle_Id"] = config.vehicleId
@@ -407,7 +408,7 @@ public final class TripTrackerAPIService {
             "user_Id": config.userId,
             "timestamp": ISO8601DateFormatter().string(from: Date()),
             "latitude": location.coordinate.latitude,
-            "longitude": location.coordinate.longitude
+            "longitude": location.coordinate.longitude,
         ]
         // Fire-and-forget — trip-end is never queued or retried.
         // Queueing it would risk re-sending a trip-end for an already-closed trip

@@ -336,7 +336,7 @@ public final class TripTrackerAPIService {
                 locObj.put("longitude", location.getLongitude());
                 locObj.put("speed", speed);
                 locObj.put("activityType", activityType);
-                locObj.put("route_Id", includeVehicleId ? (routeId != null ? routeId : this.routeId) : "");
+                locObj.put("route_Id", toolId != null && !toolId.isEmpty() ? (routeId != null ? routeId : this.routeId ) : (includeVehicleId ? (routeId != null ? routeId : this.routeId) : ""));
                 locObj.put("tool_Id", toolId != null && !toolId.isEmpty() ? toolId : "");
                 
                 Log.d(TAG, "routeId API :" + this.routeId + " route_id " + routeId + " tool_id : " + toolId);
@@ -380,7 +380,6 @@ public final class TripTrackerAPIService {
             try {
                 JSONObject body = new JSONObject();
                 body.put("user_Id", userId);
-                body.put("route_Id", routeId);
                 body.put("os_Info", osInfo);
                 body.put("timestamp", isoNow());
                 body.put("latitude", location.getLatitude());
