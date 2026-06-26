@@ -688,7 +688,7 @@ public class LocationTrackingService extends Service implements
                 float threshold = AppSettings.getVehicleSpeed(getApplicationContext());
                 String activityType = speed >= threshold ? "in_vehicle"
                         : (speed >= 1.5f ? "running" : (speed >= 0.5f ? "walking" : "still"));
-                api.sendPing(loc, speed > 0, speed, lastKnownActivityType);
+                api.sendPing(loc, false, 0, "still");
                 Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: pinged (" + loc.getLatitude()
                         + ", " + loc.getLongitude() + ") spd=" + speed + " m/s");
             } else {
