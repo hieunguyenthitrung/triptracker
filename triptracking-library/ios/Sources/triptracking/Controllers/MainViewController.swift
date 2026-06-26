@@ -1244,6 +1244,10 @@ extension MainViewController: LocationUpdateDelegate {
 
     public func didChangeActivity(activity: String, transition: String){
     }
+
+    public func didHeartbeat(timestamp: Int64) {
+        // No-op in native UI — heartbeat is only needed by the JS bridge
+    }
 }
 
 // MARK: - MKMapViewDelegate

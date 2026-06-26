@@ -50,6 +50,8 @@ public protocol LocationUpdateDelegate: AnyObject {
     /// activity:   "Still" | "Walking" | "Running" | "Cycling" | "Automotive"
     /// transition: always "MOTION" on iOS (CMMotionActivity has no ENTER/EXIT)
     func didChangeActivity(activity: String, transition: String)
+    /// Fired every 30s from LocationTrackingService — wakes WKWebView JS engine in background.
+    func didHeartbeat(timestamp: Int64)
 }
 
 public class LocationTrackingService: NSObject {
@@ -226,6 +228,7 @@ public class LocationTrackingService: NSObject {
 
     // MARK: - Timers / background task
     private var periodicTimer:  Timer?
+    private var heartbeatTimer: Timer?
     private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
 
     // MARK: - Motion state
@@ -570,6 +573,7 @@ public class LocationTrackingService: NSObject {
         startPeriodicSaveTimer()
         startPedometer()
         startActivityMonitor()
+        startHeartbeat()
         print("✅ TripTracker Background tracking started (GPS Best until first fix)")
     }
 
@@ -1197,6 +1201,22 @@ public class LocationTrackingService: NSObject {
         }
         RunLoop.main.add(timer, forMode: .common)
         periodicTimer = timer
+    }
+
+    func startHeartbeat() {
+        if !Thread.isMainThread {
+            DispatchQueue.main.async { self.startHeartbeat() }
+            return
+        }
+        heartbeatTimer?.invalidate()
+        let timer = Timer(timeInterval: 30.0, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            let ts = Int64(Date().timeIntervalSince1970 * 1000)
+            self.delegate?.didHeartbeat(timestamp: ts)
+            print("💓 TripTracker heartbeat → JS wake (\(ts))")
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        heartbeatTimer = timer
     }
 
     private var lastHeartbeatTime: Date = .distantPast
