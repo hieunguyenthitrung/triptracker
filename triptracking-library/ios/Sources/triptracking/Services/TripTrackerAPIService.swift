@@ -350,7 +350,7 @@ public final class TripTrackerAPIService {
                 "longitude": location.coordinate.longitude,
                 "speed": speed,
                 "activityType": activityType,
-                "route_Id": config.toolId.isEmpty ? config.vehicleId : (includeVehicleId ? config.vehicleId : ""),
+                "route_Id": !config.toolId.isEmpty ? config.vehicleId : (includeVehicleId ? config.vehicleId : ""),
                 "tool_Id": !config.toolId.isEmpty ? config.toolId : ""
             ]]
         ]
@@ -378,7 +378,7 @@ public final class TripTrackerAPIService {
             ["is_Moving": moving, "timestamp": fmt.string(from: ts),
              "latitude": loc.coordinate.latitude, "longitude": loc.coordinate.longitude,
              "speed": spd, "activityType": activity, 
-             "route_Id": onfig.toolId.isEmpty ? config.vehicleId : (includeVehicleId ? config.vehicleId : ""),
+             "route_Id": !config.toolId.isEmpty ? config.vehicleId : (includeVehicleId ? config.vehicleId : ""),
              "tool_Id": !config.toolId.isEmpty ? config.toolId : ""
              ]
         }
