@@ -66,11 +66,11 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
     private var lastHeartbeatDate: Date?
     private var heartbeatWatchdog: Timer?
     private var nativeHeartbeatTimer: Timer?
-    private static let heartbeatTimeoutSecs: Double = 120  // warn after 2 min JS silence
+    private static let heartbeatTimeoutSecs: Double = 30  // warn after 2 min JS silence
 
     private func startHeartbeatWatchdog() {
         heartbeatWatchdog?.invalidate()
-        heartbeatWatchdog = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+        heartbeatWatchdog = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in
             guard let self = self else { return }
             if let last = self.lastHeartbeatDate {
                 let silent = -last.timeIntervalSinceNow
@@ -86,7 +86,7 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         // so Ionic code (BLE/dongle connect, etc.) can run even when app is backgrounded.
         // Same technique used by transistorsoft background-geolocation plugin.
         nativeHeartbeatTimer?.invalidate()
-        nativeHeartbeatTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+        nativeHeartbeatTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in
             guard let self = self else { return }
             self.notifyListeners("heartbeat", data: [
                 "timestamp": Int64(Date().timeIntervalSince1970 * 1000)
