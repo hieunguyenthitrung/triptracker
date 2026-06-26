@@ -173,6 +173,13 @@ export interface TripTrackerPlugin {
     /** Listen for stats updates (speed, distance, duration) */
     addListener(eventName: 'statsUpdate', listener: (event: StatsUpdateEvent) => void): Promise<PluginListenerHandle>;
 
+    /**
+     * Fired every 30 seconds from the native location service.
+     * Wakes the WKWebView JS engine in background — use this to run
+     * BLE/dongle connection logic that can't execute while backgrounded.
+     */
+    addListener(eventName: 'heartbeat', listener: (event: HeartbeatEvent) => void): Promise<PluginListenerHandle>;
+
     /** Remove all listeners for a given event */
     removeAllListeners(): Promise<void>;
 }
@@ -350,4 +357,8 @@ export interface StatsUpdateEvent {
     speedKmh: number;
     distance: number;     // meters
     duration: number;     // seconds
+}
+
+export interface HeartbeatEvent {
+    timestamp: number;    // Unix timestamp in milliseconds
 }
