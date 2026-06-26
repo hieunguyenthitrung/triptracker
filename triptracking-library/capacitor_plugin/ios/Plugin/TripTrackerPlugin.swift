@@ -184,6 +184,7 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         if let v = call.getString("authorizationKey")       { config.authorizationKey = v }
         if let v = call.getString("apiAuthKey")             { config.apiAuthKey = v }
         if let v = call.getString("apiAuthToken")           { config.apiAuthToken = v }
+        if let v = call.getString("toolId")                 { config.toolId = v }
 
         TripTrackerSDK.initialize(config: config)
 

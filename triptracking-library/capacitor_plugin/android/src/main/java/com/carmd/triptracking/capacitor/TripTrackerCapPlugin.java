@@ -310,6 +310,8 @@ public class TripTrackerCapPlugin extends Plugin {
         if (apiAuth != null) config.apiAuthKey = apiAuth;
         String apiAuthTok = call.getString("apiAuthToken");
         if (apiAuthTok != null) config.apiAuthToken = apiAuthTok;
+        String toolId = call.getString("toolId");
+        if (toolId != null) config.toolId = toolId;
 
         TripTrackerSDK.initialize(getContext(), config);
 
