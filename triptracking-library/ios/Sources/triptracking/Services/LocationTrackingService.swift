@@ -472,38 +472,38 @@ public class LocationTrackingService: NSObject {
         }
 
         // Cancel any previous pending request
-        currentLocationTimer?.invalidate()
-        currentLocationTimer = nil
-        currentLocationCompletion = nil
-        currentLocationCompletion = completion
+        // currentLocationTimer?.invalidate()
+        // currentLocationTimer = nil
+        // currentLocationCompletion = nil
+        // currentLocationCompletion = completion
 
         // Use Timer(timeInterval:) + RunLoop.main.add() so the timer always fires on the main
         // run loop regardless of which thread called requestCurrentLocation.
-        let timer = Timer(timeInterval: timeout, repeats: false) { [weak self] _ in
-            guard let self = self, let cb = self.currentLocationCompletion else { return }
-            self.currentLocationCompletion = nil
-            self.currentLocationTimer = nil
-            // Fallback: use last known location if accuracy is acceptable (≤ 100m, ≤ 60s old)
-            if let fallback = self.locationManager.location,
-                fallback.horizontalAccuracy > 0, fallback.horizontalAccuracy <= 200
-            {
-                print(
-                    "📍 TripTracker requestCurrentLocation — timeout, using fallback acc:\(Int(fallback.horizontalAccuracy))m"
-                )
-                self.pingAndReturn(fallback, completion: cb)
-            } else {
-                print("📍 requestCurrentLocation getCurrentLocation timed out after ")
-                cb(
-                    nil,
-                    NSError(
-                        domain: "TripTracker", code: -1,
-                        userInfo: [
-                            NSLocalizedDescriptionKey:
-                                "requestCurrentLocation getCurrentLocation timed out after \(Int(timeout))s"
-                        ]))
-            }
-        }
-        RunLoop.main.add(timer, forMode: .common)
+        // let timer = Timer(timeInterval: timeout, repeats: false) { [weak self] _ in
+        //     guard let self = self, let cb = self.currentLocationCompletion else { return }
+        //     self.currentLocationCompletion = nil
+        //     self.currentLocationTimer = nil
+        //     // Fallback: use last known location if accuracy is acceptable (≤ 100m, ≤ 60s old)
+        //     if let fallback = self.locationManager.location,
+        //         fallback.horizontalAccuracy > 0, fallback.horizontalAccuracy <= 200
+        //     {
+        //         print(
+        //             "📍 TripTracker requestCurrentLocation — timeout, using fallback acc:\(Int(fallback.horizontalAccuracy))m"
+        //         )
+        //         self.pingAndReturn(fallback, completion: cb)
+        //     } else {
+        //         print("📍 requestCurrentLocation getCurrentLocation timed out after ")
+        //         cb(
+        //             nil,
+        //             NSError(
+        //                 domain: "TripTracker", code: -1,
+        //                 userInfo: [
+        //                     NSLocalizedDescriptionKey:
+        //                         "requestCurrentLocation getCurrentLocation timed out after \(Int(timeout))s"
+        //                 ]))
+        //     }
+        // }
+        // RunLoop.main.add(timer, forMode: .common)
         currentLocationTimer = timer
 
         // startUpdatingLocation() keeps delivering fixes until one passes the accuracy gate.
@@ -517,9 +517,9 @@ public class LocationTrackingService: NSObject {
         // print("TripTrackerPlugin getCurrentLocation resolveCurrentLocationIfNeeded")
         guard let cb = currentLocationCompletion else { return }
         guard location.horizontalAccuracy > 0, location.horizontalAccuracy <= 100 else { return }
-        currentLocationTimer?.invalidate()
-        currentLocationTimer = nil
-        currentLocationCompletion = nil
+        // currentLocationTimer?.invalidate()
+        // currentLocationTimer = nil
+        // currentLocationCompletion = nil
         pingAndReturn(location, completion: cb)
     }
 
@@ -1952,9 +1952,9 @@ extension LocationTrackingService: CLLocationManagerDelegate {
         print("❌ TripTracker Location error: \(error.localizedDescription)")
         // GPS failed — sensor dead reckoning continues automatically; no action needed// Reject any pending requestCurrentLocation on GPS failure
         if let cb = currentLocationCompletion {
-            currentLocationTimer?.invalidate()
-            currentLocationTimer = nil
-            currentLocationCompletion = nil
+            // currentLocationTimer?.invalidate()
+            // currentLocationTimer = nil
+            // currentLocationCompletion = nil
             cb(nil, error)
         }
 
