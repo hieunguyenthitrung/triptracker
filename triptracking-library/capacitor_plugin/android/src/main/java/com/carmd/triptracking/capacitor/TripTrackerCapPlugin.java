@@ -292,6 +292,23 @@ public class TripTrackerCapPlugin extends Plugin {
         boolean permGranted = TripTrackerSDK.hasLocationPermission(getContext());
         bindToServiceIfRunning();
 
+        // Request current location shortly after init so first ping fires immediately
+        if (permGranted) {
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                LocationTrackingService svc = LocationTrackingService.getInstance();
+                if (svc == null) return;
+                svc.requestCurrentLocation(15_000, new LocationTrackingService.LocationCallback() {
+                    @Override public void onLocation(android.location.Location loc) {
+                        android.util.Log.d("TripTrackerCap", "init ping OK ("
+                                + loc.getLatitude() + ", " + loc.getLongitude() + ")");
+                    }
+                    @Override public void onError(String error) {
+                        android.util.Log.d("TripTrackerCap", "init ping failed: " + error);
+                    }
+                });
+            }, 1_000);
+        }
+
         JSObject ret = new JSObject();
         ret.put("initialized", true);
         ret.put("permissionGranted", permGranted);
