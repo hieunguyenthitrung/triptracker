@@ -369,13 +369,16 @@ public class LocationTrackingService: NSObject {
                 locationManager.startUpdatingLocation()
                 print("📡 TripTracker GPS BEST — still during active trip (keeping full accuracy)")
             } else if appTerminated {
-                // TERMINATED RELAUNCH + NO TRIP: Stop GPS to save battery.
-                // Significant location changes (~500m) + visits will relaunch app.
-                locationManager.stopUpdatingLocation()
+                // TERMINATED RELAUNCH + NO TRIP: Use lowest-power GPS mode.
+                // 3km accuracy + significant changes + visits keeps process alive
+                // so heartbeat timer can fire, while using minimal battery.
+                locationManager.desiredAccuracy = kCLLocationAccuracyThreeKilometers
+                locationManager.distanceFilter  = 500
+                locationManager.startUpdatingLocation()
                 locationManager.startMonitoringSignificantLocationChanges()
                 locationManager.startMonitoringVisits()
                 lastGPSLocation = nil
-                print("📡 TripTracker GPS STOPPED — still/no trip/terminated (significant changes + visits will relaunch)")
+                print("📡 TripTracker GPS MINIMAL — still/no trip/terminated (3km accuracy, 500m filter, heartbeat alive)")
             } else {
                 // FOREGROUND/BACKGROUND + NO TRIP + STILL:
                 // Keep GPS at low-power with distance filter to reduce callbacks
