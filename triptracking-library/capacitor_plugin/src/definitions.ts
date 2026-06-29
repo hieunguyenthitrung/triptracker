@@ -172,6 +172,16 @@ export interface TripTrackerPlugin {
   updateToolId(options: { toolId: string }): Promise<{ updated: boolean; toolId: string }>;
 
   /**
+   * Register a BLE device UUID for native background reconnection (iOS).
+   * The native SDK will scan and reconnect automatically in background,
+   * then emit a bleConnect event when the device is found.
+   */
+  registerBLEDevice(options: { uuid: string }): Promise<{ registered: boolean; uuid: string }>;
+
+  /** Remove a BLE device UUID from background reconnection. */
+  unregisterBLEDevice(options: { uuid: string }): Promise<{ unregistered: boolean; uuid: string }>;
+
+  /**
    * JS heartbeat — call this every 30s from your Ionic app so the native SDK
    * can detect when the JS layer goes silent (webview crash, JS error, etc.).
    * When the native side doesn't receive a heartbeat for 2+ minutes it logs a
@@ -213,6 +223,12 @@ export interface TripTrackerPlugin {
      * Fired when the app returns to the foreground.
      */
     addListener(eventName: 'appForeground', listener: () => void): Promise<PluginListenerHandle>;
+
+    /** Fired when a registered BLE device connects (native background reconnect, iOS). */
+    addListener(eventName: 'bleConnect', listener: (event: BLEEvent) => void): Promise<PluginListenerHandle>;
+
+    /** Fired when a registered BLE device disconnects. */
+    addListener(eventName: 'bleDisconnect', listener: (event: BLEEvent) => void): Promise<PluginListenerHandle>;
 
     /** Remove all listeners for a given event */
     removeAllListeners(): Promise<void>;
@@ -397,4 +413,9 @@ export interface StatsUpdateEvent {
 
 export interface HeartbeatEvent {
     timestamp: number;    // Unix timestamp in milliseconds
+}
+
+export interface BLEEvent {
+    deviceId: string;     // BLE peripheral UUID
+    deviceName: string;   // BLE peripheral name (may be empty)
 }

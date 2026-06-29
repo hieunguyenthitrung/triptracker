@@ -57,6 +57,8 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         CAPPluginMethod(name: "setFakeRoute", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "startFakeRoute", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "stopFakeRoute", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "registerBLEDevice", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "unregisterBLEDevice", returnType: CAPPluginReturnPromise),
     ]
 
     // ═══════════════════════════════════════════════════════════════
@@ -213,6 +215,24 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         }
         TripTrackerSDK.updateToolId(toolId)
         call.resolve(["updated": true, "toolId": toolId])
+    }
+
+    @objc func registerBLEDevice(_ call: CAPPluginCall) {
+        guard let uuid = call.getString("uuid") else {
+            call.reject("Missing 'uuid'")
+            return
+        }
+        TripTrackerSDK.registerBLEDevice(uuid: uuid)
+        call.resolve(["registered": true, "uuid": uuid])
+    }
+
+    @objc func unregisterBLEDevice(_ call: CAPPluginCall) {
+        guard let uuid = call.getString("uuid") else {
+            call.reject("Missing 'uuid'")
+            return
+        }
+        TripTrackerSDK.unregisterBLEDevice(uuid: uuid)
+        call.resolve(["unregistered": true, "uuid": uuid])
     }
 
     /// Check if location permission is granted.
@@ -739,6 +759,19 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
     public func didHeartbeat(timestamp: Int64) {
         notifyListeners("heartbeat", data: [
             "timestamp": timestamp
+        ])
+    }
+
+    public func didBLEConnect(deviceId: String, deviceName: String) {
+        notifyListeners("bleConnect", data: [
+            "deviceId": deviceId,
+            "deviceName": deviceName
+        ])
+    }
+
+    public func didBLEDisconnect(deviceId: String) {
+        notifyListeners("bleDisconnect", data: [
+            "deviceId": deviceId
         ])
     }
 }

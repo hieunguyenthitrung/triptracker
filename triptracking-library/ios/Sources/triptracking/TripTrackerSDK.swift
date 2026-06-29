@@ -445,6 +445,14 @@ public final class TripTrackerSDK {
     public static func updateToolId(_ toolId: String) {
         TripTrackerAPIService.shared.updateToolId(toolId)
     }
+
+    public static func registerBLEDevice(uuid: String) {
+        LocationTrackingService.shared.registerBLEDevice(uuid: uuid)
+    }
+
+    public static func unregisterBLEDevice(uuid: String) {
+        LocationTrackingService.shared.unregisterBLEDevice(uuid: uuid)
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════

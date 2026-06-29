@@ -1248,6 +1248,9 @@ extension MainViewController: LocationUpdateDelegate {
     public func didHeartbeat(timestamp: Int64) {
         // No-op in native UI — heartbeat is only needed by the JS bridge
     }
+
+    public func didBLEConnect(deviceId: String, deviceName: String) {}
+    public func didBLEDisconnect(deviceId: String) {}
 }
 
 // MARK: - MKMapViewDelegate

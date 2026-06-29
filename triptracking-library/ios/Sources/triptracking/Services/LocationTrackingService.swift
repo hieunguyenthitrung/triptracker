@@ -33,6 +33,7 @@
 import Foundation
 import CoreLocation
 import CoreMotion
+import CoreBluetooth
 import UIKit
 
 protocol AutoTripDelegate: AnyObject {
@@ -52,6 +53,10 @@ public protocol LocationUpdateDelegate: AnyObject {
     func didChangeActivity(activity: String, transition: String)
     /// Fired every 30s from LocationTrackingService — wakes WKWebView JS engine in background.
     func didHeartbeat(timestamp: Int64)
+    /// Fired when a registered BLE device connects in background.
+    func didBLEConnect(deviceId: String, deviceName: String)
+    /// Fired when a registered BLE device disconnects.
+    func didBLEDisconnect(deviceId: String)
 }
 
 public class LocationTrackingService: NSObject {
@@ -230,6 +235,12 @@ public class LocationTrackingService: NSObject {
     private var periodicTimer:  Timer?
     private var heartbeatTimer: Timer?
     private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
+
+    // MARK: - BLE background reconnect
+    private var bleCentral: CBCentralManager?
+    private var bleRestoreId = "com.triptracker.ble"
+    private var bleTargetUUIDs: [CBUUID] = []
+    private var bleConnectedPeripherals: [CBPeripheral] = []
 
     // MARK: - Motion state
 
@@ -574,6 +585,7 @@ public class LocationTrackingService: NSObject {
         startPedometer()
         startActivityMonitor()
         startHeartbeat()
+        restoreBLEDevices()
         print("✅ TripTracker Background tracking started (GPS Best until first fix)")
     }
 
@@ -2028,4 +2040,125 @@ extension LocationTrackingService: CLLocationManagerDelegate {
             activityType: safeSpeed > 0 ? (activityType != "still" ? activityType : "in_vehicle") : "still",
         )
     }
+}
+
+// MARK: - BLE Background Reconnect
+
+extension LocationTrackingService {
+
+    /// Register a BLE device UUID for background reconnection.
+    /// iOS will wake the app and call CBCentralManagerDelegate when the device is found.
+    public func registerBLEDevice(uuid: String) {
+        guard let cbuuid = CBUUID(string: uuid) as CBUUID? else {
+            print("⚠️ TripTracker BLE: invalid UUID \(uuid)")
+            return
+        }
+        if bleTargetUUIDs.contains(cbuuid) { return }
+        bleTargetUUIDs.append(cbuuid)
+        UserDefaults.standard.set(bleTargetUUIDs.map { $0.uuidString }, forKey: "tt_ble_uuids")
+        startBLECentralIfNeeded()
+        print("📶 TripTracker BLE: registered device \(uuid)")
+    }
+
+    /// Remove a BLE device UUID from background reconnection.
+    public func unregisterBLEDevice(uuid: String) {
+        guard let cbuuid = CBUUID(string: uuid) as CBUUID? else { return }
+        bleTargetUUIDs.removeAll { $0 == cbuuid }
+        UserDefaults.standard.set(bleTargetUUIDs.map { $0.uuidString }, forKey: "tt_ble_uuids")
+        print("📶 TripTracker BLE: unregistered device \(uuid)")
+    }
+
+    /// Restore registered UUIDs from UserDefaults (called on init/relaunch).
+    func restoreBLEDevices() {
+        let saved = UserDefaults.standard.stringArray(forKey: "tt_ble_uuids") ?? []
+        bleTargetUUIDs = saved.compactMap { CBUUID(string: $0) }
+        if !bleTargetUUIDs.isEmpty { startBLECentralIfNeeded() }
+    }
+
+    private func startBLECentralIfNeeded() {
+        guard bleCentral == nil else {
+            // Already running — trigger a scan if powered on
+            scanForBLEDevicesIfReady()
+            return
+        }
+        // CBCentralManagerOptionRestoreIdentifierKey enables state restoration:
+        // iOS relaunches the app in background when a registered peripheral is found.
+        let options: [String: Any] = [
+            CBCentralManagerOptionRestoreIdentifierKey: bleRestoreId,
+            CBCentralManagerOptionShowPowerAlertKey: false
+        ]
+        bleCentral = CBCentralManager(delegate: self, queue: nil, options: options)
+    }
+
+    private func scanForBLEDevicesIfReady() {
+        guard let central = bleCentral, central.state == .poweredOn, !bleTargetUUIDs.isEmpty else { return }
+        // Scan with allowDuplicates:false — iOS re-delivers when peripheral comes back in range
+        central.scanForPeripherals(withServices: bleTargetUUIDs,
+                                   options: [CBCentralManagerScanOptionAllowDuplicatesKey: false])
+        print("📶 TripTracker BLE: scanning for \(bleTargetUUIDs.map { $0.uuidString })")
+    }
+}
+
+extension LocationTrackingService: CBCentralManagerDelegate {
+
+    public func centralManagerDidUpdateState(_ central: CBCentralManager) {
+        print("📶 TripTracker BLE central state: \(central.state.rawValue)")
+        if central.state == .poweredOn { scanForBLEDevicesIfReady() }
+    }
+
+    public func centralManager(_ central: CBCentralManager,
+                               willRestoreState dict: [String: Any]) {
+        // Called when iOS relaunches app in background to restore BLE session
+        if let peripherals = dict[CBCentralManagerRestoredStatePeripheralsKey] as? [CBPeripheral] {
+            for p in peripherals {
+                p.delegate = self
+                bleConnectedPeripherals.append(p)
+                print("📶 TripTracker BLE restored peripheral: \(p.name ?? p.identifier.uuidString)")
+            }
+        }
+    }
+
+    public func centralManager(_ central: CBCentralManager,
+                               didDiscover peripheral: CBPeripheral,
+                               advertisementData: [String: Any],
+                               rssi RSSI: NSNumber) {
+        print("📶 TripTracker BLE discovered: \(peripheral.name ?? peripheral.identifier.uuidString)")
+        central.stopScan()
+        central.connect(peripheral, options: nil)
+    }
+
+    public func centralManager(_ central: CBCentralManager,
+                               didConnect peripheral: CBPeripheral) {
+        let deviceId   = peripheral.identifier.uuidString
+        let deviceName = peripheral.name ?? deviceId
+        print("📶 TripTracker BLE connected: \(deviceName) (\(deviceId))")
+        bleConnectedPeripherals.append(peripheral)
+        // Update toolId natively — no JS needed
+        TripTrackerSDK.updateToolId(deviceId)
+        delegate?.didBLEConnect(deviceId: deviceId, deviceName: deviceName)
+    }
+
+    public func centralManager(_ central: CBCentralManager,
+                               didDisconnectPeripheral peripheral: CBPeripheral,
+                               error: Error?) {
+        let deviceId = peripheral.identifier.uuidString
+        print("📶 TripTracker BLE disconnected: \(deviceId)")
+        bleConnectedPeripherals.removeAll { $0.identifier == peripheral.identifier }
+        delegate?.didBLEDisconnect(deviceId: deviceId)
+        // Re-scan so iOS reconnects automatically in background
+        scanForBLEDevicesIfReady()
+    }
+
+    public func centralManager(_ central: CBCentralManager,
+                               didFailToConnect peripheral: CBPeripheral,
+                               error: Error?) {
+        print("📶 TripTracker BLE failed to connect: \(error?.localizedDescription ?? "unknown")")
+        scanForBLEDevicesIfReady()
+    }
+}
+
+extension LocationTrackingService: CBPeripheralDelegate {
+    // Peripheral delegate required stub — service discovery etc. handled by Ionic
+    public func peripheral(_ peripheral: CBPeripheral,
+                           didDiscoverServices error: Error?) {}
 }
