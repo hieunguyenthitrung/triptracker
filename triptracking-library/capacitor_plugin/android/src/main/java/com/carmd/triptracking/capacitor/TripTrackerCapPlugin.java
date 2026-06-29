@@ -620,10 +620,27 @@ public class TripTrackerCapPlugin extends Plugin {
     @PluginMethod
     public void sendRecentLogs(PluginCall call) {
         int days = call.getInt("days", 3);
+        Integer zipDays = (days == -1) ? null : (days == 0 ? 1 : days);
+        File zip = com.carmd.triptracking.util.LogcatWriter.getZippedLogs(getContext(), zipDays);
+        if (zip == null) {
+            call.reject("No log files found or zip failed");
+            return;
+        }
+        // Copy to external cache so path is accessible
+        File outDir = getContext().getExternalCacheDir();
+        if (outDir == null) outDir = getContext().getCacheDir();
+        File shareFile = new File(outDir, zip.getName());
+        try {
+            java.nio.file.Files.copy(zip.toPath(), shareFile.toPath(),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        } catch (Exception e) {
+            call.reject("Failed to prepare zip: " + e.getMessage());
+            return;
+        }
+
         shareLogFiles(days);
         JSObject ret = new JSObject();
-        ret.put("shared", true);
-        ret.put("days", days);
+        ret.put("path", shareFile.getAbsolutePath());
         call.resolve(ret);
     }
 

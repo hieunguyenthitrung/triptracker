@@ -614,7 +614,9 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
                 return
             }
             self.shareFiles([zipURL], subject: "TripTracker Logs (last \(days) days)")
-            call.resolve(["shared": true, "count": days, "days": days])
+            call.resolve([
+                "path": zipURL.path
+            ])
         }
     }
 
