@@ -475,7 +475,7 @@ public class LocationTrackingService: NSObject {
         currentLocationTimer?.invalidate()
         currentLocationTimer = nil
         currentLocationCompletion = nil
-        currentLocationCompletion = completion
+        // currentLocationCompletion = completion
 
         // Use Timer(timeInterval:) + RunLoop.main.add() so the timer always fires on the main
         // run loop regardless of which thread called requestCurrentLocation.
