@@ -541,7 +541,7 @@ public class LocationTrackingService: NSObject {
             case .walking:             activityType = "walking"
             default:                   activityType = speed > 0 ? "walking" : "still"
             }
-            apiSvc.sendPing(location: location, isMoving: false, speed: 0, activityType: "still")
+            apiSvc.sendPing(location: location, isMoving: speed > 0 ? true : false, speed: speed, activityType: activityType)
             print("📡 TripTracker requestCurrentLocation — pinged (\(location.coordinate.latitude), \(location.coordinate.longitude)) spd=\(String(format:"%.1f", speed)) m/s")
         } else if sincePing < 5.0 {
             print("📡 TripTracker requestCurrentLocation — ping skipped (\(String(format:"%.1f", sincePing))s since last ping)")
