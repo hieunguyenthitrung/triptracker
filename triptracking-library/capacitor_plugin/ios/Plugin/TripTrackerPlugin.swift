@@ -68,31 +68,8 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
     private var nativeHeartbeatTimer: Timer?
     private static let heartbeatTimeoutSecs: Double = 30  // warn after 2 min JS silence
 
-    private func startHeartbeatWatchdog() {
-        heartbeatWatchdog?.invalidate()
-        heartbeatWatchdog = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-            if let last = self.lastHeartbeatDate {
-                let silent = -last.timeIntervalSinceNow
-                if silent > Self.heartbeatTimeoutSecs {
-                    print("⚠️ TripTracker JS bridge silent for \(Int(silent))s — running standalone with saved config")
-                }
-            }
-            // If lastHeartbeatDate is nil JS has never sent a heartbeat yet — normal on first launch
-        }
-        if let t = heartbeatWatchdog { RunLoop.main.add(t, forMode: .common) }
-
-        // Emit heartbeat event to JS every 30s — wakes WKWebView JS engine in background
-        // so Ionic code (BLE/dongle connect, etc.) can run even when app is backgrounded.
-        // Same technique used by transistorsoft background-geolocation plugin.
-        nativeHeartbeatTimer?.invalidate()
-        nativeHeartbeatTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-            self.notifyListeners("heartbeat", data: [
-                "timestamp": Int64(Date().timeIntervalSince1970 * 1000)
-            ])
-        }
-        if let t = nativeHeartbeatTimer { RunLoop.main.add(t, forMode: .common) }
+    public func didHeartbeat(timestamp: Int64) {
+        notifyListeners("heartbeat", data: ["timestamp": timestamp])
     }
 
     @objc func jsHeartbeat(_ call: CAPPluginCall) {
