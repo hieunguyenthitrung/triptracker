@@ -1274,15 +1274,9 @@ public class LocationTrackingService: NSObject {
 
     func startHeartbeat() {
         if !Thread.isMainThread {
-            print(
-                "💓 💓 💓  TripTracker startHeartbeat"
-            )
             DispatchQueue.main.async { self.startHeartbeat() }
             return
         }
-        print(
-                "💓 💓 💓 💓 TripTracker startHeartbeat"
-            )
         heartbeatTimer?.invalidate()
         let timer = Timer(timeInterval: 10.0, repeats: true) { [weak self] _ in
             guard let self = self else { return }
@@ -1292,8 +1286,10 @@ public class LocationTrackingService: NSObject {
                 return
             }
             let ts = Int64(Date().timeIntervalSince1970 * 1000)
-            self.delegate?.didHeartbeat(timestamp: ts)
-            print("💓 💓 💓 💓 💓 💓 TripTracker heartbeat → JS wake (\(ts))")
+            if(TripTrackerAPIService.shared.isToolId){
+                self.delegate?.didHeartbeat(timestamp: ts)
+                print("💓 💓 💓 💓 💓 💓 TripTracker heartbeat → JS wake (\(ts))")
+            }
         }
         RunLoop.main.add(timer, forMode: .common)
         heartbeatTimer = timer
