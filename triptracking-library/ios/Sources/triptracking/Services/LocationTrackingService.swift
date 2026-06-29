@@ -1286,7 +1286,7 @@ public class LocationTrackingService: NSObject {
                 return
             }
             let ts = Int64(Date().timeIntervalSince1970 * 1000)
-            if(TripTrackerAPIService.shared.isToolId){
+            if(!TripTrackerAPIService.shared.isToolId){
                 self.delegate?.didHeartbeat(timestamp: ts)
                 print("💓 💓 💓 💓 💓 💓 TripTracker heartbeat → JS wake (\(ts))")
             }
