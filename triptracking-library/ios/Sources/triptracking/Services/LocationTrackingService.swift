@@ -236,6 +236,9 @@ public class LocationTrackingService: NSObject {
     private var heartbeatTimer: Timer?
     private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
 
+    // MARK: - WKWebView for direct JS execution in background
+    public weak var webView: AnyObject?   // WKWebView — typed as AnyObject to avoid WebKit import
+
     // MARK: - BLE background reconnect
     private var bleCentral: CBCentralManager?
     private var bleRestoreId = "com.triptracker.ble"
@@ -1228,10 +1231,26 @@ public class LocationTrackingService: NSObject {
             guard let self = self else { return }
             let ts = Int64(Date().timeIntervalSince1970 * 1000)
             self.delegate?.didHeartbeat(timestamp: ts)
-            print("💓 TripTracker heartbeat → JS wake (\(ts))")
+            // Call evaluateJavaScript directly on WKWebView — this temporarily wakes
+            // the JS engine even in background, unlike notifyListeners which only queues.
+            self.evaluateHeartbeatJS(timestamp: ts)
+            print("💓 TripTracker heartbeat (\(ts))")
         }
         RunLoop.main.add(timer, forMode: .common)
         heartbeatTimer = timer
+    }
+
+    private func evaluateHeartbeatJS(timestamp: Int64) {
+        guard let wv = webView else { return }
+        let js = "window.dispatchEvent(new CustomEvent('tt-heartbeat', {detail:{timestamp:\(timestamp)}}))"
+        // evaluateJavaScript must run on main thread
+        DispatchQueue.main.async {
+            (wv as? NSObject)?.perform(
+                NSSelectorFromString("evaluateJavaScript:completionHandler:"),
+                with: js,
+                with: nil
+            )
+        }
     }
 
     private var lastHeartbeatTime: Date = .distantPast
