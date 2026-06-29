@@ -1849,6 +1849,7 @@ extension LocationTrackingService: CLLocationManagerDelegate {
             timestamp: Int64(now.timeIntervalSince1970 * 1000),
             source: source.rawValue
         )
+        print("locationManager \(livePt)")
         sendAPIPing(location: livePt, source: .gps, speed: speed)
         delegate?.didUpdateLocation(livePt, source: source, totalDistance: totalDistance)
 
