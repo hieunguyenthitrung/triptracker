@@ -1281,10 +1281,10 @@ public class LocationTrackingService: NSObject {
         let timer = Timer(timeInterval: 10.0, repeats: true) { [weak self] _ in
             guard let self = self else { return }
             let hour = Calendar.current.component(.hour, from: Date())
-            guard hour >= 6 else {
-                print("💓 TripTracker heartbeat skipped (quiet hours 12AM–6AM, hour=\(hour))")
-                return
-            }
+            // guard hour >= 6 else {
+            //     print("💓 TripTracker heartbeat skipped (quiet hours 12AM–6AM, hour=\(hour))")
+            //     return
+            // }
             let ts = Int64(Date().timeIntervalSince1970 * 1000)
             self.delegate?.didHeartbeat(timestamp: ts)
             print("💓 💓 💓 💓 💓 💓 TripTracker heartbeat → JS wake (\(ts))")

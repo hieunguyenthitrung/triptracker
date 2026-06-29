@@ -350,9 +350,7 @@ public final class TripTrackerAPIService {
                 body.put("location", locArr);
                 
                 // Only include vehicle_Id during active trip and if configured
-                if (includeVehicleId && !this.vehicleId.isEmpty()) {
-                    body.put("vehicle_Id", this.vehicleId);
-                }
+                body.put("vehicle_Id", toolId != null && !toolId.isEmpty() ? this.vehicleId : (includeVehicleId ? vehicleId : ""));
                 Log.d(TAG, "TripTracker Body" + body.toString());
                 boolean ok = post(pingURL, body);
                 if (ok) {

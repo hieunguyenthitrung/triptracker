@@ -376,9 +376,7 @@ public final class TripTrackerAPIService {
         print("📡  TripTracker API ping route: \(body) (vehicleId included: \(includeVehicleId))")
 
         // Only include vehicle_Id during active trip and if configured
-        if includeVehicleId && !config.vehicleId.isEmpty {
-            body["vehicle_Id"] = config.vehicleId
-        }
+        body["vehicle_Id"] = !config.toolId.isEmpty ? config.vehicleId : (includeVehicleId ? config.vehicleId : "")
         postWithRetry(url: config.pingURL, body: body) { ok in
             print("📡 TripTrackerAPI ping \(ok ? "OK" : "QUEUED"): \(body)")
         }
@@ -411,9 +409,7 @@ public final class TripTrackerAPIService {
         var body: [String: Any] = [
             "user_Id": config.userId, "os_Info": config.osInfo, "location": arr,
         ]
-        if includeVehicleId && !config.vehicleId.isEmpty {
-            body["vehicle_Id"] = config.vehicleId
-        }
+        body["vehicle_Id"] = !config.toolId.isEmpty ? config.vehicleId : (includeVehicleId ? config.vehicleId : "")
         postWithRetry(url: config.pingURL, body: body) { ok in
             print("📡  TripTracker API batch (\(locations.count)): \(ok ? "OK" : "QUEUED")")
         }
