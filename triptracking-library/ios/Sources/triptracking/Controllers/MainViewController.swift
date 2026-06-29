@@ -1244,6 +1244,9 @@ extension MainViewController: LocationUpdateDelegate {
 
     public func didChangeActivity(activity: String, transition: String){
     }
+
+    public func didHeartbeat(timestamp: Int6){
+    }
 }
 
 // MARK: - MKMapViewDelegate

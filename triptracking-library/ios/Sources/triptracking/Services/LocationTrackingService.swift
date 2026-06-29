@@ -51,7 +51,7 @@ public protocol LocationUpdateDelegate: AnyObject {
     /// transition: always "MOTION" on iOS (CMMotionActivity has no ENTER/EXIT)
     func didChangeActivity(activity: String, transition: String)
     /// Fired every 30s from LocationTrackingService — wakes WKWebView JS engine in background.
-    func didHeartbeat()
+    func didHeartbeat(timestamp: Int64)
 }
 
 public class LocationTrackingService: NSObject {

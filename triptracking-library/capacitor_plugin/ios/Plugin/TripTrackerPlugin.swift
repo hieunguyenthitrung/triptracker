@@ -59,29 +59,6 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
     ]
 
     // ═══════════════════════════════════════════════════════════════
-    // JS Heartbeat — detects when the Ionic/JS layer goes silent
-    // ═══════════════════════════════════════════════════════════════
-
-    /// Timestamp of last heartbeat received from JS. nil = JS has never connected.
-    private var lastHeartbeatDate: Date?
-    private var heartbeatWatchdog: Timer?
-    private var nativeHeartbeatTimer: Timer?
-    private static let heartbeatTimeoutSecs: Double = 30  // warn after 2 min JS silence
-
-    public func didHeartbeat(timestamp: Int64) {
-        notifyListeners("heartbeat", data: ["timestamp": timestamp])
-    }
-
-    @objc func jsHeartbeat(_ call: CAPPluginCall) {
-        let isFirstContact = lastHeartbeatDate == nil
-        lastHeartbeatDate = Date()
-        if isFirstContact {
-            print("💓 TripTracker JS bridge connected")
-        }
-        call.resolve(["alive": true, "timestamp": Int64(Date().timeIntervalSince1970 * 1000)])
-    }
-
-    // ═══════════════════════════════════════════════════════════════
     // Lifecycle — auto-initialize on app launch (including background relaunch)
     // ═══════════════════════════════════════════════════════════════
 
@@ -115,8 +92,6 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
             name: UIApplication.willTerminateNotification,
             object: nil
         )
-
-        startHeartbeatWatchdog()
     }
 
     @objc private func handleAppDidBecomeActive() {
@@ -651,5 +626,9 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
             "activity": activity,
             "transition": transition
         ])
+    }
+
+    public func didHeartbeat(timestamp: Int6){
+        notifyListeners("heartbeat", data: ["timestamp": timestamp])
     }
 }
