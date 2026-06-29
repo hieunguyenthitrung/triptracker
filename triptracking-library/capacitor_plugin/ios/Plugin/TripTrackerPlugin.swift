@@ -129,9 +129,6 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
             object: nil
         )
 
-        // Pass WKWebView to LocationTrackingService so heartbeat can call evaluateJavaScript directly
-        LocationTrackingService.shared.webView = self.webView
-
         startHeartbeatWatchdog()
     }
 
