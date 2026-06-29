@@ -663,13 +663,20 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
     /// Send the last 3 days of log files via share sheet (email, AirDrop, etc.)
     @objc func sendRecentLogs(_ call: CAPPluginCall) {
         let days = call.getInt("days") ?? 3
+        let share = call.getBool("share") ?? true
         DispatchQueue.main.async {
             guard let zipURL = LogManager.shared.getZippedLogs(days: days) else {
                 call.reject("No log files found or zip failed")
                 return
             }
-            self.shareFiles([zipURL], subject: "TripTracker Logs (last \(days) days)")
-            call.resolve(["shared": true, "count": days, "days": days])
+            if share {
+                self.shareFiles([zipURL], subject: "TripTracker Logs (last \(days) days)")
+            }
+            call.resolve([
+                "shared": share,
+                "days": days,
+                "path": zipURL.path
+            ])
         }
     }
 

@@ -703,10 +703,29 @@ public class TripTrackerCapPlugin extends Plugin {
     @PluginMethod
     public void sendRecentLogs(PluginCall call) {
         int days = call.getInt("days", 3);
-        shareLogFiles(days);
+        boolean share = Boolean.TRUE.equals(call.getBoolean("share", true));
+        Integer zipDays = (days == -1) ? null : (days == 0 ? 1 : days);
+        File zip = com.carmd.triptracking.util.LogcatWriter.getZippedLogs(getContext(), zipDays);
+        if (zip == null) {
+            call.reject("No log files found or zip failed");
+            return;
+        }
+        // Copy to external cache so path is accessible
+        File outDir = getContext().getExternalCacheDir();
+        if (outDir == null) outDir = getContext().getCacheDir();
+        File shareFile = new File(outDir, zip.getName());
+        try {
+            java.nio.file.Files.copy(zip.toPath(), shareFile.toPath(),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        } catch (Exception e) {
+            call.reject("Failed to prepare zip: " + e.getMessage());
+            return;
+        }
+        if (share) shareLogFile(shareFile, days);
         JSObject ret = new JSObject();
-        ret.put("shared", true);
+        ret.put("shared", share);
         ret.put("days", days);
+        ret.put("path", shareFile.getAbsolutePath());
         call.resolve(ret);
     }
 
@@ -741,50 +760,28 @@ public class TripTrackerCapPlugin extends Plugin {
         getContext().startActivity(intent);
     }
 
-    /**
-     * Share log files via share sheet (email, etc.)
-     * @param days  0 = today only, -1 = all, N = last N days
-     */
-    private void shareLogFiles(int days) {
-    if (getActivity() == null) return;
-
-    Integer zipDays = (days == -1) ? null : (days == 0 ? 1 : days);
-    File zip = com.carmd.triptracking.util.LogcatWriter.getZippedLogs(getContext(), zipDays);
-    if (zip == null) return;
-
-    String subject;
-    if (days == 0) subject = "TripTracker Today's Log";
-    else if (days == -1) subject = "TripTracker All Logs";
-    else subject = "TripTracker Logs — Last " + days + " days";
-
-    try {
-        // Copy zip to external cache — bypasses FileProvider permission issues
-        File externalDir = getContext().getExternalCacheDir();
-        if (externalDir == null) externalDir = getContext().getCacheDir();
-        File shareFile = new File(externalDir, zip.getName());
-        java.nio.file.Files.copy(zip.toPath(), shareFile.toPath(),
-                java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-
-        Uri uri = androidx.core.content.FileProvider.getUriForFile(
-                getContext(),
-                getContext().getPackageName() + ".fileprovider",
-                shareFile);
-
-        Intent intent = new Intent(Intent.ACTION_SEND);
-        intent.setType("application/zip");
-        intent.putExtra(Intent.EXTRA_STREAM, uri);
-        intent.putExtra(Intent.EXTRA_SUBJECT, subject);
-        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-
-        // Grant permission explicitly to all possible receivers
-        getContext().grantUriPermission(
-                "android", uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-
-        getActivity().startActivity(Intent.createChooser(intent, subject));
-    } catch (Exception e) {
-        android.util.Log.e("TripTrackerPlugin", "Share failed: " + e.getMessage());
+    private void shareLogFile(File shareFile, int days) {
+        if (getActivity() == null) return;
+        String subject;
+        if (days == 0) subject = "TripTracker Today's Log";
+        else if (days == -1) subject = "TripTracker All Logs";
+        else subject = "TripTracker Logs — Last " + days + " days";
+        try {
+            Uri uri = androidx.core.content.FileProvider.getUriForFile(
+                    getContext(),
+                    getContext().getPackageName() + ".fileprovider",
+                    shareFile);
+            Intent intent = new Intent(Intent.ACTION_SEND);
+            intent.setType("application/zip");
+            intent.putExtra(Intent.EXTRA_STREAM, uri);
+            intent.putExtra(Intent.EXTRA_SUBJECT, subject);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            getContext().grantUriPermission("android", uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            getActivity().startActivity(Intent.createChooser(intent, subject));
+        } catch (Exception e) {
+            android.util.Log.e("TripTrackerPlugin", "Share failed: " + e.getMessage());
+        }
     }
-}
     // private void shareLogFiles(int days) {
     //     if (getActivity() == null) return;
 
