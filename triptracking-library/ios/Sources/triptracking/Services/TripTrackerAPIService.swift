@@ -342,7 +342,7 @@ public final class TripTrackerAPIService {
 
         var body: [String: Any] = [
             "user_Id": config.userId,
-            "os_Info": config.osInfo + " - " + "4.0.44",
+            "os_Info": config.osInfo + " - " + "4.0.49",
             "location": [[
                 "is_Moving": isMoving,
                 "timestamp": ISO8601DateFormatter().string(from: Date()),
