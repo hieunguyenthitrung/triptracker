@@ -366,11 +366,15 @@ public class LocationTrackingService: NSObject {
                 locationManager.startUpdatingLocation()
                 print("📡 TripTracker GPS BEST — still during active trip (keeping full accuracy)")
             } else if appTerminated {
-                // TERMINATED RELAUNCH + NO TRIP: Stop GPS to save battery.
-                // Significant location changes (~500m) + visits will relaunch app.
-                locationManager.stopUpdatingLocation()
+                // TERMINATED RELAUNCH + NO TRIP: Use lowest-power GPS mode.
+                // 3km accuracy + significant changes + visits keeps process alive
+                // so heartbeat timer can fire, while using minimal battery.
+                locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+                locationManager.distanceFilter  = 100
+                locationManager.startUpdatingLocation()
                 locationManager.startMonitoringSignificantLocationChanges()
                 locationManager.startMonitoringVisits()
+                locationManager.showsBackgroundLocationIndicator = false
                 lastGPSLocation = nil
                 print(
                     "📡 TripTracker GPS STOPPED — still/no trip/terminated (significant changes + visits will relaunch)"
@@ -381,6 +385,8 @@ public class LocationTrackingService: NSObject {
                 locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
                 locationManager.distanceFilter = 10.0
                 locationManager.startUpdatingLocation()
+                locationManager.startMonitoringSignificantLocationChanges()
+                locationManager.startMonitoringVisits()
                 locationManager.showsBackgroundLocationIndicator = false
                 // Flush pending pings NOW — iOS may suspend app soon at low GPS rate
                 TripTrackerAPIService.shared.flushQueue()
@@ -562,9 +568,12 @@ public class LocationTrackingService: NSObject {
                 "📡 TripTracker GPS MINIMAL — still during active trip (keeping alive for auto-end timer)"
             )
         } else {
-            locationManager.stopUpdatingLocation()
+            locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+            locationManager.distanceFilter  = 100
+            locationManager.startUpdatingLocation()
             locationManager.startMonitoringSignificantLocationChanges()
             locationManager.startMonitoringVisits()
+            locationManager.showsBackgroundLocationIndicator = false
             lastGPSLocation = nil
         }
         print(
