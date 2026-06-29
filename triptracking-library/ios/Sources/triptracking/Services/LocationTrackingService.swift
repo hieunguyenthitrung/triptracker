@@ -587,6 +587,7 @@ public class LocationTrackingService: NSObject {
     public func startBackgroundTracking() {
         if isBackgroundTrackingStarted {
             locationManager.startUpdatingLocation()
+            startHeartbeat()
             print("⚠️ TripTracker startBackgroundTracking re-entry — GPS ensured")
             return
         }
@@ -607,7 +608,6 @@ public class LocationTrackingService: NSObject {
         startPeriodicSaveTimer()
         startPedometer()
         startActivityMonitor()
-        startHeartbeat()
         print("✅ TripTracker Background tracking started (GPS Best until first fix)")
     }
 
