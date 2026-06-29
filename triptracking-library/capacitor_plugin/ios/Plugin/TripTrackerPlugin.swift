@@ -628,7 +628,7 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         ])
     }
 
-    public func didHeartbeat(timestamp: Int6){
+    public func didHeartbeat(timestamp: Int64){
         notifyListeners("heartbeat", data: ["timestamp": timestamp])
     }
 }
