@@ -486,8 +486,8 @@ public class LocationTrackingService: NSObject {
         currentLocationCompletion = nil
         currentLocationCompletion = completion
 
-        Use Timer(timeInterval:) + RunLoop.main.add() so the timer always fires on the main
-        run loop regardless of which thread called requestCurrentLocation.
+        // Use Timer(timeInterval:) + RunLoop.main.add() so the timer always fires on the main
+        // run loop regardless of which thread called requestCurrentLocation.
         let timer = Timer(timeInterval: timeout, repeats: false) { [weak self] _ in
             guard let self = self, let cb = self.currentLocationCompletion else { return }
             self.currentLocationCompletion = nil
@@ -526,9 +526,9 @@ public class LocationTrackingService: NSObject {
         // print("TripTrackerPlugin getCurrentLocation resolveCurrentLocationIfNeeded")
         guard let cb = currentLocationCompletion else { return }
         guard location.horizontalAccuracy > 0, location.horizontalAccuracy <= 100 else { return }
-        // currentLocationTimer?.invalidate()
-        // currentLocationTimer = nil
-        // currentLocationCompletion = nil
+        currentLocationTimer?.invalidate()
+        currentLocationTimer = nil
+        currentLocationCompletion = nil
         pingAndReturn(location, completion: cb)
     }
 
