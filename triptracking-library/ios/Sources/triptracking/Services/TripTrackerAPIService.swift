@@ -334,7 +334,7 @@ public final class TripTrackerAPIService {
     }
 
     public var isToolId: Bool {
-        return !(config.toolId?.isEmpty ?? true)
+        return !config.toolId.isEmpty
     }
 
     // POST /ping/v2
