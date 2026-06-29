@@ -504,7 +504,7 @@ public class LocationTrackingService: NSObject {
         //     }
         // }
         // RunLoop.main.add(timer, forMode: .common)
-        currentLocationTimer = timer
+        // currentLocationTimer = timer
 
         // startUpdatingLocation() keeps delivering fixes until one passes the accuracy gate.
         locationManager.startUpdatingLocation()
