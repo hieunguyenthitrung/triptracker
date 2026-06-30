@@ -358,7 +358,7 @@ public final class TripTrackerAPIService {
 
         var body: [String: Any] = [
             "user_Id": config.userId,
-            "os_Info": config.osInfo + " - " + "4.0.77",
+            "os_Info": config.osInfo + " - " + "4.0.78",
             "location": [
                 [
                     "is_Moving": isMoving,
@@ -376,7 +376,10 @@ public final class TripTrackerAPIService {
         print("📡  TripTracker API ping route: \(body) (vehicleId included: \(includeVehicleId))")
 
         // Only include vehicle_Id during active trip and if configured
-        body["vehicle_Id"] = !config.toolId.isEmpty ? config.vehicleId : (includeVehicleId ? config.vehicleId : "")
+        var tmp_vehicle_id = !config.toolId.isEmpty ? config.vehicleId : (includeVehicleId ? config.vehicleId : "")
+        if(!tmp_vehicle_id.isEmpty){
+            body["vehicle_Id"] = tmp_vehicle_id
+        }
         postWithRetry(url: config.pingURL, body: body) { ok in
             print("📡 TripTrackerAPI ping \(ok ? "OK" : "QUEUED"): \(body)")
         }
@@ -409,7 +412,11 @@ public final class TripTrackerAPIService {
         var body: [String: Any] = [
             "user_Id": config.userId, "os_Info": config.osInfo, "location": arr,
         ]
-        body["vehicle_Id"] = !config.toolId.isEmpty ? config.vehicleId : (includeVehicleId ? config.vehicleId : "")
+        var tmp_vehicle_id = !config.toolId.isEmpty ? config.vehicleId : (includeVehicleId ? config.vehicleId : "")
+        if(!tmp_vehicle_id.isEmpty){
+            body["vehicle_Id"] = tmp_vehicle_id
+        }
+        
         postWithRetry(url: config.pingURL, body: body) { ok in
             print("📡  TripTracker API batch (\(locations.count)): \(ok ? "OK" : "QUEUED")")
         }
