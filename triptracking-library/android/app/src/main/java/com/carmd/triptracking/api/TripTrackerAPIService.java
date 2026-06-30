@@ -267,7 +267,7 @@ public final class TripTrackerAPIService {
         this.endURL = endURL != null ? endURL : "";
         this.userId = userId != null ? userId : "";
         this.vehicleId = vehicleId != null ? vehicleId : "";
-        if (osInfo != null && !osInfo.isEmpty()) this.osInfo = osInfo + " - " + "4.0.78";
+        if (osInfo != null && !osInfo.isEmpty()) this.osInfo = osInfo + " - " + "4.0.79";
         this.routeId = routeId != null ? routeId : "";
         this.authorizationKey = authorizationKey != null ? authorizationKey : "";
         this.apiAuthKey = apiAuthKey != null ? apiAuthKey : "";
@@ -361,7 +361,7 @@ public final class TripTrackerAPIService {
                 // Only include vehicle_Id during active trip and if configured
                 let tmp_vehicle_id = toolId != null && !toolId.isEmpty() ? this.vehicleId : (includeVehicleId ? vehicleId : "");
                 if(!tmp_vehicle_id.isEmpty()){
-                    body.put("vehicle_Id", tmp_vehicle_id.isEmpty());
+                    body.put("vehicle_Id", tmp_vehicle_id);
                 }
                 
                 Log.d(TAG, "TripTracker Body" + body.toString() + pingURL);
