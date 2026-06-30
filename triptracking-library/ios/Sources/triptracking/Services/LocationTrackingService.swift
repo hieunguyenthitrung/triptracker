@@ -1227,19 +1227,50 @@ public class LocationTrackingService: NSObject {
             return
         }
         heartbeatTimer?.invalidate()
-        let timer = Timer(timeInterval: 30.0, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-            let hour = Calendar.current.component(.hour, from: Date())
-            guard hour >= 6 else {
-                print("💓 TripTracker heartbeat skipped (quiet hours 12AM–6AM, hour=\(hour))")
-                return
+        scheduleNextHeartbeat()
+    }
+
+    private func scheduleNextHeartbeat() {
+        heartbeatTimer?.invalidate()
+        // Quiet hours: skip entirely
+        let hour = Calendar.current.component(.hour, from: Date())
+        guard hour >= 6 else {
+            // Schedule check again at 6AM
+            let secondsUntil6AM = secondsUntilHour(6)
+            let timer = Timer(timeInterval: secondsUntil6AM, repeats: false) { [weak self] _ in
+                self?.scheduleNextHeartbeat()
             }
+            RunLoop.main.add(timer, forMode: .common)
+            heartbeatTimer = timer
+            print("💓 TripTracker heartbeat sleeping until 6AM (\(Int(secondsUntil6AM))s)")
+            return
+        }
+        // Interval depends on state to save battery:
+        //   active trip (moving)  → 30s  (GPS already on, process alive)
+        //   still / no trip       → 60s  (GPS low-power, longer interval)
+        //   foreground            → 30s  (JS already running, short enough)
+        let interval: TimeInterval = isTracking ? 30.0 : 60.0
+        let timer = Timer(timeInterval: interval, repeats: false) { [weak self] _ in
+            guard let self = self else { return }
             let ts = Int64(Date().timeIntervalSince1970 * 1000)
             self.delegate?.didHeartbeat(timestamp: ts)
-            print("💓 TripTracker heartbeat → JS wake (\(ts))")
+            print("💓 TripTracker heartbeat → JS wake (\(ts)) interval=\(Int(interval))s")
+            self.scheduleNextHeartbeat()
         }
         RunLoop.main.add(timer, forMode: .common)
         heartbeatTimer = timer
+    }
+
+    private func secondsUntilHour(_ targetHour: Int) -> TimeInterval {
+        let cal = Calendar.current
+        let now = Date()
+        var components = cal.dateComponents([.year, .month, .day], from: now)
+        components.hour = targetHour
+        components.minute = 0
+        components.second = 0
+        var next = cal.date(from: components) ?? now.addingTimeInterval(3600)
+        if next <= now { next = cal.date(byAdding: .day, value: 1, to: next) ?? next }
+        return next.timeIntervalSince(now)
     }
 
     private var lastHeartbeatTime: Date = .distantPast
