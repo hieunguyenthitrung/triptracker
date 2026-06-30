@@ -327,6 +327,15 @@ public final class TripTrackerAPIService {
 
     public void sendPing(Location location, boolean isMoving, float speed, String activityType, String routeId) {
         if (!isEnabled()) return;
+        // Suppress pings from 0AM–6AM when user is still — avoid unnecessary API calls overnight
+        if (!isMoving) {
+            int hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY);
+            if (hour < 6) {
+                android.util.Log.d(TAG, "sendPing skipped — quiet hours 0AM–6AM, still, hour=" + hour);
+                return;
+            }
+        }
+        
         executor.execute(() -> {
             try {
                 JSONObject locObj = new JSONObject();
