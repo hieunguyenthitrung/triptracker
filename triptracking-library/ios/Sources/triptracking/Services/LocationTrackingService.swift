@@ -527,7 +527,8 @@ public class LocationTrackingService: NSObject {
         let speed: Float = effective > 0 ? effective : (location.speed > 0 ? Float(location.speed) : 0)
         let apiSvc = TripTrackerAPIService.shared
         let sincePing = abs(lastPingAndReturnTime.timeIntervalSinceNow)
-        if apiSvc.isEnabled && sincePing >= 5.0 {
+        let locationAge = abs(location.timestamp.timeIntervalSinceNow)
+        if apiSvc.isEnabled && sincePing >= 5.0 && locationAge <= 60 {
             lastPingAndReturnTime = Date()
             let activityType: String
             switch lastMotionState {
@@ -539,6 +540,8 @@ public class LocationTrackingService: NSObject {
             }
             apiSvc.sendPing(location: location, isMoving: speed > 0, speed: speed, activityType: activityType)
             print("📡 TripTracker requestCurrentLocation — pinged (\(location.coordinate.latitude), \(location.coordinate.longitude)) spd=\(String(format:"%.1f", speed)) m/s")
+        } else if locationAge > 60 {
+            print("📡 TripTracker requestCurrentLocation — ping skipped (location \(Int(locationAge))s old, stale)")
         } else if sincePing < 5.0 {
             print("📡 TripTracker requestCurrentLocation — ping skipped (\(String(format:"%.1f", sincePing))s since last ping)")
         }
@@ -2015,6 +2018,15 @@ extension LocationTrackingService: CLLocationManagerDelegate {
     private func sendAPIPing(location: LocationPoint, source: TrackingSource, speed: Float) {
         // Only send pings during active trip — save bandwidth and battery when idle
         guard isTracking else { return }
+
+        // Reject stale locations — if the best available fix is older than 60s,
+        // the device has been stationary in LOW-POWER GPS mode and the coordinates
+        // haven't changed. Sending them would repeat the last known position incorrectly.
+        let locationAge = abs(Date(timeIntervalSince1970: Double(location.timestamp) / 1000).timeIntervalSinceNow)
+        if locationAge > 60 {
+            print("📡 TripTracker sendAPIPing skipped — location is \(Int(locationAge))s old (stale)")
+            return
+        }
 
         let clLoc = CLLocation(latitude: location.latitude, longitude: location.longitude)
 
