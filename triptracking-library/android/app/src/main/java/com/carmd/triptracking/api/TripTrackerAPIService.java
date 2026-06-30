@@ -267,7 +267,7 @@ public final class TripTrackerAPIService {
         this.endURL = endURL != null ? endURL : "";
         this.userId = userId != null ? userId : "";
         this.vehicleId = vehicleId != null ? vehicleId : "";
-        if (osInfo != null && !osInfo.isEmpty()) this.osInfo = osInfo + " - " + "4.0.49";
+        if (osInfo != null && !osInfo.isEmpty()) this.osInfo = osInfo + " - " + "4.0.77";
         this.routeId = routeId != null ? routeId : "";
         this.authorizationKey = authorizationKey != null ? authorizationKey : "";
         this.apiAuthKey = apiAuthKey != null ? apiAuthKey : "";
@@ -335,7 +335,7 @@ public final class TripTrackerAPIService {
                 return;
             }
         }
-        
+
         executor.execute(() -> {
             try {
                 JSONObject locObj = new JSONObject();
@@ -360,7 +360,7 @@ public final class TripTrackerAPIService {
                 
                 // Only include vehicle_Id during active trip and if configured
                 body.put("vehicle_Id", toolId != null && !toolId.isEmpty() ? this.vehicleId : (includeVehicleId ? vehicleId : ""));
-                Log.d(TAG, "TripTracker Body" + body.toString());
+                Log.d(TAG, "TripTracker Body" + body.toString() + pingURL);
                 boolean ok = post(pingURL, body);
                 if (ok) {
                     Log.d(TAG, "Ping OK: " + body.toString());
