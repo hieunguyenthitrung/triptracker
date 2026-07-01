@@ -591,7 +591,7 @@ public class LocationTrackingService: NSObject {
     public func startBackgroundTracking() {
         if isBackgroundTrackingStarted {
             locationManager.startUpdatingLocation()
-            startHeartbeatTimer()
+            startHeartbeatTimer(interval: 60)
             print("⚠️ TripTracker startBackgroundTracking re-entry — GPS ensured")
             return
         }
@@ -1276,7 +1276,7 @@ public class LocationTrackingService: NSObject {
         periodicTimer = timer
     }
 
-    public func startHeartbeatTimer(interval: TimeInterval = 10.0) {
+    public func startHeartbeatTimer(interval: TimeInterval = 60.0) {
         if !Thread.isMainThread {
             DispatchQueue.main.async { self.startHeartbeatTimer(interval: interval) }
             return

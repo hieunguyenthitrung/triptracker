@@ -175,7 +175,18 @@ export interface TripTrackerPlugin {
    * Enable or disable trip start / end push notifications at runtime.
    * Returns the current state of both flags after the update.
    */
-  setTripNotifications(options: { notify?: boolean }): Promise<{
+  /**
+     * Enable or disable trip start / end push notifications at runtime.
+     * Returns the current state of both flags after the update.
+     */
+    setTripNotifications(options: {
+    /** Set both notifyTripStart and notifyTripEnd at once */
+    notify?: boolean;
+    /** Set only notifyTripStart */
+    start?: boolean;
+    /** Set only notifyTripEnd */
+    end?: boolean;
+  }): Promise<{
     notifyTripStart: boolean;
     notifyTripEnd: boolean;
   }>;
