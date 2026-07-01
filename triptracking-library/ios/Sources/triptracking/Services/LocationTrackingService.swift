@@ -373,7 +373,7 @@ public class LocationTrackingService: NSObject {
                 // 3km accuracy + significant changes + visits keeps process alive
                 // so heartbeat timer can fire, while using minimal battery.
                 locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
-                locationManager.distanceFilter  = 100
+                locationManager.distanceFilter = 100
                 locationManager.startUpdatingLocation()
                 locationManager.startMonitoringSignificantLocationChanges()
                 locationManager.startMonitoringVisits()
@@ -544,16 +544,20 @@ public class LocationTrackingService: NSObject {
             lastPingAndReturnTime = Date()
             let activityType: String
             switch lastMotionState {
-            case .automotive:          activityType = "in_vehicle"
-            case .running:             activityType = "running"
-            case .cycling:             activityType = "on_bicycle"
-            case .walking:             activityType = "walking"
-            default:                   activityType = speed > 0 ? "walking" : "still"
+            case .automotive: activityType = "in_vehicle"
+            case .running: activityType = "running"
+            case .cycling: activityType = "on_bicycle"
+            case .walking: activityType = "walking"
+            default: activityType = speed > 0 ? "walking" : "still"
             }
             apiSvc.sendPing(location: location, isMoving: false, speed: 0, activityType: "still")
-            print("📡 TripTracker requestCurrentLocation — pinged (\(location.coordinate.latitude), \(location.coordinate.longitude)) spd=\(String(format:"%.1f", speed)) m/s")
+            print(
+                "📡 TripTracker requestCurrentLocation — pinged (\(location.coordinate.latitude), \(location.coordinate.longitude)) spd=\(String(format:"%.1f", speed)) m/s"
+            )
         } else if sincePing < 5.0 {
-            print("📡 TripTracker requestCurrentLocation — ping skipped (\(String(format:"%.1f", sincePing))s since last ping)")
+            print(
+                "📡 TripTracker requestCurrentLocation — ping skipped (\(String(format:"%.1f", sincePing))s since last ping)"
+            )
         }
         completion(location, nil)
     }
@@ -572,7 +576,7 @@ public class LocationTrackingService: NSObject {
             )
         } else {
             locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
-            locationManager.distanceFilter  = 100
+            locationManager.distanceFilter = 100
             locationManager.startUpdatingLocation()
             locationManager.startMonitoringSignificantLocationChanges()
             locationManager.startMonitoringVisits()
@@ -1274,7 +1278,7 @@ public class LocationTrackingService: NSObject {
 
     func startHeartbeatTimer(interval: TimeInterval = 10.0) {
         if !Thread.isMainThread {
-            DispatchQueue.main.async { self.startHeartbeatTimer(interval:interval) }
+            DispatchQueue.main.async { self.startHeartbeatTimer(interval: interval) }
             return
         }
         heartbeatTimer?.invalidate()
@@ -1282,11 +1286,9 @@ public class LocationTrackingService: NSObject {
         let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
             guard let self = self else { return }
             let hour = Calendar.current.component(.hour, from: Date())
-            guard hour >= 6 else {
+            if hour < 6 && lastMotionState != .automotive {
                 print("💓 TripTracker heartbeat skipped (quiet hours 12AM–6AM, hour=\(hour))")
-                if (lastMotionState != .automotive) {
-                    return
-                }
+                return
             }
             let ts = Int64(Date().timeIntervalSince1970 * 1000)
             self.delegate?.didHeartbeat(timestamp: ts)
@@ -1306,8 +1308,6 @@ public class LocationTrackingService: NSObject {
         heartbeatTimer = nil
         print("💓 💓 💓 💓 💓 💓 TripTracker heartbeat OFF — \(reason)")
     }
-
-
 
     private func periodicSaveTick() {
 
