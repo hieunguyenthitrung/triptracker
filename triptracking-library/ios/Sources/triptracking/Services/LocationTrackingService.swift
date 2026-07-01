@@ -230,12 +230,12 @@ public class LocationTrackingService: NSObject {
     // MARK: - Motion state
 
     public enum MotionState: String {
-        case unknown = "Unknown"
-        case still = "Still"  // device on table / stationary
-        case walking = "Walking"
-        case running = "Running"
-        case cycling = "Cycling"
-        case automotive = "Automotive"  // speed >= 6 m/s → GPS
+        case unknown = "unknown"
+        case still = "still"  // device on table / stationary
+        case walking = "walking"
+        case running = "running"
+        case cycling = "cycling"
+        case automotive = "automotive"  // speed >= 6 m/s → GPS
     }
 
     // MARK: - Init
@@ -1272,19 +1272,22 @@ public class LocationTrackingService: NSObject {
         periodicTimer = timer
     }
 
-    func startHeartbeat() {
+    func startHeartbeatTimer(interval: TimeInterval = 10.0) {
         if !Thread.isMainThread {
             DispatchQueue.main.async { self.startHeartbeat() }
             return
         }
         heartbeatTimer?.invalidate()
-        let timer = Timer(timeInterval: 10.0, repeats: true) { [weak self] _ in
+        heartbeatTimer = nil
+        let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
             guard let self = self else { return }
             let hour = Calendar.current.component(.hour, from: Date())
-            // guard hour >= 6 else {
-            //     print("💓 TripTracker heartbeat skipped (quiet hours 12AM–6AM, hour=\(hour))")
-            //     return
-            // }
+            guard hour >= 6 else {
+                print("💓 TripTracker heartbeat skipped (quiet hours 12AM–6AM, hour=\(hour))")
+                if (lastMotionState != ".automotive") {
+                    return
+                }
+            }
             let ts = Int64(Date().timeIntervalSince1970 * 1000)
             self.delegate?.didHeartbeat(timestamp: ts)
             print("💓 💓 💓 💓 💓 💓 TripTracker heartbeat → JS wake (\(ts))")
@@ -1292,6 +1295,18 @@ public class LocationTrackingService: NSObject {
         RunLoop.main.add(timer, forMode: .common)
         heartbeatTimer = timer
     }
+
+    func stopHeartbeat(reason: String = "") {
+        if !Thread.isMainThread {
+            DispatchQueue.main.async { self.stopHeartbeat(reason: reason) }
+            return
+        }
+        guard heartbeatTimer != nil else { return }
+        heartbeatTimer?.invalidate()
+        heartbeatTimer = nil
+        print("💓 💓 💓 💓 💓 💓 TripTracker heartbeat OFF — \(reason)")
+    }
+
 
 
     private func periodicSaveTick() {

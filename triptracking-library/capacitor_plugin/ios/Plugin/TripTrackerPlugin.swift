@@ -56,6 +56,9 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         CAPPluginMethod(name: "setFakeRoute", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "startFakeRoute", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "stopFakeRoute", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "startHeartbeatTimer", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "stopHeartbeatTimer", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setTripNotifications", returnType: CAPPluginReturnPromise),
     ]
 
     // ═══════════════════════════════════════════════════════════════
@@ -174,6 +177,44 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         }
         TripTrackerSDK.updateToolId(toolId)
         call.resolve(["updated": true, "toolId": toolId])
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Heartbeat timer control
+    // ─────────────────────────────────────────────────────────────────
+
+    /// Start the native heartbeat timer from Ionic.
+    /// Fires a "heartbeat" event to JS every 10 s so Ionic can reconnect
+    /// the dongle or run BLE logic while in background.
+    /// No-op if the timer is already running.
+    @objc func startHeartbeatTimer(_ call: CAPPluginCall) {
+        let intervalSec = call.getDouble("intervalSeconds") ?? 10.0
+        LocationTrackingService.shared.startHeartbeatTimer(interval: max(1.0, intervalSec))
+        call.resolve(["started": true, "intervalSeconds": intervalSec])
+    }
+    }
+
+    /// Stop the native heartbeat timer from Ionic.
+    @objc func stopHeartbeatTimer(_ call: CAPPluginCall) {
+        LocationTrackingService.shared.stopHeartbeat(reason: "JS stopHeartbeatTimer")
+        call.resolve(["stopped": true])
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Trip notification toggles
+    // ─────────────────────────────────────────────────────────────────
+
+    /// Enable or disable trip start / end push notifications.
+    /// options: { start?: boolean, end?: boolean }
+    @objc func setTripNotifications(_ call: CAPPluginCall) {
+        if let notify = call.getBool("notify") {
+            UserDefaults.standard.set(notify, forKey: "tt_notify_tripStart")
+            UserDefaults.standard.set(notify, forKey: "tt_notify_tripEnd")
+        }
+        call.resolve([
+            "notifyTripStart": UserDefaults.standard.object(forKey: "tt_notify_tripStart") as? Bool ?? true,
+            "notifyTripEnd":   UserDefaults.standard.object(forKey: "tt_notify_tripEnd")   as? Bool ?? true,
+        ])
     }
 
     /// Check if location permission is granted.
@@ -449,7 +490,10 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         case "geofencingEnabled":
             guard let v = call.getBool("value") else { call.reject("Missing 'value'"); return }
             GeofenceManager.shared.isEnabled = v
-
+        case "notifyTrip":
+            guard let v = call.getBool("value") else { call.reject("Missing 'value'"); return }
+            UserDefaults.standard.set(v, forKey: "tt_notify_tripStart")
+            UserDefaults.standard.set(v, forKey: "tt_notify_tripEnd")
         default:
             call.reject("Unknown setting key: \(key)")
             return

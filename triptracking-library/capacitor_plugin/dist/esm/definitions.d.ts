@@ -141,7 +141,7 @@ export interface TripTrackerPlugin {
      * Share the last N days of log files via system share sheet (email, AirDrop, etc.).
      * Default: 3 days.
      */
-    sendRecentLogs(options?: { days?: number}): Promise<{ path: string }>;
+    sendRecentLogs(options?: { days?: number }): Promise<{ path: string }>;
     /** Write a message to TripTracker native log file */
     writeLog(options: { message: string }): Promise<void>;
     /**
@@ -157,6 +157,29 @@ export interface TripTrackerPlugin {
        * Call this on logout or when switching accounts/environments.
        */
     resetConfig(): Promise<{ reset: boolean }>;
+
+    /**
+   * Start the native heartbeat timer.
+   * The native SDK fires a "heartbeat" event to JS every `intervalSeconds`
+   * (default 10 s) — useful to wake Ionic code in background so it can
+   * reconnect a BLE dongle or run other JS logic.
+   * No-op if the timer is already running.
+   */
+    startHeartbeatTimer(options?: { intervalSeconds?: number }): Promise<{ started: boolean }>;
+
+    /**
+     * Stop the native heartbeat timer started by startHeartbeatTimer().
+     */
+    stopHeartbeatTimer(): Promise<{ stopped: boolean }>;
+
+    /**
+     * Enable or disable trip start / end push notifications at runtime.
+     * Returns the current state of both flags after the update.
+     */
+    setTripNotifications(options: { notify?: boolean }): Promise<{
+        notifyTripStart: boolean;
+        notifyTripEnd: boolean;
+    }>;
 
     // ═══════════════════════════════════════════════════════════════════
     // Event Listeners
@@ -275,6 +298,8 @@ export interface TripTrackerConfigOptions {
     notifyTripStart?: boolean;
     /** Enable push for trip end (default true) */
     notifyTripEnd?: boolean;
+    /** Enable push for trip start/end (default true) */
+    notifyTrip?: boolean;
     /** Enable push every 1 km (default true) */
     notifyDistanceKm?: boolean;
     /** Enable push for geofence enter (default true) */
