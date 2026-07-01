@@ -570,6 +570,7 @@ public class LocationTrackingService: NSObject {
     public func startBackgroundTracking() {
         if isBackgroundTrackingStarted {
             locationManager.startUpdatingLocation()
+            startHeartbeatForToolId()   // no-op if already running or tool_id already set
             print("⚠️ TripTracker startBackgroundTracking re-entry — GPS ensured")
             return
         }
