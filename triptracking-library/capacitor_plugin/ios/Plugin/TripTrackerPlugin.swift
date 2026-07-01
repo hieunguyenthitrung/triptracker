@@ -266,8 +266,8 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
             return
         }
         let tripId = svc.currentTripId
-        svc.stopTrip()
         TripTrackerAPIService.shared.flushQueue()
+        svc.stopTrip()
         call.resolve(["ended": true, "tripId": tripId])
     }
 
