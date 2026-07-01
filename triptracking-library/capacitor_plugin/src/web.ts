@@ -112,4 +112,16 @@ export class TripTrackerWeb extends WebPlugin implements TripTrackerPlugin {
     // On web there's no native layer to ping — just return alive
     return { alive: true, timestamp: Date.now() };
   }
+
+  async startHeartbeatTimer(): Promise<{ started: boolean }> {
+    throw this.unavailable('startHeartbeatTimer is only available on iOS/Android');
+  }
+
+  async stopHeartbeatTimer(): Promise<{ stopped: boolean }> {
+    throw this.unavailable('stopHeartbeatTimer is only available on iOS/Android');
+  }
+
+  async setTripNotifications(): Promise<{ notifyTripStart: boolean; notifyTripEnd: boolean }> {
+    throw this.unavailable('setTripNotifications is only available on iOS/Android');
+  }
 }

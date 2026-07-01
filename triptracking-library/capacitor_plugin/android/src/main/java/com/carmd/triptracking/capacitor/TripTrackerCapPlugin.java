@@ -75,6 +75,12 @@ public class TripTrackerCapPlugin extends Plugin {
     private static final String EVENT_LOCATION_UPDATE     = "locationUpdate";
     private static final String EVENT_TRACKING_STATE      = "trackingStateChange";
     private static final String EVENT_STATS_UPDATE        = "statsUpdate";
+    private static final String EVENT_HEARTBEAT           = "heartbeat";
+
+    // ── Native heartbeat timer (fires EVENT_HEARTBEAT to JS) ─────────────────
+    private final android.os.Handler nativeHeartbeatHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private Runnable nativeHeartbeatRunnable = null;
+    private long nativeHeartbeatIntervalMs = 10_000L;
 
     /**
      * Called via reflection from LocationTrackingService.emitMotionChange().
@@ -751,6 +757,76 @@ public class TripTrackerCapPlugin extends Plugin {
         TripTrackerSDK.resetConfig(getContext());
         JSObject ret = new JSObject();
         ret.put("reset", true);
+        call.resolve(ret);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Heartbeat timer control
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Start the native heartbeat timer from Ionic.
+     * Fires a "heartbeat" event to JS every 10 s (default) so Ionic can
+     * reconnect the dongle or run BLE logic while in background.
+     * No-op if already running. Optional param: intervalSeconds (default 10).
+     */
+    @PluginMethod
+    public void startHeartbeatTimer(PluginCall call) {
+        if (nativeHeartbeatRunnable != null) {
+            call.resolve(new JSObject().put("started", true));
+            return;
+        }
+        Integer intervalSec = call.getInt("intervalSeconds");
+        nativeHeartbeatIntervalMs = (intervalSec != null && intervalSec > 0)
+                ? intervalSec * 1000L : 10_000L;
+
+        nativeHeartbeatRunnable = new Runnable() {
+            @Override public void run() {
+                if (nativeHeartbeatRunnable == null) return;
+                JSObject data = new JSObject();
+                data.put("timestamp", System.currentTimeMillis());
+                notifyListeners(EVENT_HEARTBEAT, data);
+                nativeHeartbeatHandler.postDelayed(this, nativeHeartbeatIntervalMs);
+            }
+        };
+        nativeHeartbeatHandler.postDelayed(nativeHeartbeatRunnable, nativeHeartbeatIntervalMs);
+        android.util.Log.i("TripTrackerCap", "💓 startHeartbeatTimer every " + nativeHeartbeatIntervalMs / 1000 + "s");
+        JSObject ret = new JSObject();
+        ret.put("started", true);
+        call.resolve(ret);
+    }
+
+    /** Stop the native heartbeat timer from Ionic. */
+    @PluginMethod
+    public void stopHeartbeatTimer(PluginCall call) {
+        if (nativeHeartbeatRunnable != null) {
+            nativeHeartbeatHandler.removeCallbacks(nativeHeartbeatRunnable);
+            nativeHeartbeatRunnable = null;
+            android.util.Log.i("TripTrackerCap", "💓 stopHeartbeatTimer");
+        }
+        JSObject ret = new JSObject();
+        ret.put("stopped", true);
+        call.resolve(ret);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Trip notification toggles
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Enable or disable trip start / end push notifications.
+     * options: { start?: boolean, end?: boolean }
+     */
+    @PluginMethod
+    public void setTripNotifications(PluginCall call) {
+        android.content.Context ctx = getContext();
+        Boolean start = call.getBoolean("start");
+        Boolean end   = call.getBoolean("end");
+        if (start != null) AppSettings.setNotifTripStart(ctx, start);
+        if (end   != null) AppSettings.setNotifTripEnd(ctx, end);
+        JSObject ret = new JSObject();
+        ret.put("notifyTripStart", AppSettings.isNotifTripStart(ctx));
+        ret.put("notifyTripEnd",   AppSettings.isNotifTripEnd(ctx));
         call.resolve(ret);
     }
 

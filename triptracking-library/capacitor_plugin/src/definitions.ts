@@ -190,6 +190,29 @@ export interface TripTrackerPlugin {
   jsHeartbeat(): Promise<{ alive: boolean; timestamp: number }>;
 
   /**
+   * Start the native heartbeat timer.
+   * The native SDK fires a "heartbeat" event to JS every `intervalSeconds`
+   * (default 10 s) — useful to wake Ionic code in background so it can
+   * reconnect a BLE dongle or run other JS logic.
+   * No-op if the timer is already running.
+   */
+  startHeartbeatTimer(options?: { intervalSeconds?: number }): Promise<{ started: boolean }>;
+
+  /**
+   * Stop the native heartbeat timer started by startHeartbeatTimer().
+   */
+  stopHeartbeatTimer(): Promise<{ stopped: boolean }>;
+
+  /**
+   * Enable or disable trip start / end push notifications at runtime.
+   * Returns the current state of both flags after the update.
+   */
+  setTripNotifications(options: { start?: boolean; end?: boolean }): Promise<{
+    notifyTripStart: boolean;
+    notifyTripEnd: boolean;
+  }>;
+
+  /**
    * Reset and clear all TripTracker config from persistent storage.
    * Removes all saved keys from UserDefaults (iOS) / SharedPreferences (Android)
    * and resets in-memory config to defaults.

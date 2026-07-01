@@ -59,6 +59,9 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         CAPPluginMethod(name: "stopFakeRoute", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "registerBLEDevice", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "unregisterBLEDevice", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "startHeartbeatTimer", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "stopHeartbeatTimer", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setTripNotifications", returnType: CAPPluginReturnPromise),
     ]
 
     // ═══════════════════════════════════════════════════════════════
@@ -215,6 +218,44 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         }
         TripTrackerSDK.updateToolId(toolId)
         call.resolve(["updated": true, "toolId": toolId])
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Heartbeat timer control
+    // ─────────────────────────────────────────────────────────────────
+
+    /// Start the native heartbeat timer from Ionic.
+    /// Fires a "heartbeat" event to JS every 10 s so Ionic can reconnect
+    /// the dongle or run BLE logic while in background.
+    /// No-op if the timer is already running.
+    @objc func startHeartbeatTimer(_ call: CAPPluginCall) {
+        LocationTrackingService.shared.startHeartbeatForToolId()
+        call.resolve(["started": true])
+    }
+
+    /// Stop the native heartbeat timer from Ionic.
+    @objc func stopHeartbeatTimer(_ call: CAPPluginCall) {
+        LocationTrackingService.shared.stopHeartbeat(reason: "JS stopHeartbeatTimer")
+        call.resolve(["stopped": true])
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Trip notification toggles
+    // ─────────────────────────────────────────────────────────────────
+
+    /// Enable or disable trip start / end push notifications.
+    /// options: { start?: boolean, end?: boolean }
+    @objc func setTripNotifications(_ call: CAPPluginCall) {
+        if let start = call.getBool("start") {
+            UserDefaults.standard.set(start, forKey: "tt_notify_tripStart")
+        }
+        if let end = call.getBool("end") {
+            UserDefaults.standard.set(end, forKey: "tt_notify_tripEnd")
+        }
+        call.resolve([
+            "notifyTripStart": UserDefaults.standard.object(forKey: "tt_notify_tripStart") as? Bool ?? true,
+            "notifyTripEnd":   UserDefaults.standard.object(forKey: "tt_notify_tripEnd")   as? Bool ?? true,
+        ])
     }
 
     @objc func registerBLEDevice(_ call: CAPPluginCall) {
