@@ -137,6 +137,11 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         if let v = call.getBool("voiceFeedbackEnabled")     { config.voiceFeedbackEnabled = v }
         if let v = call.getBool("notifyTripStart")          { config.notifyTripStart = v }
         if let v = call.getBool("notifyTripEnd")            { config.notifyTripEnd = v }
+        // notifyTrip sets both start and end together
+        if let v = call.getBool("notifyTrip") {
+            config.notifyTripStart = v
+            config.notifyTripEnd   = v
+        }
         if let v = call.getBool("notifyDistanceKm")         { config.notifyDistanceKm = v }
         if let v = call.getBool("notifyGeofenceEnter")      { config.notifyGeofenceEnter = v }
         if let v = call.getBool("notifyGeofenceExit")       { config.notifyGeofenceExit = v }
@@ -203,16 +208,27 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
     // Trip notification toggles
     // ─────────────────────────────────────────────────────────────────
 
-    /// Enable or disable trip start / end push notifications.
-    /// options: { start?: boolean, end?: boolean }
+    /// Enable or disable trip start / end push notifications from Ionic.
+    /// options:
+    ///   { notify: bool }          — sets both start AND end together
+    ///   { start: bool, end: bool } — set each individually
     @objc func setTripNotifications(_ call: CAPPluginCall) {
         if let notify = call.getBool("notify") {
-            UserDefaults.standard.set(notify, forKey: "tt_notify_tripStart")
-            UserDefaults.standard.set(notify, forKey: "tt_notify_tripEnd")
+            // Single flag controls both
+            NotificationSettingsViewController.isTripStartEnabled = notify
+            NotificationSettingsViewController.isTripEndEnabled   = notify
+        } else {
+            // Individual flags
+            if let start = call.getBool("start") {
+                NotificationSettingsViewController.isTripStartEnabled = start
+            }
+            if let end = call.getBool("end") {
+                NotificationSettingsViewController.isTripEndEnabled = end
+            }
         }
         call.resolve([
-            "notifyTripStart": UserDefaults.standard.object(forKey: "tt_notify_tripStart") as? Bool ?? true,
-            "notifyTripEnd":   UserDefaults.standard.object(forKey: "tt_notify_tripEnd")   as? Bool ?? true,
+            "notifyTripStart": NotificationSettingsViewController.isTripStartEnabled,
+            "notifyTripEnd":   NotificationSettingsViewController.isTripEndEnabled,
         ])
     }
 
@@ -491,8 +507,17 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
             GeofenceManager.shared.isEnabled = v
         case "notifyTrip":
             guard let v = call.getBool("value") else { call.reject("Missing 'value'"); return }
-            UserDefaults.standard.set(v, forKey: "tt_notify_tripStart")
-            UserDefaults.standard.set(v, forKey: "tt_notify_tripEnd")
+            NotificationSettingsViewController.isTripStartEnabled = v
+            NotificationSettingsViewController.isTripEndEnabled   = v
+
+        case "notifyTripStart":
+            guard let v = call.getBool("value") else { call.reject("Missing 'value'"); return }
+            NotificationSettingsViewController.isTripStartEnabled = v
+
+        case "notifyTripEnd":
+            guard let v = call.getBool("value") else { call.reject("Missing 'value'"); return }
+            NotificationSettingsViewController.isTripEndEnabled = v
+
         default:
             call.reject("Unknown setting key: \(key)")
             return

@@ -257,6 +257,9 @@ public class TripTrackerCapPlugin extends Plugin {
 
         Boolean nEnd = call.getBoolean("notifyTripEnd");
         if (nEnd != null) config.notifyTripEnd = nEnd;
+        // notifyTrip sets both start and end together
+        Boolean nTrip = call.getBoolean("notifyTrip");
+        if (nTrip != null) { config.notifyTripStart = nTrip; config.notifyTripEnd = nTrip; }
 
         Boolean nDist = call.getBoolean("notifyDistanceKm");
         if (nDist != null) config.notifyDistanceKm = nDist;
@@ -522,14 +525,43 @@ public class TripTrackerCapPlugin extends Plugin {
                 AppSettings.setNotifTripStart(ctx, notifyTrip);
                 AppSettings.setNotifTripEnd(ctx, notifyTrip);
                 break;
+            case "notifyTripStart":
+                AppSettings.setNotifTripStart(ctx, call.getBoolean("value", true)); break;
+            case "notifyTripEnd":
+                AppSettings.setNotifTripEnd(ctx, call.getBoolean("value", true)); break;
             default:
                 call.reject("Unknown setting: " + key); return;
         }
         editor.apply();
+        call.resolve(new JSObject().put("key", key).put("updated", true));
+    }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Trip notification toggles (dedicated method from Ionic)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Enable or disable trip start / end push notifications.
+     * options:
+     *   { notify: bool }           — sets both start AND end together
+     *   { start: bool, end: bool } — set each individually
+     */
+    @PluginMethod
+    public void setTripNotifications(PluginCall call) {
+        Context ctx = getContext();
+        Boolean notify = call.getBoolean("notify");
+        if (notify != null) {
+            AppSettings.setNotifTripStart(ctx, notify);
+            AppSettings.setNotifTripEnd(ctx, notify);
+        } else {
+            Boolean start = call.getBoolean("start");
+            Boolean end   = call.getBoolean("end");
+            if (start != null) AppSettings.setNotifTripStart(ctx, start);
+            if (end   != null) AppSettings.setNotifTripEnd(ctx, end);
+        }
         JSObject ret = new JSObject();
-        ret.put("key", key);
-        ret.put("updated", true);
+        ret.put("notifyTripStart", AppSettings.isNotifTripStart(ctx));
+        ret.put("notifyTripEnd",   AppSettings.isNotifTripEnd(ctx));
         call.resolve(ret);
     }
 
