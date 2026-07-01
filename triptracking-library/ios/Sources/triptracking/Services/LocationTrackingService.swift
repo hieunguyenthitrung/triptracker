@@ -1274,7 +1274,7 @@ public class LocationTrackingService: NSObject {
 
     func startHeartbeatTimer(interval: TimeInterval = 10.0) {
         if !Thread.isMainThread {
-            DispatchQueue.main.async { self.startHeartbeatTimer(interval) }
+            DispatchQueue.main.async { self.startHeartbeatTimer(interval:interval) }
             return
         }
         heartbeatTimer?.invalidate()
