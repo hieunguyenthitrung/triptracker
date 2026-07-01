@@ -1276,7 +1276,7 @@ public class LocationTrackingService: NSObject {
         periodicTimer = timer
     }
 
-    func startHeartbeatTimer(interval: TimeInterval = 10.0) {
+    public func startHeartbeatTimer(interval: TimeInterval = 10.0) {
         if !Thread.isMainThread {
             DispatchQueue.main.async { self.startHeartbeatTimer(interval: interval) }
             return
@@ -1298,7 +1298,7 @@ public class LocationTrackingService: NSObject {
         heartbeatTimer = timer
     }
 
-    func stopHeartbeat(reason: String = "") {
+    public func stopHeartbeat(reason: String = "") {
         if !Thread.isMainThread {
             DispatchQueue.main.async { self.stopHeartbeat(reason: reason) }
             return
