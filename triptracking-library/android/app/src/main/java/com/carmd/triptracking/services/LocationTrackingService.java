@@ -243,16 +243,7 @@ public class LocationTrackingService extends Service implements
     private android.os.Handler permissionHandler;
     private Runnable permissionRunnable;
 
-    @Override
-    public void onCreate() {
-        super.onCreate();
-
-        // createNotificationChannel() MUST come before startForeground().
-        // startForeground() MUST come as early as possible — before any I/O or
-        // slow init — to satisfy the 5-second OS requirement. On Android 14+,
-        // calling without FOREGROUND_SERVICE_TYPE_LOCATION (when declared in
-        // manifest) throws IllegalArgumentException. The catch falls back to
-        // no-type (works on older Android). Never call stopSelf() here.
+    private void promoteToForeground() {
         createNotificationChannel();
         Notification n = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("CarMD Connect")
@@ -275,6 +266,19 @@ public class LocationTrackingService extends Service implements
                 Log.e(TAG, "startForeground fallback failed: " + e2.getMessage());
             }
         }
+    }
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+
+        // createNotificationChannel() MUST come before startForeground().
+        // startForeground() MUST come as early as possible — before any I/O or
+        // slow init — to satisfy the 5-second OS requirement. On Android 14+,
+        // calling without FOREGROUND_SERVICE_TYPE_LOCATION (when declared in
+        // manifest) throws IllegalArgumentException. The catch falls back to
+        // no-type (works on older Android). Never call stopSelf() here.
+        promoteToForeground();
 
         instance = this;
         database = LocationDatabase.getInstance(this);
@@ -374,6 +378,11 @@ public class LocationTrackingService extends Service implements
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        // Must call startForeground() within 5 s of startForegroundService().
+        // onCreate() covers the first start; this covers re-delivery when the
+        // service is already running (only onStartCommand fires, not onCreate).
+        promoteToForeground();
+
         String action = (intent != null) ? intent.getAction() : null;
 
         if (ACTION_STOP_TRACKING.equals(action)) {
