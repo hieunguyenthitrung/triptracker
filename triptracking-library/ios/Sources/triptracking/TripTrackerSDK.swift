@@ -181,11 +181,19 @@ public final class TripTrackerSDK {
         ud.set(config.routeGapMeters, forKey: "tt_routeGapThresholdM")
         ud.set(config.webMonitorEnabled, forKey: "tt_webMonitorEnabled")
         ud.set(config.voiceFeedbackEnabled, forKey: "tt_voiceFeedbackEnabled")
-        ud.set(config.notifyTripStart, forKey: "tt_notify_tripStart")
-        ud.set(config.notifyTripEnd, forKey: "tt_notify_tripEnd")
-        ud.set(config.notifyDistanceKm, forKey: "tt_notify_distanceKm")
-        ud.set(config.notifyGeofenceEnter, forKey: "tt_notify_geofenceEnter")
-        ud.set(config.notifyGeofenceExit, forKey: "tt_notify_geofenceExit")
+        // Notification flags: only write when no value exists yet in UserDefaults.
+        // This lets initializeWithConfig set the initial state on fresh install,
+        // while preserving any changes made via setTripNotifications() or
+        // updateSetting() across repeated initializeWithConfig calls (e.g. app resume).
+        // resetConfig() removes all keys, so the next init sets fresh values from config.
+        func setNotifyIfAbsent(_ key: String, _ value: Bool) {
+            if ud.object(forKey: key) == nil { ud.set(value, forKey: key) }
+        }
+        setNotifyIfAbsent("tt_notify_tripStart",    config.notifyTripStart)
+        setNotifyIfAbsent("tt_notify_tripEnd",      config.notifyTripEnd)
+        setNotifyIfAbsent("tt_notify_distanceKm",   config.notifyDistanceKm)
+        setNotifyIfAbsent("tt_notify_geofenceEnter", config.notifyGeofenceEnter)
+        setNotifyIfAbsent("tt_notify_geofenceExit",  config.notifyGeofenceExit)
 
         GeofenceManager.shared.isEnabled = config.geofenceEnabled
 
