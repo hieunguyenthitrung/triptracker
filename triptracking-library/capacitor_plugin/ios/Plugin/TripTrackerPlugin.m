@@ -39,5 +39,5 @@ CAP_PLUGIN(TripTrackerPlugin, "TripTracker",
     CAP_PLUGIN_METHOD(removeAllListeners, CAPPluginReturnPromise);
     CAP_PLUGIN_METHOD(startHeartbeatTimer, CAPPluginReturnPromise);
     CAP_PLUGIN_METHOD(stopHeartbeatTimer, CAPPluginReturnPromise);
-    CAP_PLUGIN_METHOD(setTripNotifications, CAPPluginReturnPromise);
+    CAP_PLUGIN_METHOD(notifyTrip, CAPPluginReturnPromise);
 )
