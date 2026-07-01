@@ -587,7 +587,7 @@ public class LocationTrackingService: NSObject {
     public func startBackgroundTracking() {
         if isBackgroundTrackingStarted {
             locationManager.startUpdatingLocation()
-            startHeartbeat()
+            startHeartbeatTimer()
             print("⚠️ TripTracker startBackgroundTracking re-entry — GPS ensured")
             return
         }
@@ -1274,7 +1274,7 @@ public class LocationTrackingService: NSObject {
 
     func startHeartbeatTimer(interval: TimeInterval = 10.0) {
         if !Thread.isMainThread {
-            DispatchQueue.main.async { self.startHeartbeat() }
+            DispatchQueue.main.async { self.startHeartbeatTimer(interval) }
             return
         }
         heartbeatTimer?.invalidate()
@@ -1284,7 +1284,7 @@ public class LocationTrackingService: NSObject {
             let hour = Calendar.current.component(.hour, from: Date())
             guard hour >= 6 else {
                 print("💓 TripTracker heartbeat skipped (quiet hours 12AM–6AM, hour=\(hour))")
-                if (lastMotionState != ".automotive") {
+                if (lastMotionState != .automotive) {
                     return
                 }
             }
