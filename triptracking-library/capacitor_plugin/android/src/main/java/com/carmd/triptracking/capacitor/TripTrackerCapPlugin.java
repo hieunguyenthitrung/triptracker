@@ -14,10 +14,6 @@ import com.carmd.triptracking.database.LocationDatabase;
 import com.carmd.triptracking.geofence.GeofenceManager;
 import com.carmd.triptracking.services.LocationTrackingService;
 import com.carmd.triptracking.ui.AppSettings;
-import com.carmd.triptracking.database.LocationDatabase;
-import com.carmd.triptracking.geofence.GeofenceManager;
-import com.carmd.triptracking.services.LocationTrackingService;
-import com.carmd.triptracking.ui.AppSettings;
 import com.carmd.triptracking.ui.DailyLocationsActivity;
 import com.carmd.triptracking.ui.GeofenceSettingsActivity;
 import com.carmd.triptracking.ui.MainActivity;
@@ -53,18 +49,13 @@ public class TripTrackerCapPlugin extends Plugin {
     private static TripTrackerCapPlugin instance;
 
     // ── Event name constants ──────────────────────────────────────────────────
-    private static final String EVENT_ACTIVITY_CHANGE     = "activityChange";
-    private static final String EVENT_LOCATION_UPDATE     = "locationUpdate";
-    private static final String EVENT_TRACKING_STATE      = "trackingStateChange";
-    private static final String EVENT_STATS_UPDATE        = "statsUpdate";
+    private static final String EVENT_ACTIVITY_CHANGE = "activityChange";
+    private static final String EVENT_LOCATION_UPDATE = "locationUpdate";
+    private static final String EVENT_TRACKING_STATE  = "trackingStateChange";
+    private static final String EVENT_STATS_UPDATE    = "statsUpdate";
 
     /**
      * Called via reflection from LocationTrackingService.emitMotionChange().
-     * Must be public static — no hard compile-time dependency on this class from the service.
-     *
-     * @param activity   "IN_VEHICLE" | "STILL" | "MOVING" | "WALKING" | "ON_BICYCLE"
-     * @param transition "ENTER" | "EXIT"  (Activity Recognition)
-     *                   "SENSOR"          (SensorBasedLocationTracker accelerometer)
      */
     public static void emitMotionChange(String activity, String transition) {
         if (instance == null) return;
@@ -91,20 +82,17 @@ public class TripTrackerCapPlugin extends Plugin {
 
     @Override
     public void load() {
-        instance = this;  // register static reference for emitMotionChange()
-        // Service is always started by SDK. Bind to it.
+        instance = this;
         bindToServiceIfRunning();
     }
 
     @Override
     protected void handleOnResume() {
         super.handleOnResume();
-        // User may have just granted permission in Settings
         if (TripTrackerSDK.isInitialized() && TripTrackerSDK.hasLocationPermission(getContext())) {
             TripTrackerSDK.onPermissionGranted(getContext());
             if (!serviceBound) bindToServiceIfRunning();
         }
-        // Ping server with current location when app returns to foreground.
         if (TripTrackerSDK.isInitialized() && TripTrackerSDK.hasLocationPermission(getContext())
                 && trackingService != null) {
             trackingService.requestCurrentLocation(15_000, new LocationTrackingService.LocationCallback() {
@@ -117,9 +105,10 @@ public class TripTrackerCapPlugin extends Plugin {
                 }
             });
         }
+        // Notify JS so it can re-run BLE/dongle logic
+        notifyListeners("appForeground", new JSObject());
     }
 
-    /** Bind to service if it's running. */
     private void bindToServiceIfRunning() {
         if (serviceBound) return;
         try {
@@ -131,15 +120,13 @@ public class TripTrackerCapPlugin extends Plugin {
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    // Permission & Tracking Control
+    // Permission & Tracking
     // ═══════════════════════════════════════════════════════════════════
 
     @PluginMethod
     public void hasLocationPermission(PluginCall call) {
         boolean granted = TripTrackerSDK.hasLocationPermission(getContext());
-        if (granted) {
-            TripTrackerSDK.onPermissionGranted(getContext());
-        }
+        if (granted) TripTrackerSDK.onPermissionGranted(getContext());
         JSObject ret = new JSObject();
         ret.put("granted", granted);
         call.resolve(ret);
@@ -148,10 +135,7 @@ public class TripTrackerCapPlugin extends Plugin {
     @PluginMethod
     public void updateVehicleId(PluginCall call) {
         String vehicleId = call.getString("vehicleId");
-        if (vehicleId == null) {
-            call.reject("Missing 'vehicleId'");
-            return;
-        }
+        if (vehicleId == null) { call.reject("Missing 'vehicleId'"); return; }
         TripTrackerSDK.updateVehicleId(vehicleId);
         JSObject ret = new JSObject();
         ret.put("updated", true);
@@ -162,10 +146,7 @@ public class TripTrackerCapPlugin extends Plugin {
     @PluginMethod
     public void updateToolId(PluginCall call) {
         String toolId = call.getString("toolId");
-        if (toolId == null) {
-            call.reject("Missing 'toolId'");
-            return;
-        }
+        if (toolId == null) { call.reject("Missing 'toolId'"); return; }
         TripTrackerAPIService.getInstance().updateToolId(toolId);
         JSObject ret = new JSObject();
         ret.put("updated", true);
@@ -176,28 +157,24 @@ public class TripTrackerCapPlugin extends Plugin {
     @PluginMethod
     public void startTracking(PluginCall call) {
         if (!TripTrackerSDK.hasLocationPermission(getContext())) {
-            call.reject("Location permission not granted. Grant permission first.");
+            call.reject("Location permission not granted.");
             return;
         }
         TripTrackerSDK.startTracking(getContext());
         bindToServiceIfRunning();
-        JSObject ret = new JSObject();
-        ret.put("started", true);
-        call.resolve(ret);
+        call.resolve(new JSObject().put("started", true));
     }
 
     @PluginMethod
     public void stopTracking(PluginCall call) {
         TripTrackerSDK.stopTracking(getContext());
-        JSObject ret = new JSObject();
-        ret.put("stopped", true);
-        call.resolve(ret);
+        call.resolve(new JSObject().put("stopped", true));
     }
 
     @PluginMethod
     public void writeLog(PluginCall call) {
         String message = call.getString("message", "");
-        android.util.Log.i("⚡️ [Ionic] ", message);
+        android.util.Log.i("⚡️ [Ionic]", message);
         call.resolve();
     }
 
@@ -218,7 +195,7 @@ public class TripTrackerCapPlugin extends Plugin {
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    // Native Pages
+    // Initialize
     // ═══════════════════════════════════════════════════════════════════
 
     @PluginMethod
@@ -227,72 +204,54 @@ public class TripTrackerCapPlugin extends Plugin {
 
         Double saveInterval = call.getDouble("saveIntervalMinutes");
         if (saveInterval != null) config.saveIntervalMinutes = saveInterval;
-
         Double saveDist = call.getDouble("saveDistanceMeters");
         if (saveDist != null) config.saveDistanceMeters = saveDist;
-
         Double vehicleThresh = call.getDouble("vehicleThreshold");
         if (vehicleThresh != null) config.vehicleThreshold = vehicleThresh.floatValue();
-
         Integer transport = call.getInt("transportType");
         if (transport != null) config.transportType = transport;
-
         Double autoStop = call.getDouble("autoStopTimeoutMinutes");
         if (autoStop != null) config.autoStopTimeoutMinutes = autoStop;
-
         Double routeGap = call.getDouble("routeGapMeters");
         if (routeGap != null) config.routeGapMeters = routeGap;
-
         Boolean geofence = call.getBoolean("geofenceEnabled");
         if (geofence != null) config.geofenceEnabled = geofence;
-
         Boolean webMon = call.getBoolean("webMonitorEnabled");
         if (webMon != null) config.webMonitorEnabled = webMon;
-
         Boolean voice = call.getBoolean("voiceFeedbackEnabled");
         if (voice != null) config.voiceFeedbackEnabled = voice;
 
+        // Individual notification flags
         Boolean nStart = call.getBoolean("notifyTripStart");
         if (nStart != null) config.notifyTripStart = nStart;
-
         Boolean nEnd = call.getBoolean("notifyTripEnd");
         if (nEnd != null) config.notifyTripEnd = nEnd;
+        // notifyTrip sets both start and end together
+        Boolean nTrip = call.getBoolean("notifyTrip");
+        if (nTrip != null) { config.notifyTripStart = nTrip; config.notifyTripEnd = nTrip; }
 
         Boolean nDist = call.getBoolean("notifyDistanceKm");
         if (nDist != null) config.notifyDistanceKm = nDist;
-
         Boolean nEnter = call.getBoolean("notifyGeofenceEnter");
         if (nEnter != null) config.notifyGeofenceEnter = nEnter;
-
         Boolean nExit = call.getBoolean("notifyGeofenceExit");
         if (nExit != null) config.notifyGeofenceExit = nExit;
 
-        String pingURL = call.getString("pingURL");
-        if (pingURL != null) config.pingURL = pingURL;
-        String endURL = call.getString("endURL");
-        if (endURL != null) config.endURL = endURL;
-        String userId = call.getString("userId");
-        if (userId != null) config.userId = userId;
-        String vehicleId = call.getString("vehicleId");
-        if (vehicleId != null) config.vehicleId = vehicleId;
-        String osInfo = call.getString("osInfo");
-        if (osInfo != null) config.osInfo = osInfo;
-        String routeId = call.getString("routeId");
-        if (routeId != null) config.routeId = routeId;
-        String authKey = call.getString("authorizationKey");
-        if (authKey != null) config.authorizationKey = authKey;
-        String apiAuth = call.getString("apiAuthKey");
-        if (apiAuth != null) config.apiAuthKey = apiAuth;
-        String apiAuthTok = call.getString("apiAuthToken");
-        if (apiAuthTok != null) config.apiAuthToken = apiAuthTok;
+        String pingURL = call.getString("pingURL"); if (pingURL != null) config.pingURL = pingURL;
+        String endURL  = call.getString("endURL");  if (endURL  != null) config.endURL  = endURL;
+        String userId  = call.getString("userId");  if (userId  != null) config.userId  = userId;
+        String vehicleId = call.getString("vehicleId"); if (vehicleId != null) config.vehicleId = vehicleId;
+        String osInfo  = call.getString("osInfo");  if (osInfo  != null) config.osInfo  = osInfo;
+        String routeId = call.getString("routeId"); if (routeId != null) config.routeId = routeId;
+        String authKey = call.getString("authorizationKey"); if (authKey != null) config.authorizationKey = authKey;
+        String apiAuth = call.getString("apiAuthKey"); if (apiAuth != null) config.apiAuthKey = apiAuth;
+        String apiAuthTok = call.getString("apiAuthToken"); if (apiAuthTok != null) config.apiAuthToken = apiAuthTok;
 
         TripTrackerSDK.initialize(getContext(), config);
 
-        // Service always starts — bind to it
         boolean permGranted = TripTrackerSDK.hasLocationPermission(getContext());
         bindToServiceIfRunning();
 
-        // Request current location shortly after init so first ping fires immediately
         if (permGranted) {
             new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
                 LocationTrackingService svc = LocationTrackingService.getInstance();
@@ -312,56 +271,48 @@ public class TripTrackerCapPlugin extends Plugin {
         JSObject ret = new JSObject();
         ret.put("initialized", true);
         ret.put("permissionGranted", permGranted);
-        ret.put("trackingStarted", true);  // Service always starts
+        ret.put("trackingStarted", true);
         call.resolve(ret);
     }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Native Pages
+    // ═══════════════════════════════════════════════════════════════════
 
     @PluginMethod
     public void openSettings(PluginCall call) {
         launchActivity(SettingsActivity.class);
-        JSObject ret = new JSObject();
-        ret.put("opened", true);
-        call.resolve(ret);
+        call.resolve(new JSObject().put("opened", true));
     }
 
     @PluginMethod
     public void openNotificationSettings(PluginCall call) {
         launchActivity(NotificationSettingsActivity.class);
-        JSObject ret = new JSObject();
-        ret.put("opened", true);
-        call.resolve(ret);
+        call.resolve(new JSObject().put("opened", true));
     }
 
     @PluginMethod
     public void openGeofenceManager(PluginCall call) {
         launchActivity(GeofenceSettingsActivity.class);
-        JSObject ret = new JSObject();
-        ret.put("opened", true);
-        call.resolve(ret);
+        call.resolve(new JSObject().put("opened", true));
     }
 
     @PluginMethod
     public void openMainView(PluginCall call) {
         launchActivity(MainActivity.class);
-        JSObject ret = new JSObject();
-        ret.put("opened", true);
-        call.resolve(ret);
+        call.resolve(new JSObject().put("opened", true));
     }
 
     @PluginMethod
     public void openHistory(PluginCall call) {
         launchActivity(TripHistoryActivity.class);
-        JSObject ret = new JSObject();
-        ret.put("opened", true);
-        call.resolve(ret);
+        call.resolve(new JSObject().put("opened", true));
     }
 
     @PluginMethod
     public void openDailyLocations(PluginCall call) {
         launchActivity(DailyLocationsActivity.class);
-        JSObject ret = new JSObject();
-        ret.put("opened", true);
-        call.resolve(ret);
+        call.resolve(new JSObject().put("opened", true));
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -380,7 +331,6 @@ public class TripTrackerCapPlugin extends Plugin {
             ret.put("duration", trackingService.getCurrentTripDuration());
             ret.put("steps", trackingService.getCurrentTripSteps());
             ret.put("tripId", trackingService.getCurrentTripId());
-
             android.location.Location loc = trackingService.getLastKnownLocation();
             if (loc != null) {
                 ret.put("latitude", loc.getLatitude());
@@ -401,17 +351,12 @@ public class TripTrackerCapPlugin extends Plugin {
     @PluginMethod
     public void getCurrentLocation(PluginCall call) {
         call.setKeepAlive(true);
-        int timeoutMs = (int)(15f * 1000);
+        int timeoutMs = 15_000;
         LocationTrackingService svc = (trackingService != null)
                 ? trackingService : LocationTrackingService.getInstance();
-        if (svc == null) {
-            call.reject("LocationTrackingService not available");
-            return;
-        }
-
+        if (svc == null) { call.reject("LocationTrackingService not available"); return; }
         svc.requestCurrentLocation(timeoutMs, new LocationTrackingService.LocationCallback() {
-            @Override
-            public void onLocation(android.location.Location loc) {
+            @Override public void onLocation(android.location.Location loc) {
                 JSObject ret = new JSObject();
                 ret.put("latitude",  loc.getLatitude());
                 ret.put("longitude", loc.getLongitude());
@@ -423,13 +368,9 @@ public class TripTrackerCapPlugin extends Plugin {
                 ret.put("timestamp", loc.getTime());
                 call.resolve(ret);
             }
-            @Override
-            public void onError(String error) {
-                call.reject(error);
-            }
+            @Override public void onError(String error) { call.reject(error); }
         });
     }
-
 
     // ═══════════════════════════════════════════════════════════════════
     // Trip History
@@ -440,7 +381,6 @@ public class TripTrackerCapPlugin extends Plugin {
         int limit = call.getInt("limit", 50);
         LocationDatabase db = LocationDatabase.getInstance(getContext());
         List<LocationDatabase.Trip> trips = db.getAllTrips();
-
         JSArray tripArr = new JSArray();
         int count = Math.min(trips.size(), limit);
         for (int i = 0; i < count; i++) {
@@ -455,11 +395,7 @@ public class TripTrackerCapPlugin extends Plugin {
             obj.put("isActive", "active".equals(t.status));
             tripArr.put(obj);
         }
-
-        JSObject ret = new JSObject();
-        ret.put("trips", tripArr);
-        ret.put("count", count);
-        call.resolve(ret);
+        call.resolve(new JSObject().put("trips", tripArr).put("count", count));
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -470,20 +406,20 @@ public class TripTrackerCapPlugin extends Plugin {
     public void getSettings(PluginCall call) {
         Context ctx = getContext();
         JSObject ret = new JSObject();
-        ret.put("vehicleThreshold", (double) AppSettings.getVehicleSpeed(ctx));
-        ret.put("vehicleThresholdKmh", (double) AppSettings.getVehicleSpeed(ctx) * 3.6);
-        ret.put("saveIntervalMinutes", (double) AppSettings.getStillInterval(ctx));
-        ret.put("saveDistanceMeters", (double) AppSettings.getVehicleDistance(ctx));
+        ret.put("vehicleThreshold",      (double) AppSettings.getVehicleSpeed(ctx));
+        ret.put("vehicleThresholdKmh",   (double) AppSettings.getVehicleSpeed(ctx) * 3.6);
+        ret.put("saveIntervalMinutes",   (double) AppSettings.getStillInterval(ctx));
+        ret.put("saveDistanceMeters",    (double) AppSettings.getVehicleDistance(ctx));
         ret.put("autoEndTimeoutMinutes", (double) AppSettings.getAutoStopTimeout(ctx));
         ret.put("routeGapThresholdMeters", (double) AppSettings.getRouteGap(ctx));
-        ret.put("webMonitorEnabled", AppSettings.isWebServerEnabled(ctx));
-        ret.put("voiceFeedbackEnabled", AppSettings.isVoiceEnabled(ctx));
-        ret.put("geofencingEnabled", GeofenceManager.isEnabled(ctx));
-        ret.put("notifyTripStart", AppSettings.isNotifTripStart(ctx));
-        ret.put("notifyTripEnd", AppSettings.isNotifTripEnd(ctx));
-        ret.put("notifyDistanceKm", AppSettings.isNotifDistanceKm(ctx));
-        ret.put("notifyGeofenceEnter", AppSettings.isNotifGeofenceEnter(ctx));
-        ret.put("notifyGeofenceExit", AppSettings.isNotifGeofenceExit(ctx));
+        ret.put("webMonitorEnabled",     AppSettings.isWebServerEnabled(ctx));
+        ret.put("voiceFeedbackEnabled",  AppSettings.isVoiceEnabled(ctx));
+        ret.put("geofencingEnabled",     GeofenceManager.isEnabled(ctx));
+        ret.put("notifyTripStart",       AppSettings.isNotifTripStart(ctx));
+        ret.put("notifyTripEnd",         AppSettings.isNotifTripEnd(ctx));
+        ret.put("notifyDistanceKm",      AppSettings.isNotifDistanceKm(ctx));
+        ret.put("notifyGeofenceEnter",   AppSettings.isNotifGeofenceEnter(ctx));
+        ret.put("notifyGeofenceExit",    AppSettings.isNotifGeofenceExit(ctx));
         call.resolve(ret);
     }
 
@@ -491,11 +427,9 @@ public class TripTrackerCapPlugin extends Plugin {
     public void updateSetting(PluginCall call) {
         String key = call.getString("key");
         if (key == null) { call.reject("Missing 'key'"); return; }
-
         Context ctx = getContext();
         SharedPreferences prefs = ctx.getSharedPreferences("triptracker_settings", Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = prefs.edit();
-
         switch (key) {
             case "vehicleThreshold":
                 editor.putFloat(AppSettings.KEY_VEHICLE_SPEED, call.getFloat("value", 6f)); break;
@@ -522,14 +456,43 @@ public class TripTrackerCapPlugin extends Plugin {
                 AppSettings.setNotifTripStart(ctx, notifyTrip);
                 AppSettings.setNotifTripEnd(ctx, notifyTrip);
                 break;
+            case "notifyTripStart":
+                AppSettings.setNotifTripStart(ctx, call.getBoolean("value", true)); break;
+            case "notifyTripEnd":
+                AppSettings.setNotifTripEnd(ctx, call.getBoolean("value", true)); break;
             default:
                 call.reject("Unknown setting: " + key); return;
         }
         editor.apply();
+        call.resolve(new JSObject().put("key", key).put("updated", true));
+    }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Trip notification toggles (dedicated method from Ionic)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Enable or disable trip start / end push notifications.
+     * options:
+     *   { notify: bool }           — sets both start AND end together
+     *   { start: bool, end: bool } — set each individually
+     */
+    @PluginMethod
+    public void setTripNotifications(PluginCall call) {
+        Context ctx = getContext();
+        Boolean notify = call.getBoolean("notify");
+        if (notify != null) {
+            AppSettings.setNotifTripStart(ctx, notify);
+            AppSettings.setNotifTripEnd(ctx, notify);
+        } else {
+            Boolean start = call.getBoolean("start");
+            Boolean end   = call.getBoolean("end");
+            if (start != null) AppSettings.setNotifTripStart(ctx, start);
+            if (end   != null) AppSettings.setNotifTripEnd(ctx, end);
+        }
         JSObject ret = new JSObject();
-        ret.put("key", key);
-        ret.put("updated", true);
+        ret.put("notifyTripStart", AppSettings.isNotifTripStart(ctx));
+        ret.put("notifyTripEnd",   AppSettings.isNotifTripEnd(ctx));
         call.resolve(ret);
     }
 
@@ -553,38 +516,27 @@ public class TripTrackerCapPlugin extends Plugin {
             obj.put("autoStopOnEnter", z.autoStopTrip);
             arr.put(obj);
         }
-        JSObject ret = new JSObject();
-        ret.put("zones", arr);
-        ret.put("count", zones.size());
-        call.resolve(ret);
+        call.resolve(new JSObject().put("zones", arr).put("count", zones.size()));
     }
 
     @PluginMethod
     public void addGeofenceZone(PluginCall call) {
         String name = call.getString("name");
-        Double lat = call.getDouble("latitude");
-        Double lon = call.getDouble("longitude");
+        Double lat  = call.getDouble("latitude");
+        Double lon  = call.getDouble("longitude");
         if (name == null || lat == null || lon == null) {
             call.reject("Missing name/latitude/longitude"); return;
         }
-
-      Double radiusDouble = call.getDouble("radius");
-      float radiusMeters = radiusDouble != null ? radiusDouble.floatValue() : 200.0f;
-
-      GeofenceManager.GeofenceZone zone = new GeofenceManager.GeofenceZone(
-        name, lat, lon,
-        radiusMeters,
-        call.getBoolean("notifyOnEnter", true),
-        call.getBoolean("notifyOnExit", true),
-        call.getBoolean("autoStopOnEnter", false)
-      );
+        Double radiusDouble = call.getDouble("radius");
+        float radiusMeters = radiusDouble != null ? radiusDouble.floatValue() : 200.0f;
+        GeofenceManager.GeofenceZone zone = new GeofenceManager.GeofenceZone(
+                name, lat, lon, radiusMeters,
+                call.getBoolean("notifyOnEnter", true),
+                call.getBoolean("notifyOnExit", true),
+                call.getBoolean("autoStopOnEnter", false));
         GeofenceManager.addZone(getContext(), zone);
         GeofenceManager.registerAll(getContext());
-
-        JSObject ret = new JSObject();
-        ret.put("id", zone.id);
-        ret.put("added", true);
-        call.resolve(ret);
+        call.resolve(new JSObject().put("id", zone.id).put("added", true));
     }
 
     @PluginMethod
@@ -592,11 +544,7 @@ public class TripTrackerCapPlugin extends Plugin {
         String id = call.getString("id");
         if (id == null) { call.reject("Missing 'id'"); return; }
         GeofenceManager.removeZone(getContext(), id);
-
-        JSObject ret = new JSObject();
-        ret.put("id", id);
-        ret.put("removed", true);
-        call.resolve(ret);
+        call.resolve(new JSObject().put("id", id).put("removed", true));
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -606,17 +554,13 @@ public class TripTrackerCapPlugin extends Plugin {
     @PluginMethod
     public void startWebMonitor(PluginCall call) {
         AppSettings.setWebServerEnabled(getContext(), true);
-        JSObject ret = new JSObject();
-        ret.put("started", true);
-        call.resolve(ret);
+        call.resolve(new JSObject().put("started", true));
     }
 
     @PluginMethod
     public void stopWebMonitor(PluginCall call) {
         AppSettings.setWebServerEnabled(getContext(), false);
-        JSObject ret = new JSObject();
-        ret.put("stopped", true);
-        call.resolve(ret);
+        call.resolve(new JSObject().put("stopped", true));
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -625,30 +569,22 @@ public class TripTrackerCapPlugin extends Plugin {
 
     @PluginMethod
     public void sendTodayLog(PluginCall call) {
-        shareLogFiles(0);  // 0 = today only
-        JSObject ret = new JSObject();
-        ret.put("shared", true);
-        call.resolve(ret);
+        shareLogFiles(0);
+        call.resolve(new JSObject().put("shared", true));
     }
 
     @PluginMethod
     public void sendAllLogs(PluginCall call) {
-        shareLogFiles(3);  // 3 = last 3 days
-        JSObject ret = new JSObject();
-        ret.put("shared", true);
-        call.resolve(ret);
+        shareLogFiles(3);
+        call.resolve(new JSObject().put("shared", true));
     }
 
     @PluginMethod
     public void sendRecentLogs(PluginCall call) {
         int days = call.getInt("days", 3);
         Integer zipDays = (days == -1) ? null : (days == 0 ? 1 : days);
-        File zip = com.carmd.triptracking.util.LogcatWriter.getZippedLogs(getContext(), zipDays);
-        if (zip == null) {
-            call.reject("No log files found or zip failed");
-            return;
-        }
-        // Copy to external cache so path is accessible
+        File zip = LogcatWriter.getZippedLogs(getContext(), zipDays);
+        if (zip == null) { call.reject("No log files found or zip failed"); return; }
         File outDir = getContext().getExternalCacheDir();
         if (outDir == null) outDir = getContext().getCacheDir();
         File shareFile = new File(outDir, zip.getName());
@@ -656,22 +592,16 @@ public class TripTrackerCapPlugin extends Plugin {
             java.nio.file.Files.copy(zip.toPath(), shareFile.toPath(),
                     java.nio.file.StandardCopyOption.REPLACE_EXISTING);
         } catch (Exception e) {
-            call.reject("Failed to prepare zip: " + e.getMessage());
-            return;
+            call.reject("Failed to prepare zip: " + e.getMessage()); return;
         }
-
         shareLogFiles(days);
-        JSObject ret = new JSObject();
-        ret.put("path", shareFile.getAbsolutePath());
-        call.resolve(ret);
+        call.resolve(new JSObject().put("path", shareFile.getAbsolutePath()));
     }
 
     @PluginMethod
     public void resetConfig(PluginCall call) {
         TripTrackerSDK.resetConfig(getContext());
-        JSObject ret = new JSObject();
-        ret.put("reset", true);
-        call.resolve(ret);
+        call.resolve(new JSObject().put("reset", true));
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -684,102 +614,32 @@ public class TripTrackerCapPlugin extends Plugin {
         getContext().startActivity(intent);
     }
 
-    /**
-     * Share log files via share sheet (email, etc.)
-     * @param days  0 = today only, -1 = all, N = last N days
-     */
     private void shareLogFiles(int days) {
-    if (getActivity() == null) return;
-
-    Integer zipDays = (days == -1) ? null : (days == 0 ? 1 : days);
-    File zip = com.carmd.triptracking.util.LogcatWriter.getZippedLogs(getContext(), zipDays);
-    if (zip == null) return;
-
-    String subject;
-    if (days == 0) subject = "TripTracker Today's Log";
-    else if (days == -1) subject = "TripTracker All Logs";
-    else subject = "TripTracker Logs — Last " + days + " days";
-
-    try {
-        // Copy zip to external cache — bypasses FileProvider permission issues
-        File externalDir = getContext().getExternalCacheDir();
-        if (externalDir == null) externalDir = getContext().getCacheDir();
-        File shareFile = new File(externalDir, zip.getName());
-        java.nio.file.Files.copy(zip.toPath(), shareFile.toPath(),
-                java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-
-        Uri uri = androidx.core.content.FileProvider.getUriForFile(
-                getContext(),
-                getContext().getPackageName() + ".fileprovider",
-                shareFile);
-
-        Intent intent = new Intent(Intent.ACTION_SEND);
-        intent.setType("application/zip");
-        intent.putExtra(Intent.EXTRA_STREAM, uri);
-        intent.putExtra(Intent.EXTRA_SUBJECT, subject);
-        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-
-        // Grant permission explicitly to all possible receivers
-        getContext().grantUriPermission(
-                "android", uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-
-        getActivity().startActivity(Intent.createChooser(intent, subject));
-    } catch (Exception e) {
-        android.util.Log.e("TripTrackerPlugin", "Share failed: " + e.getMessage());
+        if (getActivity() == null) return;
+        Integer zipDays = (days == -1) ? null : (days == 0 ? 1 : days);
+        File zip = LogcatWriter.getZippedLogs(getContext(), zipDays);
+        if (zip == null) return;
+        String subject = (days == 0) ? "TripTracker Today's Log"
+                : (days == -1) ? "TripTracker All Logs"
+                : "TripTracker Logs — Last " + days + " days";
+        try {
+            File externalDir = getContext().getExternalCacheDir();
+            if (externalDir == null) externalDir = getContext().getCacheDir();
+            File shareFile = new File(externalDir, zip.getName());
+            java.nio.file.Files.copy(zip.toPath(), shareFile.toPath(),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            Uri uri = FileProvider.getUriForFile(getContext(),
+                    getContext().getPackageName() + ".fileprovider", shareFile);
+            Intent intent = new Intent(Intent.ACTION_SEND);
+            intent.setType("application/zip");
+            intent.putExtra(Intent.EXTRA_STREAM, uri);
+            intent.putExtra(Intent.EXTRA_SUBJECT, subject);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            getActivity().startActivity(Intent.createChooser(intent, subject));
+        } catch (Exception e) {
+            android.util.Log.e("TripTrackerPlugin", "Share failed: " + e.getMessage());
+        }
     }
-}
-    // private void shareLogFiles(int days) {
-    //     if (getActivity() == null) return;
-
-    //     // Collect dates to include
-    //     java.util.Set<String> datesToInclude = new java.util.HashSet<>();
-    //     java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US);
-    //     if (days >= 0) {
-    //         int count = (days == 0) ? 1 : days;
-    //         java.util.Calendar cal = java.util.Calendar.getInstance();
-    //         for (int i = 0; i < count; i++) {
-    //             datesToInclude.add(sdf.format(cal.getTime()));
-    //             cal.add(java.util.Calendar.DAY_OF_YEAR, -1);
-    //         }
-    //     }
-
-    //     // Get files from LogcatWriter (uses getCacheDir, prefix "triptracker_logcat_")
-    //     File[] logFiles = com.carmd.triptracking.util.LogcatWriter.getAllLogFiles(getContext());
-    //     if (logFiles == null || logFiles.length == 0) return;
-
-    //     ArrayList<Uri> uris = new ArrayList<>();
-    //     for (File f : logFiles) {
-    //         if (days == -1) {
-    //             // All files
-    //             uris.add(getUriForFile(f));
-    //         } else {
-    //             // Filter by date
-    //             for (String date : datesToInclude) {
-    //                 if (f.getName().contains(date)) {
-    //                     uris.add(getUriForFile(f));
-    //                     break;
-    //                 }
-    //             }
-    //         }
-    //     }
-    //     if (uris.isEmpty()) return;
-
-    //     String subject;
-    //     if (days == 0) {
-    //         subject = "TripTracker Today's Log";
-    //     } else if (days == -1) {
-    //         subject = "TripTracker All Logs (" + logFiles.length + " files)";
-    //     } else {
-    //         subject = "TripTracker Logs — Last " + days + " days";
-    //     }
-
-    //     Intent shareIntent = new Intent(Intent.ACTION_SEND_MULTIPLE);
-    //     shareIntent.setType("text/plain");
-    //     shareIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
-    //     shareIntent.putExtra(Intent.EXTRA_SUBJECT, subject);
-    //     shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-    //     getActivity().startActivity(Intent.createChooser(shareIntent, subject));
-    // }
 
     private Uri getUriForFile(File f) {
         return FileProvider.getUriForFile(getContext(),

@@ -98,7 +98,6 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
     }
 
     @objc private func handleAppDidBecomeActive() {
-        // End background task when back in foreground
         if TripTrackerSDK.isInitialized {
             LocationTrackingService.shared.startBackgroundTracking()
         }
@@ -106,7 +105,6 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
 
     @objc private func handleAppDidEnterBackground() {
         if TripTrackerSDK.isInitialized {
-            // Begin background task to protect API calls + DB writes
             LocationTrackingService.shared.ensureBackgroundTracking()
         }
     }
@@ -117,11 +115,9 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         }
     }
 
-    // MARK: - Native Settings Pages
+    // MARK: - Initialize
 
-    /// Initialize SDK with custom config from JavaScript.
     @objc func initializeWithConfig(_ call: CAPPluginCall) {
-        // Register for location/tracking/activity events
         print("🚀 TripTrackerPlugin initializing with config from JS")
         LocationTrackingService.shared.delegate = self
 
@@ -137,6 +133,11 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         if let v = call.getBool("voiceFeedbackEnabled")     { config.voiceFeedbackEnabled = v }
         if let v = call.getBool("notifyTripStart")          { config.notifyTripStart = v }
         if let v = call.getBool("notifyTripEnd")            { config.notifyTripEnd = v }
+        // notifyTrip sets both start and end together
+        if let v = call.getBool("notifyTrip") {
+            config.notifyTripStart = v
+            config.notifyTripEnd   = v
+        }
         if let v = call.getBool("notifyDistanceKm")         { config.notifyDistanceKm = v }
         if let v = call.getBool("notifyGeofenceEnter")      { config.notifyGeofenceEnter = v }
         if let v = call.getBool("notifyGeofenceExit")       { config.notifyGeofenceExit = v }
@@ -156,11 +157,10 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         call.resolve([
             "initialized": true,
             "permissionGranted": granted,
-            "trackingStarted": true  // Service always starts
+            "trackingStarted": true
         ])
     }
 
-    /// Update vehicle_id at any time (e.g. user switches vehicle).
     @objc func updateVehicleId(_ call: CAPPluginCall) {
         guard let vehicleId = call.getString("vehicleId") else {
             call.reject("Missing 'vehicleId'")
@@ -183,17 +183,12 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
     // Heartbeat timer control
     // ─────────────────────────────────────────────────────────────────
 
-    /// Start the native heartbeat timer from Ionic.
-    /// Fires a "heartbeat" event to JS every 10 s so Ionic can reconnect
-    /// the dongle or run BLE logic while in background.
-    /// No-op if the timer is already running.
     @objc func startHeartbeatTimer(_ call: CAPPluginCall) {
         let intervalSec = call.getDouble("intervalSeconds") ?? 10.0
         LocationTrackingService.shared.startHeartbeatTimer(interval: max(1.0, intervalSec))
         call.resolve(["started": true, "intervalSeconds": intervalSec])
     }
 
-    /// Stop the native heartbeat timer from Ionic.
     @objc func stopHeartbeatTimer(_ call: CAPPluginCall) {
         LocationTrackingService.shared.stopHeartbeat(reason: "JS stopHeartbeatTimer")
         call.resolve(["stopped": true])
@@ -203,20 +198,34 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
     // Trip notification toggles
     // ─────────────────────────────────────────────────────────────────
 
-    /// Enable or disable trip start / end push notifications.
-    /// options: { start?: boolean, end?: boolean }
+    /// Enable or disable trip start / end push notifications from Ionic.
+    /// options:
+    ///   { notify: bool }          — sets both start AND end together
+    ///   { start: bool, end: bool } — set each individually
     @objc func setTripNotifications(_ call: CAPPluginCall) {
         if let notify = call.getBool("notify") {
-            UserDefaults.standard.set(notify, forKey: "tt_notify_tripStart")
-            UserDefaults.standard.set(notify, forKey: "tt_notify_tripEnd")
+            // Single flag controls both
+            NotificationSettingsViewController.isTripStartEnabled = notify
+            NotificationSettingsViewController.isTripEndEnabled   = notify
+        } else {
+            // Individual flags
+            if let start = call.getBool("start") {
+                NotificationSettingsViewController.isTripStartEnabled = start
+            }
+            if let end = call.getBool("end") {
+                NotificationSettingsViewController.isTripEndEnabled = end
+            }
         }
         call.resolve([
-            "notifyTripStart": UserDefaults.standard.object(forKey: "tt_notify_tripStart") as? Bool ?? true,
-            "notifyTripEnd":   UserDefaults.standard.object(forKey: "tt_notify_tripEnd")   as? Bool ?? true,
+            "notifyTripStart": NotificationSettingsViewController.isTripStartEnabled,
+            "notifyTripEnd":   NotificationSettingsViewController.isTripEndEnabled,
         ])
     }
 
-    /// Check if location permission is granted.
+    // ─────────────────────────────────────────────────────────────────
+    // Permission & Tracking
+    // ─────────────────────────────────────────────────────────────────
+
     @objc func hasLocationPermission(_ call: CAPPluginCall) {
         let granted = Self.hasLocationPermissionNative()
         if granted {
@@ -225,13 +234,11 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         call.resolve(["granted": granted])
     }
 
-    /// Start tracking.
     @objc func startTracking(_ call: CAPPluginCall) {
         LocationTrackingService.shared.startBackgroundTracking()
         call.resolve(["started": true])
     }
 
-    /// Stop tracking.
     @objc func stopTracking(_ call: CAPPluginCall) {
         LocationTrackingService.shared.stopTrip()
         call.resolve(["stopped": true])
@@ -259,7 +266,8 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         return status == .authorizedAlways || status == .authorizedWhenInUse
     }
 
-    /// Open the full native Settings page (sliders, toggles, everything).
+    // MARK: - Native Pages
+
     @objc func openSettings(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
             let vc = SettingsViewController()
@@ -271,7 +279,6 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         }
     }
 
-    /// Open the Notification Settings page (push toggle per type + voice).
     @objc func openNotificationSettings(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
             let vc = NotificationSettingsViewController()
@@ -283,7 +290,6 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         }
     }
 
-    /// Open the Geofence Manager page (map + zone list).
     @objc func openGeofenceManager(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
             let vc = GeofenceViewController()
@@ -295,7 +301,6 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         }
     }
 
-    /// Open the main TripTracker map view.
     @objc func openMainView(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
             let vc = MainViewController()
@@ -307,7 +312,6 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         }
     }
 
-    /// Open the Trip History page.
     @objc func openHistory(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
             let vc = HistoryViewController()
@@ -319,7 +323,6 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         }
     }
 
-    /// Open Daily Locations page.
     @objc func openDailyLocations(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
             let vc = DailyLocationsViewController()
@@ -333,7 +336,6 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
 
     // MARK: - Tracking Status
 
-    /// Get current tracking status, speed, trip info.
     @objc func getTrackingStatus(_ call: CAPPluginCall) {
         let svc = LocationTrackingService.shared
         let stats = svc.getCurrentStats()
@@ -356,7 +358,6 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         call.resolve(result)
     }
 
-    /// Request a fresh GPS fix via LocationTrackingService.requestCurrentLocation().
     @objc func getCurrentLocation(_ call: CAPPluginCall) {
         call.keepAlive = true
         let timeout = call.getDouble("timeout") ?? 15.0
@@ -364,15 +365,12 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
             defer { call.keepAlive = false }
             if let error = error {
                 call.reject(error.localizedDescription)
-                print("📍 TripTrackerPlugin getCurrentLocation — error: \(error.localizedDescription)")
                 return
             }
             guard let loc = loc else {
                 call.reject("No location available")
-                print("📍 TripTrackerPlugin getCurrentLocation — no location available")
                 return
             }
-            print("📍 TripTrackerPlugin getCurrentLocation — got GPS fix: lat \(loc.coordinate.latitude), lon \(loc.coordinate.longitude), speed \(loc.speed)m/s, acc \(loc.horizontalAccuracy)m")
             let rawSpeed: Float = loc.speed >= 0 ? Float(loc.speed) : 0
             call.resolve([
                 "latitude":  loc.coordinate.latitude,
@@ -387,30 +385,8 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         }
     }
 
-    // MARK: - Trip History
+    // MARK: - Settings
 
-    /// Get list of all trips.
-    // @objc func getTripHistory(_ call: CAPPluginCall) {
-    //     let limit = call.getInt("limit") ?? 50
-    //     let trips = DatabaseManager.shared.getAllTrips(limit: limit)
-
-    //     let tripList = trips.map { trip -> [String: Any] in
-    //         return [
-    //             "id": trip.id,
-    //             "startTime": trip.startTimeMs,
-    //             "endTime": trip.endTimeMs ?? 0,
-    //             "distance": trip.distanceMeters,
-    //             "duration": trip.durationSeconds,
-    //             "isActive": trip.isActive,
-    //         ]
-    //     }
-
-    //     call.resolve(["trips": tripList, "count": tripList.count])
-    // }
-
-    // MARK: - Settings (Read / Write)
-
-    /// Get all current settings as a dictionary.
     @objc func getSettings(_ call: CAPPluginCall) {
         let svc = LocationTrackingService.shared
         let ud = UserDefaults.standard
@@ -433,10 +409,6 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         ])
     }
 
-    /// Update a single setting by key.
-    /// Keys: vehicleThreshold, saveIntervalMinutes, saveDistanceMeters,
-    ///       autoEndTimeoutMinutes, routeGapThresholdMeters, webMonitorEnabled,
-    ///       voiceFeedbackEnabled, geofencingEnabled
     @objc func updateSetting(_ call: CAPPluginCall) {
         guard let key = call.getString("key") else {
             call.reject("Missing 'key' parameter")
@@ -475,11 +447,7 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
             guard let v = call.getBool("value") else { call.reject("Missing 'value'"); return }
             ud.set(v, forKey: "tt_webMonitorEnabled")
             DispatchQueue.main.async {
-                if v {
-                    TripTrackerSDK.startWebMonitor()
-                } else {
-                    TripTrackerSDK.stopWebMonitor()
-                }
+                if v { TripTrackerSDK.startWebMonitor() } else { TripTrackerSDK.stopWebMonitor() }
             }
 
         case "voiceFeedbackEnabled":
@@ -489,10 +457,20 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         case "geofencingEnabled":
             guard let v = call.getBool("value") else { call.reject("Missing 'value'"); return }
             GeofenceManager.shared.isEnabled = v
+
         case "notifyTrip":
             guard let v = call.getBool("value") else { call.reject("Missing 'value'"); return }
-            UserDefaults.standard.set(v, forKey: "tt_notify_tripStart")
-            UserDefaults.standard.set(v, forKey: "tt_notify_tripEnd")
+            NotificationSettingsViewController.isTripStartEnabled = v
+            NotificationSettingsViewController.isTripEndEnabled   = v
+
+        case "notifyTripStart":
+            guard let v = call.getBool("value") else { call.reject("Missing 'value'"); return }
+            NotificationSettingsViewController.isTripStartEnabled = v
+
+        case "notifyTripEnd":
+            guard let v = call.getBool("value") else { call.reject("Missing 'value'"); return }
+            NotificationSettingsViewController.isTripEndEnabled = v
+
         default:
             call.reject("Unknown setting key: \(key)")
             return
@@ -503,7 +481,6 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
 
     // MARK: - Geofence
 
-    /// Get all geofence zones.
     @objc func getGeofenceZones(_ call: CAPPluginCall) {
         let zones = GeofenceManager.shared.zones.map { zone -> [String: Any] in
             [
@@ -520,7 +497,6 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         call.resolve(["zones": zones, "count": zones.count])
     }
 
-    /// Add a new geofence zone.
     @objc func addGeofenceZone(_ call: CAPPluginCall) {
         guard let name = call.getString("name"),
               let lat = call.getDouble("latitude"),
@@ -534,19 +510,13 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         let autoStop = call.getBool("autoStopOnEnter") ?? false
 
         let zone = GeofenceZone(
-            name: name,
-            latitude: lat,
-            longitude: lon,
-            radius: radius,
-            notifyOnEnter: notifyEnter,
-            notifyOnExit: notifyExit,
-            autoStopOnEnter: autoStop
+            name: name, latitude: lat, longitude: lon, radius: radius,
+            notifyOnEnter: notifyEnter, notifyOnExit: notifyExit, autoStopOnEnter: autoStop
         )
         GeofenceManager.shared.addZone(zone)
         call.resolve(["id": zone.id, "added": true])
     }
 
-    /// Remove a geofence zone by ID.
     @objc func removeGeofenceZone(_ call: CAPPluginCall) {
         guard let id = call.getString("id") else {
             call.reject("Missing 'id' parameter")
@@ -560,13 +530,12 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
 
     @objc func startWebMonitor(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
-        TripTrackerSDK.stopWebMonitor()  // ← stop trước
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            TripTrackerSDK.startWebMonitor()
-            call.resolve(["started": true])
+            TripTrackerSDK.stopWebMonitor()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                TripTrackerSDK.startWebMonitor()
+                call.resolve(["started": true])
+            }
         }
-    }
     }
 
     @objc func stopWebMonitor(_ call: CAPPluginCall) {
@@ -600,7 +569,6 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         }
     }
 
-    /// Send the last 3 days of log files via share sheet (email, AirDrop, etc.)
     @objc func sendRecentLogs(_ call: CAPPluginCall) {
         let days = call.getInt("days") ?? 3
         DispatchQueue.main.async {
@@ -609,9 +577,7 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
                 return
             }
             self.shareFiles([zipURL], subject: "TripTracker Logs (last \(days) days)")
-            call.resolve([
-                "path": zipURL.path
-            ])
+            call.resolve(["path": zipURL.path])
         }
     }
 
@@ -659,19 +625,14 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
     }
 
     public func didChangeTrackingState(isTracking: Bool) {
-        notifyListeners("trackingStateChange", data: [
-            "isTracking": isTracking
-        ])
+        notifyListeners("trackingStateChange", data: ["isTracking": isTracking])
     }
 
     public func didChangeActivity(activity: String, transition: String) {
-        notifyListeners("activityChange", data: [
-            "activity": activity,
-            "transition": transition
-        ])
+        notifyListeners("activityChange", data: ["activity": activity, "transition": transition])
     }
 
-    public func didHeartbeat(timestamp: Int64){
+    public func didHeartbeat(timestamp: Int64) {
         notifyListeners("heartbeat", data: ["timestamp": timestamp])
     }
 }

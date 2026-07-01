@@ -12,6 +12,10 @@ export class TripTrackerWeb extends WebPlugin implements TripTrackerPlugin {
     throw this.unavailable('updateVehicleId is only available on iOS/Android');
   }
 
+  async updateToolId(): Promise<{ updated: boolean; toolId: string }> {
+    throw this.unavailable('updateToolId is only available on iOS/Android');
+  }
+
   async hasLocationPermission(): Promise<{ granted: boolean }> {
     throw this.unavailable('hasLocationPermission is only available on iOS/Android');
   }
@@ -49,47 +53,47 @@ export class TripTrackerWeb extends WebPlugin implements TripTrackerPlugin {
   }
 
   async getTrackingStatus(): Promise<any> {
-    throw this.unavailable('getTrackingStatus is only available on iOS');
+    throw this.unavailable('getTrackingStatus is only available on iOS/Android');
   }
 
   async getCurrentLocation(): Promise<any> {
-    throw this.unavailable('getCurrentLocation is only available on iOS');
+    throw this.unavailable('getCurrentLocation is only available on iOS/Android');
   }
 
   async getTripHistory(): Promise<any> {
-    throw this.unavailable('getTripHistory is only available on iOS');
+    throw this.unavailable('getTripHistory is only available on iOS/Android');
   }
 
   async getSettings(): Promise<any> {
-    throw this.unavailable('getSettings is only available on iOS');
+    throw this.unavailable('getSettings is only available on iOS/Android');
   }
 
   async updateSetting(): Promise<any> {
-    throw this.unavailable('updateSetting is only available on iOS');
+    throw this.unavailable('updateSetting is only available on iOS/Android');
   }
 
   async getGeofenceZones(): Promise<any> {
-    throw this.unavailable('getGeofenceZones is only available on iOS');
+    throw this.unavailable('getGeofenceZones is only available on iOS/Android');
   }
 
   async addGeofenceZone(): Promise<any> {
-    throw this.unavailable('addGeofenceZone is only available on iOS');
+    throw this.unavailable('addGeofenceZone is only available on iOS/Android');
   }
 
   async removeGeofenceZone(): Promise<any> {
-    throw this.unavailable('removeGeofenceZone is only available on iOS');
+    throw this.unavailable('removeGeofenceZone is only available on iOS/Android');
   }
 
   async startWebMonitor(): Promise<any> {
-    throw this.unavailable('startWebMonitor is only available on iOS');
+    throw this.unavailable('startWebMonitor is only available on iOS/Android');
   }
 
   async stopWebMonitor(): Promise<any> {
-    throw this.unavailable('stopWebMonitor is only available on iOS');
+    throw this.unavailable('stopWebMonitor is only available on iOS/Android');
   }
 
   async sendTodayLog(): Promise<any> {
-    throw this.unavailable('sendTodayLog is only available on iOS');
+    throw this.unavailable('sendTodayLog is only available on iOS/Android');
   }
 
   async sendAllLogs(): Promise<any> {
@@ -100,7 +104,27 @@ export class TripTrackerWeb extends WebPlugin implements TripTrackerPlugin {
     throw this.unavailable('sendRecentLogs is only available on iOS/Android');
   }
 
+  async writeLog(): Promise<void> {
+    throw this.unavailable('writeLog is only available on iOS/Android');
+  }
+
+  async endTrip(): Promise<any> {
+    throw this.unavailable('endTrip is only available on iOS/Android');
+  }
+
   async resetConfig(): Promise<{ reset: boolean }> {
     throw this.unavailable('resetConfig is only available on iOS/Android');
+  }
+
+  async startHeartbeatTimer(): Promise<{ started: boolean }> {
+    throw this.unavailable('startHeartbeatTimer is only available on iOS/Android');
+  }
+
+  async stopHeartbeatTimer(): Promise<{ stopped: boolean }> {
+    throw this.unavailable('stopHeartbeatTimer is only available on iOS/Android');
+  }
+
+  async setTripNotifications(): Promise<{ notifyTripStart: boolean; notifyTripEnd: boolean }> {
+    throw this.unavailable('setTripNotifications is only available on iOS/Android');
   }
 }
