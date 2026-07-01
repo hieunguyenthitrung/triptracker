@@ -6,3 +6,4 @@ const TripTracker = registerPlugin<TripTrackerPlugin>('TripTracker');
 
 export * from './definitions';
 export { TripTracker };
+export { TripTrackerService } from './TripTrackerService';
