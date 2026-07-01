@@ -540,7 +540,7 @@ public class LocationTrackingService: NSObject {
             effective > 0 ? effective : (location.speed > 0 ? Float(location.speed) : 0)
         let apiSvc = TripTrackerAPIService.shared
         let sincePing = abs(lastPingAndReturnTime.timeIntervalSinceNow)
-        if apiSvc.isEnabled && sincePing >= 5.0 {
+        // if apiSvc.isEnabled && sincePing >= 5.0 {
             lastPingAndReturnTime = Date()
             let activityType: String
             switch lastMotionState {
@@ -554,11 +554,11 @@ public class LocationTrackingService: NSObject {
             print(
                 "📡 TripTracker requestCurrentLocation — pinged (\(location.coordinate.latitude), \(location.coordinate.longitude)) spd=\(String(format:"%.1f", speed)) m/s"
             )
-        } else if sincePing < 5.0 {
-            print(
-                "📡 TripTracker requestCurrentLocation — ping skipped (\(String(format:"%.1f", sincePing))s since last ping)"
-            )
-        }
+        // } else if sincePing < 5.0 {
+        //     print(
+        //         "📡 TripTracker requestCurrentLocation — ping skipped (\(String(format:"%.1f", sincePing))s since last ping)"
+        //     )
+        // }
         completion(location, nil)
     }
 
@@ -591,7 +591,7 @@ public class LocationTrackingService: NSObject {
     public func startBackgroundTracking() {
         if isBackgroundTrackingStarted {
             locationManager.startUpdatingLocation()
-            startHeartbeatTimer(interval: 30)
+            startHeartbeatTimer(interval: 60)
             print("⚠️ TripTracker startBackgroundTracking re-entry — GPS ensured")
             return
         }
@@ -1276,7 +1276,7 @@ public class LocationTrackingService: NSObject {
         periodicTimer = timer
     }
 
-    public func startHeartbeatTimer(interval: TimeInterval = 30.0) {
+    public func startHeartbeatTimer(interval: TimeInterval = 60.0) {
         if !Thread.isMainThread {
             DispatchQueue.main.async { self.startHeartbeatTimer(interval: interval) }
             return
