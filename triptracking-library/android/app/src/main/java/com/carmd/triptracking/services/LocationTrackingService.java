@@ -370,6 +370,13 @@ public class LocationTrackingService extends Service implements
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        // Android 8+ requires startForeground() within 5 s of startForegroundService().
+        // onCreate() covers the first start; when the service is already running
+        // Android skips onCreate() and only calls onStartCommand(), so we must
+        // call startForeground() here too. startMinimalForeground() is safe to
+        // call multiple times — the OS ignores redundant calls.
+        startMinimalForeground();
+
         String action = (intent != null) ? intent.getAction() : null;
 
         if (ACTION_STOP_TRACKING.equals(action)) {
