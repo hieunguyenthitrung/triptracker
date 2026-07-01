@@ -218,6 +218,7 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
             NotificationSettingsViewController.isTripStartEnabled = notify
             NotificationSettingsViewController.isTripEndEnabled = notify
         }
+        print("setTripNotifications setTripNotifications setTripNotifications")
         if let start = call.getBool("start") {
             NotificationSettingsViewController.isTripStartEnabled = start
             UserDefaults.standard.set(start, forKey: "tt_notify_tripStart")
