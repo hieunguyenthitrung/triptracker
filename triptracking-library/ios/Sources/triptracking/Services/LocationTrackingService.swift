@@ -1288,6 +1288,11 @@ public class LocationTrackingService: NSObject {
         print("💓 TripTracker startHeartbeatTimer every \(Int(interval))s (manual, no auto-stop)")
         heartbeatTimer = Timer(timeInterval: interval, repeats: true, block: { [weak self] timer in
             guard let self = self else { timer.invalidate(); return }
+            let hour = Calendar.current.component(.hour, from: Date())
+            if hour < 6 && self.lastMotionState != .automotive {
+                print("💓 TripTracker heartbeat skipped (quiet hours 12AM–6AM, hour=\(hour))")
+                return
+            }
             let ts = Int64(Date().timeIntervalSince1970 * 1000)
             self.delegate?.didHeartbeat(timestamp: ts)
             print("💓 TripTracker heartbeat → JS wake (\(ts))")
