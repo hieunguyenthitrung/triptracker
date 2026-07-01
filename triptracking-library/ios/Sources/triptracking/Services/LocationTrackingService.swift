@@ -1286,10 +1286,10 @@ public class LocationTrackingService: NSObject {
         let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
             guard let self = self else { return }
             let hour = Calendar.current.component(.hour, from: Date())
-            if hour < 6 && lastMotionState != .automotive {
-                print("💓 TripTracker heartbeat skipped (quiet hours 12AM–6AM, hour=\(hour))")
-                return
-            }
+            // if hour < 6 && lastMotionState != .automotive {
+            //     print("💓 TripTracker heartbeat skipped (quiet hours 12AM–6AM, hour=\(hour))")
+            //     return
+            // }
             let ts = Int64(Date().timeIntervalSince1970 * 1000)
             self.delegate?.didHeartbeat(timestamp: ts)
             print("💓 💓 💓 💓 💓 💓 TripTracker heartbeat → JS wake (\(ts))")
