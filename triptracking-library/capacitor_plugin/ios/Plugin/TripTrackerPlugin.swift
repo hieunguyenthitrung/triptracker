@@ -192,7 +192,6 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         LocationTrackingService.shared.startHeartbeatTimer(interval: max(1.0, intervalSec))
         call.resolve(["started": true, "intervalSeconds": intervalSec])
     }
-    }
 
     /// Stop the native heartbeat timer from Ionic.
     @objc func stopHeartbeatTimer(_ call: CAPPluginCall) {
