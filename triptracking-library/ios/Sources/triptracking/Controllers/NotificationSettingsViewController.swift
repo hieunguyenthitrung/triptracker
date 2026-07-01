@@ -25,22 +25,28 @@ public class NotificationSettingsViewController: UIViewController {
     // MARK: - Static helpers for checking from anywhere
 
     public static var isTripStartEnabled: Bool {
-        UserDefaults.standard.object(forKey: Keys.tripStart) == nil ? true : UserDefaults.standard.bool(forKey: Keys.tripStart)
+        get { UserDefaults.standard.object(forKey: Keys.tripStart) == nil ? true : UserDefaults.standard.bool(forKey: Keys.tripStart) }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.tripStart) }
     }
     public static var isTripEndEnabled: Bool {
-        UserDefaults.standard.object(forKey: Keys.tripEnd) == nil ? true : UserDefaults.standard.bool(forKey: Keys.tripEnd)
+        get { UserDefaults.standard.object(forKey: Keys.tripEnd) == nil ? true : UserDefaults.standard.bool(forKey: Keys.tripEnd) }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.tripEnd) }
     }
     public static var isDistanceKmEnabled: Bool {
-        UserDefaults.standard.object(forKey: Keys.distanceKm) == nil ? true : UserDefaults.standard.bool(forKey: Keys.distanceKm)
+        get { UserDefaults.standard.object(forKey: Keys.distanceKm) == nil ? true : UserDefaults.standard.bool(forKey: Keys.distanceKm) }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.distanceKm) }
     }
     public static var isGeofenceEnterEnabled: Bool {
-        UserDefaults.standard.object(forKey: Keys.geofenceEnter) == nil ? true : UserDefaults.standard.bool(forKey: Keys.geofenceEnter)
+        get { UserDefaults.standard.object(forKey: Keys.geofenceEnter) == nil ? true : UserDefaults.standard.bool(forKey: Keys.geofenceEnter) }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.geofenceEnter) }
     }
     public static var isGeofenceExitEnabled: Bool {
-        UserDefaults.standard.object(forKey: Keys.geofenceExit) == nil ? true : UserDefaults.standard.bool(forKey: Keys.geofenceExit)
+        get { UserDefaults.standard.object(forKey: Keys.geofenceExit) == nil ? true : UserDefaults.standard.bool(forKey: Keys.geofenceExit) }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.geofenceExit) }
     }
     public static var isNetworkEnabled: Bool {
-        UserDefaults.standard.object(forKey: Keys.network) == nil ? true : UserDefaults.standard.bool(forKey: Keys.network)
+        get { UserDefaults.standard.object(forKey: Keys.network) == nil ? true : UserDefaults.standard.bool(forKey: Keys.network) }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.network) }
     }
 
     // MARK: - UI

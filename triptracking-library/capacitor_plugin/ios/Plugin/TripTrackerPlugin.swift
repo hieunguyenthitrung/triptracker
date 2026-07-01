@@ -245,17 +245,23 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
     // ─────────────────────────────────────────────────────────────────
 
     /// Enable or disable trip start / end push notifications.
-    /// options: { start?: boolean, end?: boolean }
+    /// options: { notify?: boolean }  — sets both start and end together
+    ///          { start?: boolean, end?: boolean }  — set individually
     @objc func setTripNotifications(_ call: CAPPluginCall) {
-        if let start = call.getBool("start") {
-            UserDefaults.standard.set(start, forKey: "tt_notify_tripStart")
-        }
-        if let end = call.getBool("end") {
-            UserDefaults.standard.set(end, forKey: "tt_notify_tripEnd")
+        if let notify = call.getBool("notify") {
+            NotificationSettingsViewController.isTripStartEnabled = notify
+            NotificationSettingsViewController.isTripEndEnabled   = notify
+        } else {
+            if let start = call.getBool("start") {
+                NotificationSettingsViewController.isTripStartEnabled = start
+            }
+            if let end = call.getBool("end") {
+                NotificationSettingsViewController.isTripEndEnabled = end
+            }
         }
         call.resolve([
-            "notifyTripStart": UserDefaults.standard.object(forKey: "tt_notify_tripStart") as? Bool ?? true,
-            "notifyTripEnd":   UserDefaults.standard.object(forKey: "tt_notify_tripEnd")   as? Bool ?? true,
+            "notifyTripStart": NotificationSettingsViewController.isTripStartEnabled,
+            "notifyTripEnd":   NotificationSettingsViewController.isTripEndEnabled,
         ])
     }
 
