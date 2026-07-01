@@ -12,10 +12,10 @@
 //    const status = await TripTracker.getTrackingStatus();
 //
 
-import Foundation
 import Capacitor
-import UIKit
 import CoreLocation
+import Foundation
+import UIKit
 import triptracking
 
 @objc(TripTrackerPlugin)
@@ -126,34 +126,34 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         LocationTrackingService.shared.delegate = self
 
         var config = TripTrackerConfig()
-        if let v = call.getDouble("saveIntervalMinutes")   { config.saveIntervalMinutes = v }
-        if let v = call.getDouble("saveDistanceMeters")    { config.saveDistanceMeters = v }
-        if let v = call.getDouble("vehicleThreshold")      { config.vehicleThreshold = Float(v) }
-        if let v = call.getInt("transportType")             { config.transportType = v }
+        if let v = call.getDouble("saveIntervalMinutes") { config.saveIntervalMinutes = v }
+        if let v = call.getDouble("saveDistanceMeters") { config.saveDistanceMeters = v }
+        if let v = call.getDouble("vehicleThreshold") { config.vehicleThreshold = Float(v) }
+        if let v = call.getInt("transportType") { config.transportType = v }
         if let v = call.getDouble("autoStopTimeoutMinutes") { config.autoStopTimeoutMinutes = v }
-        if let v = call.getDouble("routeGapMeters")         { config.routeGapMeters = v }
-        if let v = call.getBool("geofenceEnabled")          { config.geofenceEnabled = v }
-        if let v = call.getBool("webMonitorEnabled")        { config.webMonitorEnabled = v }
-        if let v = call.getBool("voiceFeedbackEnabled")     { config.voiceFeedbackEnabled = v }
-        if let v = call.getBool("notifyTripStart")          { config.notifyTripStart = v }
-        if let v = call.getBool("notifyTripEnd")            { config.notifyTripEnd = v }
+        if let v = call.getDouble("routeGapMeters") { config.routeGapMeters = v }
+        if let v = call.getBool("geofenceEnabled") { config.geofenceEnabled = v }
+        if let v = call.getBool("webMonitorEnabled") { config.webMonitorEnabled = v }
+        if let v = call.getBool("voiceFeedbackEnabled") { config.voiceFeedbackEnabled = v }
+        if let v = call.getBool("notifyTripStart") { config.notifyTripStart = v }
+        if let v = call.getBool("notifyTripEnd") { config.notifyTripEnd = v }
         // notifyTrip sets both start and end together
         if let v = call.getBool("notifyTrip") {
             config.notifyTripStart = v
-            config.notifyTripEnd   = v
+            config.notifyTripEnd = v
         }
-        if let v = call.getBool("notifyDistanceKm")         { config.notifyDistanceKm = v }
-        if let v = call.getBool("notifyGeofenceEnter")      { config.notifyGeofenceEnter = v }
-        if let v = call.getBool("notifyGeofenceExit")       { config.notifyGeofenceExit = v }
-        if let v = call.getString("pingURL")                { config.pingURL = v }
-        if let v = call.getString("endURL")                 { config.endURL = v }
-        if let v = call.getString("userId")                 { config.userId = v }
-        if let v = call.getString("vehicleId")              { config.vehicleId = v }
-        if let v = call.getString("osInfo")                 { config.osInfo = v }
-        if let v = call.getString("routeId")                { config.routeId = v }
-        if let v = call.getString("authorizationKey")       { config.authorizationKey = v }
-        if let v = call.getString("apiAuthKey")             { config.apiAuthKey = v }
-        if let v = call.getString("apiAuthToken")           { config.apiAuthToken = v }
+        if let v = call.getBool("notifyDistanceKm") { config.notifyDistanceKm = v }
+        if let v = call.getBool("notifyGeofenceEnter") { config.notifyGeofenceEnter = v }
+        if let v = call.getBool("notifyGeofenceExit") { config.notifyGeofenceExit = v }
+        if let v = call.getString("pingURL") { config.pingURL = v }
+        if let v = call.getString("endURL") { config.endURL = v }
+        if let v = call.getString("userId") { config.userId = v }
+        if let v = call.getString("vehicleId") { config.vehicleId = v }
+        if let v = call.getString("osInfo") { config.osInfo = v }
+        if let v = call.getString("routeId") { config.routeId = v }
+        if let v = call.getString("authorizationKey") { config.authorizationKey = v }
+        if let v = call.getString("apiAuthKey") { config.apiAuthKey = v }
+        if let v = call.getString("apiAuthToken") { config.apiAuthToken = v }
 
         TripTrackerSDK.initialize(config: config)
 
@@ -161,7 +161,7 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         call.resolve([
             "initialized": true,
             "permissionGranted": granted,
-            "trackingStarted": true  // Service always starts
+            "trackingStarted": true,  // Service always starts
         ])
     }
 
@@ -216,19 +216,19 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         if let notify = call.getBool("notify") {
             // Single flag controls both
             NotificationSettingsViewController.isTripStartEnabled = notify
-            NotificationSettingsViewController.isTripEndEnabled   = notify
-        } else {
-            // Individual flags
-            if let start = call.getBool("start") {
-                NotificationSettingsViewController.isTripStartEnabled = start
-            }
-            if let end = call.getBool("end") {
-                NotificationSettingsViewController.isTripEndEnabled = end
-            }
+            NotificationSettingsViewController.isTripEndEnabled = notify
+        }
+        if let start = call.getBool("start") {
+            NotificationSettingsViewController.isTripStartEnabled = start
+            UserDefaults.standard.set(start, forKey: "tt_notify_tripStart")
+        }
+        if let end = call.getBool("end") {
+            NotificationSettingsViewController.isTripEndEnabled = end
+            UserDefaults.standard.set(end, forKey: "tt_notify_tripEnd")
         }
         call.resolve([
             "notifyTripStart": NotificationSettingsViewController.isTripStartEnabled,
-            "notifyTripEnd":   NotificationSettingsViewController.isTripEndEnabled,
+            "notifyTripEnd": NotificationSettingsViewController.isTripEndEnabled,
         ])
     }
 
@@ -380,7 +380,8 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
             defer { call.keepAlive = false }
             if let error = error {
                 call.reject(error.localizedDescription)
-                print("📍 TripTrackerPlugin getCurrentLocation — error: \(error.localizedDescription)")
+                print(
+                    "📍 TripTrackerPlugin getCurrentLocation — error: \(error.localizedDescription)")
                 return
             }
             guard let loc = loc else {
@@ -388,16 +389,18 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
                 print("📍 TripTrackerPlugin getCurrentLocation — no location available")
                 return
             }
-            print("📍 TripTrackerPlugin getCurrentLocation — got GPS fix: lat \(loc.coordinate.latitude), lon \(loc.coordinate.longitude), speed \(loc.speed)m/s, acc \(loc.horizontalAccuracy)m")
+            print(
+                "📍 TripTrackerPlugin getCurrentLocation — got GPS fix: lat \(loc.coordinate.latitude), lon \(loc.coordinate.longitude), speed \(loc.speed)m/s, acc \(loc.horizontalAccuracy)m"
+            )
             let rawSpeed: Float = loc.speed >= 0 ? Float(loc.speed) : 0
             call.resolve([
-                "latitude":  loc.coordinate.latitude,
+                "latitude": loc.coordinate.latitude,
                 "longitude": loc.coordinate.longitude,
-                "speed":     rawSpeed,
-                "speedKmh":  rawSpeed * 3.6,
-                "accuracy":  loc.horizontalAccuracy,
-                "bearing":   loc.course >= 0 ? loc.course : 0,
-                "altitude":  loc.altitude,
+                "speed": rawSpeed,
+                "speedKmh": rawSpeed * 3.6,
+                "accuracy": loc.horizontalAccuracy,
+                "bearing": loc.course >= 0 ? loc.course : 0,
+                "altitude": loc.altitude,
                 "timestamp": Int64(loc.timestamp.timeIntervalSince1970 * 1000),
             ])
         }
@@ -464,31 +467,49 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
 
         switch key {
         case "vehicleThreshold":
-            guard let v = call.getFloat("value") else { call.reject("Missing 'value'"); return }
+            guard let v = call.getFloat("value") else {
+                call.reject("Missing 'value'")
+                return
+            }
             svc.vehicleThreshold = v
             ud.set(v, forKey: "tt_vehicleThreshold")
 
         case "saveIntervalMinutes":
-            guard let v = call.getDouble("value") else { call.reject("Missing 'value'"); return }
+            guard let v = call.getDouble("value") else {
+                call.reject("Missing 'value'")
+                return
+            }
             let ms = Int64(v * 60 * 1000)
             svc.saveIntervalMs = ms
             ud.set(v * 60, forKey: "tt_saveIntervalSecs")
 
         case "saveDistanceMeters":
-            guard let v = call.getDouble("value") else { call.reject("Missing 'value'"); return }
+            guard let v = call.getDouble("value") else {
+                call.reject("Missing 'value'")
+                return
+            }
             svc.saveDistanceVehicleM = v
             ud.set(v, forKey: "tt_saveDistanceVehicleM")
 
         case "autoEndTimeoutMinutes":
-            guard let v = call.getDouble("value") else { call.reject("Missing 'value'"); return }
+            guard let v = call.getDouble("value") else {
+                call.reject("Missing 'value'")
+                return
+            }
             svc.autoEndStillnessSecs = v * 60
 
         case "routeGapThresholdMeters":
-            guard let v = call.getDouble("value") else { call.reject("Missing 'value'"); return }
+            guard let v = call.getDouble("value") else {
+                call.reject("Missing 'value'")
+                return
+            }
             ud.set(v, forKey: "tt_routeGapThresholdM")
 
         case "webMonitorEnabled":
-            guard let v = call.getBool("value") else { call.reject("Missing 'value'"); return }
+            guard let v = call.getBool("value") else {
+                call.reject("Missing 'value'")
+                return
+            }
             ud.set(v, forKey: "tt_webMonitorEnabled")
             DispatchQueue.main.async {
                 if v {
@@ -499,23 +520,38 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
             }
 
         case "voiceFeedbackEnabled":
-            guard let v = call.getBool("value") else { call.reject("Missing 'value'"); return }
+            guard let v = call.getBool("value") else {
+                call.reject("Missing 'value'")
+                return
+            }
             VoiceFeedbackManager.shared.isEnabled = v
 
         case "geofencingEnabled":
-            guard let v = call.getBool("value") else { call.reject("Missing 'value'"); return }
+            guard let v = call.getBool("value") else {
+                call.reject("Missing 'value'")
+                return
+            }
             GeofenceManager.shared.isEnabled = v
         case "notifyTrip":
-            guard let v = call.getBool("value") else { call.reject("Missing 'value'"); return }
+            guard let v = call.getBool("value") else {
+                call.reject("Missing 'value'")
+                return
+            }
             NotificationSettingsViewController.isTripStartEnabled = v
-            NotificationSettingsViewController.isTripEndEnabled   = v
+            NotificationSettingsViewController.isTripEndEnabled = v
 
         case "notifyTripStart":
-            guard let v = call.getBool("value") else { call.reject("Missing 'value'"); return }
+            guard let v = call.getBool("value") else {
+                call.reject("Missing 'value'")
+                return
+            }
             NotificationSettingsViewController.isTripStartEnabled = v
 
         case "notifyTripEnd":
-            guard let v = call.getBool("value") else { call.reject("Missing 'value'"); return }
+            guard let v = call.getBool("value") else {
+                call.reject("Missing 'value'")
+                return
+            }
             NotificationSettingsViewController.isTripEndEnabled = v
 
         default:
@@ -548,8 +584,9 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
     /// Add a new geofence zone.
     @objc func addGeofenceZone(_ call: CAPPluginCall) {
         guard let name = call.getString("name"),
-              let lat = call.getDouble("latitude"),
-              let lon = call.getDouble("longitude") else {
+            let lat = call.getDouble("latitude"),
+            let lon = call.getDouble("longitude")
+        else {
             call.reject("Missing name, latitude, or longitude")
             return
         }
@@ -585,13 +622,13 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
 
     @objc func startWebMonitor(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
-        TripTrackerSDK.stopWebMonitor()  // ← stop trước
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            TripTrackerSDK.startWebMonitor()
-            call.resolve(["started": true])
+            TripTrackerSDK.stopWebMonitor()  // ← stop trước
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                TripTrackerSDK.startWebMonitor()
+                call.resolve(["started": true])
+            }
         }
-    }
     }
 
     @objc func stopWebMonitor(_ call: CAPPluginCall) {
@@ -661,42 +698,52 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
     // LocationUpdateDelegate — events sent to Ionic
     // ═══════════════════════════════════════════════════════════════
 
-    public func didUpdateLocation(_ location: LocationPoint, source: TrackingSource, totalDistance: Double) {
-        notifyListeners("locationUpdate", data: [
-            "latitude": location.latitude,
-            "longitude": location.longitude,
-            "speed": location.speed,
-            "speedKmh": location.speed * 3.6,
-            "accuracy": location.accuracy,
-            "source": source == .gps ? "GPS" : "SENSORS",
-            "distance": totalDistance,
-            "timestamp": location.timestamp
-        ])
+    public func didUpdateLocation(
+        _ location: LocationPoint, source: TrackingSource, totalDistance: Double
+    ) {
+        notifyListeners(
+            "locationUpdate",
+            data: [
+                "latitude": location.latitude,
+                "longitude": location.longitude,
+                "speed": location.speed,
+                "speedKmh": location.speed * 3.6,
+                "accuracy": location.accuracy,
+                "source": source == .gps ? "GPS" : "SENSORS",
+                "distance": totalDistance,
+                "timestamp": location.timestamp,
+            ])
     }
 
     public func didUpdateStats(speed: Float, distance: Double, duration: Int64) {
-        notifyListeners("statsUpdate", data: [
-            "speed": speed,
-            "speedKmh": speed * 3.6,
-            "distance": distance,
-            "duration": duration
-        ])
+        notifyListeners(
+            "statsUpdate",
+            data: [
+                "speed": speed,
+                "speedKmh": speed * 3.6,
+                "distance": distance,
+                "duration": duration,
+            ])
     }
 
     public func didChangeTrackingState(isTracking: Bool) {
-        notifyListeners("trackingStateChange", data: [
-            "isTracking": isTracking
-        ])
+        notifyListeners(
+            "trackingStateChange",
+            data: [
+                "isTracking": isTracking
+            ])
     }
 
     public func didChangeActivity(activity: String, transition: String) {
-        notifyListeners("activityChange", data: [
-            "activity": activity,
-            "transition": transition
-        ])
+        notifyListeners(
+            "activityChange",
+            data: [
+                "activity": activity,
+                "transition": transition,
+            ])
     }
 
-    public func didHeartbeat(timestamp: Int64){
+    public func didHeartbeat(timestamp: Int64) {
         notifyListeners("heartbeat", data: ["timestamp": timestamp])
     }
 }
