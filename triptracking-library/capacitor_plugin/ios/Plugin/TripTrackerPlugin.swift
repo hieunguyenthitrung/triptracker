@@ -225,12 +225,13 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
     // ─────────────────────────────────────────────────────────────────
 
     /// Start the native heartbeat timer from Ionic.
-    /// Fires a "heartbeat" event to JS every 10 s so Ionic can reconnect
-    /// the dongle or run BLE logic while in background.
+    /// Fires a "heartbeat" event to JS every intervalSeconds (default 10) so Ionic can
+    /// reconnect the dongle or run BLE logic while in background.
     /// No-op if the timer is already running.
     @objc func startHeartbeatTimer(_ call: CAPPluginCall) {
-        LocationTrackingService.shared.startHeartbeatForToolId()
-        call.resolve(["started": true])
+        let intervalSec = call.getDouble("intervalSeconds") ?? 10.0
+        LocationTrackingService.shared.startHeartbeatTimer(interval: max(1.0, intervalSec))
+        call.resolve(["started": true, "intervalSeconds": intervalSec])
     }
 
     /// Stop the native heartbeat timer from Ionic.

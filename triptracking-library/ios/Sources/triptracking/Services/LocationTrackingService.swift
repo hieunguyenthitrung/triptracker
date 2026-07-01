@@ -1272,6 +1272,29 @@ public class LocationTrackingService: NSObject {
         RunLoop.main.add(heartbeatTimer!, forMode: .common)
     }
 
+    /// Start a manual heartbeat timer with a configurable interval.
+    /// Called from the Ionic plugin (startHeartbeatTimer). No auto-stop — runs
+    /// until stopHeartbeat() is called explicitly.
+    /// No-op if a timer is already running.
+    func startHeartbeatTimer(interval: TimeInterval = 10.0) {
+        if !Thread.isMainThread {
+            DispatchQueue.main.async { self.startHeartbeatTimer(interval: interval) }
+            return
+        }
+        guard heartbeatTimer == nil else {
+            print("💓 TripTracker heartbeatTimer already running — ignoring startHeartbeatTimer")
+            return
+        }
+        print("💓 TripTracker startHeartbeatTimer every \(Int(interval))s (manual, no auto-stop)")
+        heartbeatTimer = Timer(timeInterval: interval, repeats: true, block: { [weak self] timer in
+            guard let self = self else { timer.invalidate(); return }
+            let ts = Int64(Date().timeIntervalSince1970 * 1000)
+            self.delegate?.didHeartbeat(timestamp: ts)
+            print("💓 TripTracker heartbeat → JS wake (\(ts))")
+        })
+        RunLoop.main.add(heartbeatTimer!, forMode: .common)
+    }
+
     func stopHeartbeat(reason: String = "") {
         if !Thread.isMainThread {
             DispatchQueue.main.async { self.stopHeartbeat(reason: reason) }
