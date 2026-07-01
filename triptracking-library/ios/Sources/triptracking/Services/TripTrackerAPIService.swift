@@ -313,6 +313,8 @@ public final class TripTrackerAPIService {
     public func updateToolId(_ toolId: String) {
         config.toolId = toolId
         print("📡  TripTracker API tool_id updated → \(toolId)")
+        // tool_id received — stop heartbeat immediately
+        LocationTrackingService.shared.stopHeartbeat(reason: "tool_id received via updateToolId")
     }
 
     // ── Called on trip start to start including vehicle_id ──

@@ -590,7 +590,6 @@ public class LocationTrackingService: NSObject {
         startPeriodicSaveTimer()
         startPedometer()
         startActivityMonitor()
-        startHeartbeat()
         restoreBLEDevices()
         print("✅ TripTracker Background tracking started (GPS Best until first fix)")
     }
@@ -989,6 +988,14 @@ public class LocationTrackingService: NSObject {
         // Emit motionChange to Capacitor plugin (→ Ionic)
         delegate?.didChangeActivity(activity: newState.rawValue, transition: "MOTION")
 
+        // Start heartbeat when user starts moving so JS can connect dongle and set tool_id
+        switch newState {
+        case .walking, .running, .cycling, .automotive:
+            startHeartbeatForToolId()
+        case .still, .unknown:
+            break
+        }
+
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             self.adaptLocationAccuracy(for: newState)
@@ -1221,56 +1228,59 @@ public class LocationTrackingService: NSObject {
         periodicTimer = timer
     }
 
-    func startHeartbeat() {
-        if !Thread.isMainThread {
-            DispatchQueue.main.async { self.startHeartbeat() }
-            return
-        }
-        heartbeatTimer?.invalidate()
-        scheduleNextHeartbeat()
-    }
+    // Heartbeat is OFF by default.
+    // startHeartbeatForToolId() turns it ON when user starts moving.
+    // It fires every 10s to wake JS so it can connect the dongle and provide tool_id.
+    // Stops automatically when tool_id is set OR after 2 minutes — whichever comes first.
+    private var heartbeatStartTime: Date?
 
-    private func scheduleNextHeartbeat() {
-        heartbeatTimer?.invalidate()
-        // Quiet hours: skip entirely
-        let hour = Calendar.current.component(.hour, from: Date())
-        guard hour >= 6 else {
-            // Schedule check again at 6AM
-            let secondsUntil6AM = secondsUntilHour(6)
-            let timer = Timer(timeInterval: secondsUntil6AM, repeats: false) { [weak self] _ in
-                self?.scheduleNextHeartbeat()
-            }
-            RunLoop.main.add(timer, forMode: .common)
-            heartbeatTimer = timer
-            print("💓 TripTracker heartbeat sleeping until 6AM (\(Int(secondsUntil6AM))s)")
+    func startHeartbeatForToolId() {
+        if !Thread.isMainThread {
+            DispatchQueue.main.async { self.startHeartbeatForToolId() }
             return
         }
-        // Interval depends on state to save battery:
-        //   active trip (moving)  → 30s  (GPS already on, process alive)
-        //   still / no trip       → 60s  (GPS low-power, longer interval)
-        //   foreground            → 30s  (JS already running, short enough)
-        let interval: TimeInterval = isTracking ? 30.0 : 60.0
-        let timer = Timer(timeInterval: interval, repeats: false) { [weak self] _ in
-            guard let self = self else { return }
+        // Already have tool_id — no need
+        guard TripTrackerAPIService.shared.config.toolId.isEmpty else {
+            print("💓 TripTracker heartbeat skipped — tool_id already set")
+            return
+        }
+        // Already running
+        guard heartbeatTimer == nil else { return }
+
+        heartbeatStartTime = Date()
+        print("💓 TripTracker heartbeat ON — waiting for tool_id (max 2 min)")
+
+        heartbeatTimer = Timer(timeInterval: 10.0, repeats: true, block: { [weak self] timer in
+            guard let self = self else { timer.invalidate(); return }
+
+            // Stop if tool_id is now set
+            if !TripTrackerAPIService.shared.config.toolId.isEmpty {
+                self.stopHeartbeat(reason: "tool_id received")
+                return
+            }
+            // Stop after 2 minutes
+            if let start = self.heartbeatStartTime, abs(start.timeIntervalSinceNow) >= 120 {
+                self.stopHeartbeat(reason: "2 min timeout, no tool_id")
+                return
+            }
+
             let ts = Int64(Date().timeIntervalSince1970 * 1000)
             self.delegate?.didHeartbeat(timestamp: ts)
-            print("💓 TripTracker heartbeat → JS wake (\(ts)) interval=\(Int(interval))s")
-            self.scheduleNextHeartbeat()
-        }
-        RunLoop.main.add(timer, forMode: .common)
-        heartbeatTimer = timer
+            print("💓 TripTracker heartbeat → JS wake (\(ts))")
+        })
+        RunLoop.main.add(heartbeatTimer!, forMode: .common)
     }
 
-    private func secondsUntilHour(_ targetHour: Int) -> TimeInterval {
-        let cal = Calendar.current
-        let now = Date()
-        var components = cal.dateComponents([.year, .month, .day], from: now)
-        components.hour = targetHour
-        components.minute = 0
-        components.second = 0
-        var next = cal.date(from: components) ?? now.addingTimeInterval(3600)
-        if next <= now { next = cal.date(byAdding: .day, value: 1, to: next) ?? next }
-        return next.timeIntervalSince(now)
+    func stopHeartbeat(reason: String = "") {
+        if !Thread.isMainThread {
+            DispatchQueue.main.async { self.stopHeartbeat(reason: reason) }
+            return
+        }
+        guard heartbeatTimer != nil else { return }
+        heartbeatTimer?.invalidate()
+        heartbeatTimer = nil
+        heartbeatStartTime = nil
+        print("💓 TripTracker heartbeat OFF — \(reason)")
     }
 
     private var lastHeartbeatTime: Date = .distantPast
