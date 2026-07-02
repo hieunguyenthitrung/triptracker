@@ -1894,7 +1894,7 @@ extension LocationTrackingService: CLLocationManagerDelegate {
             longitude: location.coordinate.longitude,
             altitude: location.altitude,
             accuracy: Float(location.horizontalAccuracy),
-            speed: max(location.speed, speed)
+            speed: max(location.speed, speed),
             bearing: Float(location.course >= 0 ? location.course : 0),
             timestamp: Int64(now.timeIntervalSince1970 * 1000),
             source: source.rawValue
