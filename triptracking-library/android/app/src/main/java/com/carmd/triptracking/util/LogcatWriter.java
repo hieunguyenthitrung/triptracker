@@ -84,6 +84,9 @@ public final class LogcatWriter {
 
                 String line;
                 while ((line = reader.readLine()) != null) {
+                    // Skip high-frequency WebView/Chromium noise that bloats log files
+                    if (shouldSkipLine(line)) continue;
+
                     // Check for date rollover
                     String now = todayStr();
                     if (!now.equals(sCurrentDate)) {
@@ -234,6 +237,13 @@ public final class LogcatWriter {
     /** Zip all log files. */
     public static File getZippedLogs(Context context) {
         return getZippedLogs(context, 3);
+    }
+
+    private static boolean shouldSkipLine(String line) {
+        // Chromium/WebView spam — fires hundreds of times per second
+        if (line.contains("setRequestedFrameRate")) return true;
+        if (line.contains("CapacitorWebView") && line.contains("setRequestedFrameRate")) return true;
+        return false;
     }
 
     private static void cleanupOldLogs(File cacheDir, int retainDays) {
