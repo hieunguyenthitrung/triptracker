@@ -1888,13 +1888,14 @@ extension LocationTrackingService: CLLocationManagerDelegate {
         }
 
         // ── Always update UI on every GPS fix (speed, source, accel, distance) ──
+        let speed_real = Float(max(location.speed >= 0 ? location.speed : 0.0, Double(speed)))
         let livePt = LocationPoint(
             tripId: currentTripId != -1 ? currentTripId : nil,
             latitude: location.coordinate.latitude,
             longitude: location.coordinate.longitude,
             altitude: location.altitude,
             accuracy: Float(location.horizontalAccuracy),
-            speed: Float(max(location.speed, speed)),
+            speed: speed_real,
             bearing: Float(location.course >= 0 ? location.course : 0),
             timestamp: Int64(now.timeIntervalSince1970 * 1000),
             source: source.rawValue
