@@ -999,19 +999,14 @@ public class LocationTrackingService extends Service implements
     // =========================================================================
 
     /**
-     * Stop GPS updates to save battery. Sensor tracker + Activity Recognition stay
-     * alive.
+     * Fully stop GPS updates. The location icon in the status bar disappears.
+     * Activity Recognition + sensor tracker stay alive.
+     * Call startGPSTracking() to re-enable when motion is detected.
      */
     private void stopGpsUpdates() {
         try {
             locationManager.removeUpdates(this);
-            // Immediately re-register at low rate — keeps GPS chip warm
-            locationManager.requestLocationUpdates(
-                    LocationManager.GPS_PROVIDER,
-                    30_000L, // 30 seconds interval
-                    100f, // 100 meters displacement
-                    this);
-            Log.d(TAG, "🔋 GPS LOW-POWER — 30s/100m (Activity Recognition + sensor still active)");
+            Log.d(TAG, "🔋 GPS fully stopped — location icon hidden (Activity Recognition driving GPS on/off)");
         } catch (SecurityException e) {
             Log.e(TAG, "stopGpsUpdates: no permission — " + e.getMessage());
         }
