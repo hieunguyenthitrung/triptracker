@@ -561,12 +561,12 @@ public class LocationTrackingService extends Service implements
         }
         long now = System.currentTimeMillis();
         // Fast-path: use cached fix if:
-        // Location loc = getCurrentLocation();
-        // if(loc != null){
-        //     Log.d(TAG, "requestCurrentLocation: using cached fix speed =" + loc.getSpeed());
-        //         pingAndReturn(loc, callback);
-        //         return;
-        // }
+        Location loc = getCurrentLocation();
+        if(loc != null){
+            Log.d(TAG, "requestCurrentLocation: using cached fix speed =" + loc.getSpeed());
+                pingAndReturn(loc, callback);
+                return;
+        }
         // acc ≤ 20m and age < 30s — high-quality fix, covers the common 5-6s gap
         // acc ≤ 50m and age < 5s — acceptable fix, very fresh
         // if (lastGpsLocation != null && lastGpsLocation.getAccuracy() > 0) {
@@ -629,16 +629,7 @@ public class LocationTrackingService extends Service implements
             Log.d(TAG, "requestCurrentLocation: timed out after " + (timeoutMs / 1000) + "s — trying fallbacks");
 
             // Fallback 1: in-memory lastGpsLocation (any age, acc ≤ 200m)
-            if (lastGpsLocation != null && lastGpsLocation.getAccuracy() > 0
-                    && lastGpsLocation.getAccuracy() <= 200f) {
-                Log.d(TAG, "requestCurrentLocation: fallback1 lastGpsLocation acc="
-                        + lastGpsLocation.getAccuracy() + "m age="
-                        + (System.currentTimeMillis() - lastGpsLocation.getTime()) / 1000 + "s");
-                pingAndReturn(lastGpsLocation, callback);
-                return;
-            } else {
-                // Fallback 2: LocationManager last known GPS
-                try {
+            try {
                     Location lk = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
                     if (lk != null && lk.getAccuracy() > 0 && lk.getAccuracy() <= 200f) {
                         Log.d(TAG, "requestCurrentLocation: fallback2 lastKnown GPS acc="
@@ -662,7 +653,6 @@ public class LocationTrackingService extends Service implements
                     }
                 } catch (SecurityException ignored) {
                 }
-            }
 
             callback.onError("getCurrentLocation timed out after " + (timeoutMs / 1000) + "s — no fallback available");
         }, timeoutMs);
