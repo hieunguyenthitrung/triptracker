@@ -267,7 +267,7 @@ public final class TripTrackerAPIService {
         this.endURL = endURL != null ? endURL : "";
         this.userId = userId != null ? userId : "";
         this.vehicleId = vehicleId != null ? vehicleId : "";
-        if (osInfo != null && !osInfo.isEmpty()) this.osInfo = osInfo + " - " + "4.2.3";
+        if (osInfo != null && !osInfo.isEmpty()) this.osInfo = osInfo + " - " + "4.2.4";
         this.routeId = routeId != null ? routeId : "";
         this.authorizationKey = authorizationKey != null ? authorizationKey : "";
         this.apiAuthKey = apiAuthKey != null ? apiAuthKey : "";

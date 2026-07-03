@@ -561,12 +561,12 @@ public class LocationTrackingService extends Service implements
         }
         long now = System.currentTimeMillis();
         // Fast-path: use cached fix if:
-        Location loc = getCurrentLocation();
-        if(loc != null){
-            Log.d(TAG, "requestCurrentLocation: using cached fix speed =" + loc.getSpeed());
-                pingAndReturn(loc, callback);
-                return;
-        }
+        // Location loc = getCurrentLocation();
+        // if(loc != null){
+        //     Log.d(TAG, "requestCurrentLocation: using cached fix speed =" + loc.getSpeed());
+        //         pingAndReturn(loc, callback);
+        //         return;
+        // }
         // acc ≤ 20m and age < 30s — high-quality fix, covers the common 5-6s gap
         // acc ≤ 50m and age < 5s — acceptable fix, very fresh
         // if (lastGpsLocation != null && lastGpsLocation.getAccuracy() > 0) {
