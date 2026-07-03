@@ -2121,6 +2121,15 @@ extension LocationTrackingService: CLLocationManagerDelegate {
 
         let clLoc = CLLocation(latitude: location.latitude, longitude: location.longitude)
 
+        // Reject stale locations — if the best available fix is older than 60s,
+        // the device has been stationary in LOW-POWER GPS mode and the coordinates
+        // haven't changed. Sending them would repeat the last known position incorrectly.
+        let locationAge = abs(Date(timeIntervalSince1970: Double(location.timestamp) / 1000).timeIntervalSinceNow)
+        if locationAge > 60 {
+            print("📡 TripTracker sendAPIPing skipped — location is \(Int(locationAge))s old (stale)")
+            return
+        }
+
         // Distance gate — threshold depends on activity:
         //   vehicle (≥ 6 m/s)               → saveDistanceVehicleM (30m)
         //   walking / running / cycling      → slowPingDistanceM (200m)
