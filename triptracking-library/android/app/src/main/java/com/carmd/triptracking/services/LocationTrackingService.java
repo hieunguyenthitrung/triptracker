@@ -569,15 +569,15 @@ public class LocationTrackingService extends Service implements
         }
         // acc ≤ 20m and age < 30s — high-quality fix, covers the common 5-6s gap
         // acc ≤ 50m and age < 5s — acceptable fix, very fresh
-        if (lastGpsLocation != null && lastGpsLocation.getAccuracy() > 0) {
-            long age = now - lastGpsLocation.getTime();
-            float acc = lastGpsLocation.getAccuracy();
-            if ((acc <= 20f && age < 30_000L) || (acc <= 50f && age < 5_000L)) {
-                Log.d(TAG, "requestCurrentLocation: using cached fix acc=" + acc + "m age=" + age + "ms");
-                pingAndReturn(lastGpsLocation, callback);
-                return;
-            }
-        }
+        // if (lastGpsLocation != null && lastGpsLocation.getAccuracy() > 0) {
+        //     long age = now - lastGpsLocation.getTime();
+        //     float acc = lastGpsLocation.getAccuracy();
+        //     if ((acc <= 20f && age < 30_000L) || (acc <= 50f && age < 5_000L)) {
+        //         Log.d(TAG, "requestCurrentLocation: using cached fix acc=" + acc + "m age=" + age + "ms");
+        //         pingAndReturn(lastGpsLocation, callback);
+        //         return;
+        //     }
+        // }
 
         if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
             Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: GPS provider not enabled");
