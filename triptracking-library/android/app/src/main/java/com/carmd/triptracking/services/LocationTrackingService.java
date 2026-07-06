@@ -673,7 +673,7 @@ public class LocationTrackingService extends Service implements
         if (api != null && api.isEnabled()) {
             long now = System.currentTimeMillis();
             long sincePing = now - lastPingAndReturnMs;
-            // if (sincePing >= 5_000L) {
+            if (sincePing >= 5_000L) {
             lastPingAndReturnMs = now;
             float speed = (loc.getSpeed() > 0 ? loc.getSpeed() : 0);
             if (lastKnownActivityType.equals("still")) {
@@ -685,10 +685,10 @@ public class LocationTrackingService extends Service implements
             api.sendPing(loc, false, 0, "still");
             Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: pinged (" + loc.getLatitude()
                     + ", " + loc.getLongitude() + ") spd=" + speed + " m/s");
-            // } else {
-            // Log.d(TAG, "requestCurrentLocation: ping skipped (" + (sincePing / 1000) + "s
-            // since last ping)");
-            // }
+            } else {
+            Log.d(TAG, "requestCurrentLocation: ping skipped (" + (sincePing / 1000) + "s
+            since last ping)");
+            }
         }
         callback.onLocation(loc);
     }
