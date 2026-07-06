@@ -155,17 +155,6 @@ public class LocationTrackingService extends Service implements
     private Handler autoStopHandler = null;
     private Runnable autoStopRunnable = null;
 
-    // ── Activity Recognition fallback: periodic GPS check while STILL ──────────
-    // Samsung/Doze can silence ActivityRecognition for 1+ hours. When GPS is off
-    // and STILL, we briefly enable GPS every 10 min to detect if the user has
-    // actually moved (position drift > 200m → re-enable GPS normally).
-    private static final long STILL_GPS_WAKEUP_INTERVAL_MS = 10 * 60 * 1000L; // 10 min
-    private static final float STILL_GPS_WAKEUP_MOVE_THRESHOLD_M = 200f;
-    private Handler stillWakeupHandler = null;
-    private Runnable stillWakeupRunnable = null;
-    private Location lastStillPosition = null;  // position captured when device became STILL
-    private boolean gpsWakeupInProgress = false;
-
     // ── Anti-drift: prevent false auto-start from GPS noise on stationary device
     // ──
     /** Number of consecutive GPS fixes at vehicle speed (need 3 to auto-start). */
@@ -432,7 +421,6 @@ public class LocationTrackingService extends Service implements
                 scheduleWatchdog();
             }
             cancelAutoStopTimer();
-            cancelStillWakeupTimer();
             if (sensorTracker != null)
                 sensorTracker.stopTracking();
             stopSaveLoop();
@@ -1001,7 +989,6 @@ public class LocationTrackingService extends Service implements
         // GPS stays OFF after trip ends — Activity Recognition will re-enable it
         // when the user starts walking, running, cycling, or enters a vehicle.
         stopGpsUpdates();
-        startStillWakeupTimer();
         cancelWatchdog();
         startForegroundNotification("Trip Tracker", "Waiting for vehicle speed…");
         notifyTrackingStateChanged(false);
@@ -1019,107 +1006,17 @@ public class LocationTrackingService extends Service implements
     private void stopGpsUpdates() {
         try {
             locationManager.removeUpdates(this);
-            Log.d(TAG, "🔋 GPS fully stopped — location icon hidden (Activity Recognition driving GPS on/off)");
+            // Keep GPS chip warm at low rate — sensor tracker drives full rate when moving
+            locationManager.requestLocationUpdates(
+                    LocationManager.GPS_PROVIDER,
+                    30_000L, // 30 seconds
+                    100f,    // 100 meters
+                    this);
+            Log.d(TAG, "🔋 GPS LOW-POWER — 30s/100m (sensor tracker still active)");
         } catch (SecurityException e) {
             Log.e(TAG, "stopGpsUpdates: no permission — " + e.getMessage());
         }
     }
-
-    /**
-     * Start the periodic still-wakeup timer.
-     * Every STILL_GPS_WAKEUP_INTERVAL_MS, briefly enable GPS to check whether
-     * the user has moved more than STILL_GPS_WAKEUP_MOVE_THRESHOLD_M from the
-     * position when STILL was detected. If they have, re-enable GPS normally so
-     * the service can detect a vehicle trip — this compensates for Samsung/Doze
-     * silencing Activity Recognition for extended periods.
-     */
-    private void startStillWakeupTimer() {
-        cancelStillWakeupTimer();
-        lastStillPosition = null;
-        // Capture current position as the STILL anchor
-        Location loc = getCurrentLocation();
-        if (loc != null) lastStillPosition = new Location(loc);
-
-        if (stillWakeupHandler == null) stillWakeupHandler = new Handler(Looper.getMainLooper());
-        stillWakeupRunnable = new Runnable() {
-            @Override
-            public void run() {
-                if (isTracking) return; // trip started meanwhile — no need
-                Log.d(TAG, "⏰ Still-wakeup: briefly enabling GPS to check for movement");
-                gpsWakeupInProgress = true;
-                try {
-                    locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0L, 0f,
-                            stillWakeupLocationListener, Looper.getMainLooper());
-                } catch (SecurityException e) {
-                    Log.e(TAG, "stillWakeup: no GPS permission — " + e.getMessage());
-                    gpsWakeupInProgress = false;
-                    scheduleNextStillWakeup();
-                    return;
-                }
-                // Stop wakeup GPS after 30 seconds whether or not a fix arrives
-                new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                    if (gpsWakeupInProgress) {
-                        gpsWakeupInProgress = false;
-                        if (!isTracking) {
-                            try { locationManager.removeUpdates(stillWakeupLocationListener); } catch (Exception ignored) {}
-                            Log.d(TAG, "⏰ Still-wakeup: no fix in 30 s, GPS off again");
-                            scheduleNextStillWakeup();
-                        }
-                    }
-                }, 30_000L);
-            }
-        };
-        stillWakeupHandler.postDelayed(stillWakeupRunnable, STILL_GPS_WAKEUP_INTERVAL_MS);
-        Log.d(TAG, "⏰ Still-wakeup timer armed (fires in " + (STILL_GPS_WAKEUP_INTERVAL_MS / 60_000) + " min)");
-    }
-
-    private void scheduleNextStillWakeup() {
-        if (!isTracking && stillWakeupHandler != null && stillWakeupRunnable != null) {
-            stillWakeupHandler.postDelayed(stillWakeupRunnable, STILL_GPS_WAKEUP_INTERVAL_MS);
-            Log.d(TAG, "⏰ Still-wakeup rescheduled in " + (STILL_GPS_WAKEUP_INTERVAL_MS / 60_000) + " min");
-        }
-    }
-
-    private void cancelStillWakeupTimer() {
-        if (stillWakeupHandler != null && stillWakeupRunnable != null) {
-            stillWakeupHandler.removeCallbacks(stillWakeupRunnable);
-            stillWakeupRunnable = null;
-        }
-        gpsWakeupInProgress = false;
-        lastStillPosition = null;
-    }
-
-    private final android.location.LocationListener stillWakeupLocationListener =
-            new android.location.LocationListener() {
-        @Override
-        public void onLocationChanged(android.location.Location location) {
-            if (!gpsWakeupInProgress) return;
-            gpsWakeupInProgress = false;
-            try { locationManager.removeUpdates(this); } catch (Exception ignored) {}
-
-            float distanceMoved = (lastStillPosition != null)
-                    ? lastStillPosition.distanceTo(location) : 0f;
-            Log.d(TAG, "⏰ Still-wakeup fix: moved " + String.format("%.0f", distanceMoved)
-                    + "m from still anchor (threshold=" + STILL_GPS_WAKEUP_MOVE_THRESHOLD_M + "m)");
-
-            if (distanceMoved >= STILL_GPS_WAKEUP_MOVE_THRESHOLD_M) {
-                // User has moved significantly — Activity Recognition missed it.
-                // Update the anchor and re-enable GPS so normal detection can take over.
-                Log.i(TAG, "⏰ Still-wakeup: user moved " + String.format("%.0f", distanceMoved)
-                        + "m — re-enabling GPS (Activity Recognition was silent)");
-                lastStillPosition = new Location(location);
-                cancelStillWakeupTimer();
-                startGPSTracking(); // normal GPS resumes; onLocationChanged → speed check → auto-start if needed
-            } else {
-                Log.d(TAG, "⏰ Still-wakeup: < threshold, user still — GPS off again");
-                scheduleNextStillWakeup();
-            }
-        }
-
-        @Override public void onProviderEnabled(String provider) {}
-        @Override public void onProviderDisabled(String provider) {}
-        @Override public void onStatusChanged(String provider, int status, android.os.Bundle extras) {}
-    };
 
     // =========================================================================
     // Effective speed — single source of truth for all save decisions
@@ -1370,10 +1267,8 @@ public class LocationTrackingService extends Service implements
             }
             // No active trip + still → stop GPS to save battery.
             // Activity Recognition will re-enable GPS when IN_VEHICLE detected.
-            // Still-wakeup timer provides a fallback if Activity Recognition goes silent.
             if (!isTracking) {
                 stopGpsUpdates();
-                startStillWakeupTimer();
             }
         } else {
             // Device is moving — reset still timer and cancel auto-stop
@@ -1799,7 +1694,6 @@ public class LocationTrackingService extends Service implements
     private void startGPSTracking() {
         if (!hasPermission(Manifest.permission.ACCESS_FINE_LOCATION))
             return;
-        cancelStillWakeupTimer(); // activity detected — no need for periodic fallback
         try {
             locationManager.removeUpdates(this);
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 3f, this);
@@ -2330,9 +2224,8 @@ public class LocationTrackingService extends Service implements
                 Log.i(TAG, "⏸ STILL detected — starting auto-end countdown");
                 startAutoStopTimer();
             } else {
-                Log.i(TAG, "🔋 STILL detected (no active trip) — stopping GPS to save battery");
+                Log.i(TAG, "🔋 STILL detected (no active trip) — GPS to low-power mode");
                 stopGpsUpdates();
-                startStillWakeupTimer();
             }
 
         } else if ((activityType == DetectedActivity.WALKING
