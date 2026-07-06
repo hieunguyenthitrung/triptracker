@@ -561,7 +561,7 @@ public class LocationTrackingService extends Service implements
         }
         long now = System.currentTimeMillis();
         // Fast-path: use cached fix if:
-        Location loc = getCurrentLocation();
+        // Location loc = getCurrentLocation();
 
         if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
             Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: GPS provider not enabled");
@@ -623,7 +623,7 @@ public class LocationTrackingService extends Service implements
                 } else {
                     try {
                         // Fallback 2: LocationManager last known GPS
-                        loc = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                        Location loc = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
                         if (loc != null && loc.getAccuracy() > 0 && loc.getAccuracy() <= 200f) {
                             Log.d(TAG, "requestCurrentLocation: fallback2 lastKnown GPS acc="
                                     + loc.getAccuracy() + "m");
