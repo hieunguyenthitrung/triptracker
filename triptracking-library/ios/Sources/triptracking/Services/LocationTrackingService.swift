@@ -450,35 +450,35 @@ public class LocationTrackingService: NSObject {
         }
 
         // Debounce: if called multiple times on foreground resume, only run once per 2s
-        let sinceLastCall = abs(lastCurrentLocationTime.timeIntervalSinceNow)
-        if sinceLastCall < 5.0 {
-            print(
-                "📍 TripTracker requestCurrentLocation — debounced (\(String(format:"%.1f", sinceLastCall))s since last call)"
-            )
-            if let cached = locationManager.location {
-                pingAndReturn(cached, completion: completion)
-            }
-            return
-        }
-        lastCurrentLocationTime = Date()
+        // let sinceLastCall = abs(lastCurrentLocationTime.timeIntervalSinceNow)
+        // if sinceLastCall < 5.0 {
+        //     print(
+        //         "📍 TripTracker requestCurrentLocation — debounced (\(String(format:"%.1f", sinceLastCall))s since last call)"
+        //     )
+        //     if let cached = locationManager.location {
+        //         pingAndReturn(cached, completion: completion)
+        //     }
+        //     return
+        // }
+        // lastCurrentLocationTime = Date()
 
-        let cached = locationManager.location
-        let age = cached.map { abs($0.timestamp.timeIntervalSinceNow) } ?? Double.infinity
-        let acc = cached?.horizontalAccuracy ?? -1
+        // let cached = locationManager.location
+        // let age = cached.map { abs($0.timestamp.timeIntervalSinceNow) } ?? Double.infinity
+        // let acc = cached?.horizontalAccuracy ?? -1
 
-        // Use cached fix immediately if good enough — avoids GPS wait entirely:
-        //   • accuracy ≤ 20m, any age up to 60s   (high-quality fix)
-        //   • accuracy ≤ 50m, age ≤ 30s           (good fix, recent)
-        //   • accuracy ≤ 100m, age ≤ 10s          (acceptable fix, very fresh)
-        if let cached = cached, acc > 0,
-            (acc <= 20 && age < 60) || (acc <= 50 && age < 30) || (acc <= 100 && age < 10)
-        {
-            print(
-                "📍 TripTracker requestCurrentLocation — using cached fix acc:\(Int(acc))m age:\(Int(age))s"
-            )
-            pingAndReturn(cached, completion: completion)
-            return
-        }
+        // // Use cached fix immediately if good enough — avoids GPS wait entirely:
+        // //   • accuracy ≤ 20m, any age up to 60s   (high-quality fix)
+        // //   • accuracy ≤ 50m, age ≤ 30s           (good fix, recent)
+        // //   • accuracy ≤ 100m, age ≤ 10s          (acceptable fix, very fresh)
+        // if let cached = cached, acc > 0,
+        //     (acc <= 20 && age < 60) || (acc <= 50 && age < 30) || (acc <= 100 && age < 10)
+        // {
+        //     print(
+        //         "📍 TripTracker requestCurrentLocation — using cached fix acc:\(Int(acc))m age:\(Int(age))s"
+        //     )
+        //     pingAndReturn(cached, completion: completion)
+        //     return
+        // }
 
         // Cancel any previous pending request
         currentLocationTimer?.invalidate()
