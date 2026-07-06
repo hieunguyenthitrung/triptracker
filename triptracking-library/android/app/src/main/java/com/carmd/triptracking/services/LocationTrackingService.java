@@ -686,8 +686,7 @@ public class LocationTrackingService extends Service implements
             Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: pinged (" + loc.getLatitude()
                     + ", " + loc.getLongitude() + ") spd=" + speed + " m/s");
             } else {
-            Log.d(TAG, "requestCurrentLocation: ping skipped (" + (sincePing / 1000) + "s
-            since last ping)");
+            Log.d(TAG, "requestCurrentLocation: ping skipped (" + (sincePing / 1000) + "s since last ping)");
             }
         }
         callback.onLocation(loc);
