@@ -614,9 +614,7 @@ public class LocationTrackingService extends Service implements
 
             // Fallback 3: network / passive provider
             try {
-                loc = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-                if (loc == null)
-                    loc = locationManager.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER);
+                Location loc = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
                 if (loc != null) {
                     Log.d(TAG, "requestCurrentLocation: fallback3 network/passive acc="
                             + loc.getAccuracy() + "m");
@@ -632,7 +630,13 @@ public class LocationTrackingService extends Service implements
                             pingAndReturn(loc, callback);
                             return;
                         } else {
-
+                            loc = locationManager.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER);
+                            if (loc != null) {
+                                Log.d(TAG, "requestCurrentLocation: fallback3 PASSIVE_PROVIDER acc="
+                                        + loc.getAccuracy() + "m");
+                                pingAndReturn(loc, callback);
+                                return;
+                            }
                         }
                     } catch (SecurityException ignored) {
                     }
