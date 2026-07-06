@@ -623,7 +623,7 @@ public class LocationTrackingService extends Service implements
                 } else {
                     try {
                         // Fallback 2: LocationManager last known GPS
-                        Location loc = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                        loc = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
                         if (loc != null && loc.getAccuracy() > 0 && loc.getAccuracy() <= 200f) {
                             Log.d(TAG, "requestCurrentLocation: fallback2 lastKnown GPS acc="
                                     + loc.getAccuracy() + "m");
