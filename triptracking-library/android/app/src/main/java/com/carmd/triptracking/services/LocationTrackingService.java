@@ -987,12 +987,12 @@ public class LocationTrackingService extends Service implements
         // Resume GPS at low-power after 20s cooldown
         if (autoStopHandler == null)
             autoStopHandler = new Handler(Looper.getMainLooper());
-        autoStopHandler.postDelayed(() -> {
-            if (!isTracking) {
-                startGPSTracking();
-                Log.d(TAG, "📡 GPS LOW-POWER resumed — 20s cooldown complete, ready for next trip");
-            }
-        }, 20_000L);
+        // autoStopHandler.postDelayed(() -> {
+        //     if (!isTracking) {
+        //         startGPSTracking();
+        //         Log.d(TAG, "📡 GPS LOW-POWER resumed — 20s cooldown complete, ready for next trip");
+        //     }
+        // }, 20_000L);
     }
 
     // =========================================================================
