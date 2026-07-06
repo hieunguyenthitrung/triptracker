@@ -569,40 +569,40 @@ public class LocationTrackingService extends Service implements
             return;
         }
 
-        android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
-        final boolean[] resolved = { false };
+        // android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+        // final boolean[] resolved = { false };
 
-        android.location.LocationListener listener = new android.location.LocationListener() {
-            @Override
-            public void onLocationChanged(@NonNull Location loc) {
-                if (resolved[0])
-                    return;
-                // Wait for an accurate fix
-                if (loc.getAccuracy() > 50) {
-                    Log.d(TAG, "TripTrackerPlugin getCurrentLocation equestCurrentLocation: inaccurate fix "
-                            + loc.getAccuracy() + "m — waiting");
-                    return;
-                }
-                Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: got accurate fix "
-                        + loc.getAccuracy() + "m — returning");
-                resolved[0] = true;
-                locationManager.removeUpdates(this);
-                handler.removeCallbacksAndMessages(null);
-                pingAndReturn(loc, callback);
-            }
+        // android.location.LocationListener listener = new android.location.LocationListener() {
+        //     @Override
+        //     public void onLocationChanged(@NonNull Location loc) {
+        //         if (resolved[0])
+        //             return;
+        //         // Wait for an accurate fix
+        //         if (loc.getAccuracy() > 50) {
+        //             Log.d(TAG, "TripTrackerPlugin getCurrentLocation equestCurrentLocation: inaccurate fix "
+        //                     + loc.getAccuracy() + "m — waiting");
+        //             return;
+        //         }
+        //         Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: got accurate fix "
+        //                 + loc.getAccuracy() + "m — returning");
+        //         resolved[0] = true;
+        //         locationManager.removeUpdates(this);
+        //         handler.removeCallbacksAndMessages(null);
+        //         pingAndReturn(loc, callback);
+        //     }
 
-            @Override
-            public void onProviderDisabled(@NonNull String provider) {
-                if (resolved[0])
-                    return;
-                resolved[0] = true;
-                locationManager.removeUpdates(this);
-                handler.removeCallbacksAndMessages(null);
-                Log.d(TAG,
-                        "TripTrackerPlugin getCurrentLocation requestCurrentLocation: GPS provider disabled during request");
-                callback.onError("GPS provider disabled");
-            }
-        };
+        //     @Override
+        //     public void onProviderDisabled(@NonNull String provider) {
+        //         if (resolved[0])
+        //             return;
+        //         resolved[0] = true;
+        //         locationManager.removeUpdates(this);
+        //         handler.removeCallbacksAndMessages(null);
+        //         Log.d(TAG,
+        //                 "TripTrackerPlugin getCurrentLocation requestCurrentLocation: GPS provider disabled during request");
+        //         callback.onError("GPS provider disabled");
+        //     }
+        // };
 
         // Timeout — fall back through multiple location sources, then error
         handler.postDelayed(() -> {
@@ -674,19 +674,19 @@ public class LocationTrackingService extends Service implements
             long now = System.currentTimeMillis();
             long sincePing = now - lastPingAndReturnMs;
             if (sincePing >= 5_000L) {
-            lastPingAndReturnMs = now;
-            float speed = (loc.getSpeed() > 0 ? loc.getSpeed() : 0);
-            if (lastKnownActivityType.equals("still")) {
-                speed = 0;
-            }
-            float threshold = AppSettings.getVehicleSpeed(getApplicationContext());
-            String activityType = speed >= threshold ? "in_vehicle"
-                    : (speed >= 1.5f ? "running" : (speed >= 0.5f ? "walking" : "still"));
-            api.sendPing(loc, false, 0, "still");
-            Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: pinged (" + loc.getLatitude()
-                    + ", " + loc.getLongitude() + ") spd=" + speed + " m/s");
+                lastPingAndReturnMs = now;
+                float speed = (loc.getSpeed() > 0 ? loc.getSpeed() : 0);
+                if (lastKnownActivityType.equals("still")) {
+                    speed = 0;
+                }
+                float threshold = AppSettings.getVehicleSpeed(getApplicationContext());
+                String activityType = speed >= threshold ? "in_vehicle"
+                        : (speed >= 1.5f ? "running" : (speed >= 0.5f ? "walking" : "still"));
+                api.sendPing(loc, false, 0, "still");
+                Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: pinged (" + loc.getLatitude()
+                        + ", " + loc.getLongitude() + ") spd=" + speed + " m/s");
             } else {
-            Log.d(TAG, "requestCurrentLocation: ping skipped (" + (sincePing / 1000) + "s since last ping)");
+                Log.d(TAG, "requestCurrentLocation: ping skipped (" + (sincePing / 1000) + "s since last ping)");
             }
         }
         callback.onLocation(loc);
