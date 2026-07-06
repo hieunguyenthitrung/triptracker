@@ -1467,7 +1467,10 @@ public class LocationTrackingService extends Service implements
         float requiredSpeed = activityRecognitionVehicle
                 ? vehicleThreshold() * 0.5f // 11 km/h if Activity Recognition confirms vehicle
                 : vehicleThreshold(); // 22 km/h normally
-
+        Log.d(TAG, "Vehicle speed check tracking" + isTracking + ": speed=" + String.format("%.1f", speed) +
+                " m/s required=" + String.format("%.1f", requiredSpeed) +
+                " accuracy=" + String.format("%.1f", accuracy) + "m" +
+                " consecutive=" + consecutiveVehicleCount);
         if (speed >= requiredSpeed && accuracy <= 30f && location.hasSpeed() && location.getSpeed() >= requiredSpeed) {
             consecutiveVehicleCount++;
             if (!isTracking && consecutiveVehicleCount >= 2) {
