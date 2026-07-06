@@ -561,23 +561,7 @@ public class LocationTrackingService extends Service implements
         }
         long now = System.currentTimeMillis();
         // Fast-path: use cached fix if:
-        // Location loc = getCurrentLocation();
-        // if(loc != null){
-        //     Log.d(TAG, "requestCurrentLocation: using cached fix speed =" + loc.getSpeed());
-        //         pingAndReturn(loc, callback);
-        //         return;
-        // }
-        // acc ≤ 20m and age < 30s — high-quality fix, covers the common 5-6s gap
-        // acc ≤ 50m and age < 5s — acceptable fix, very fresh
-        // if (lastGpsLocation != null && lastGpsLocation.getAccuracy() > 0) {
-        //     long age = now - lastGpsLocation.getTime();
-        //     float acc = lastGpsLocation.getAccuracy();
-        //     if ((acc <= 20f && age < 30_000L) || (acc <= 50f && age < 5_000L)) {
-        //         Log.d(TAG, "requestCurrentLocation: using cached fix acc=" + acc + "m age=" + age + "ms");
-        //         pingAndReturn(lastGpsLocation, callback);
-        //         return;
-        //     }
-        // }
+        Location loc = getCurrentLocation();
 
         if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
             Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: GPS provider not enabled");
@@ -628,31 +612,44 @@ public class LocationTrackingService extends Service implements
             locationManager.removeUpdates(listener);
             Log.d(TAG, "requestCurrentLocation: timed out after " + (timeoutMs / 1000) + "s — trying fallbacks");
 
-            // Fallback 1: in-memory lastGpsLocation (any age, acc ≤ 200m)
+            // Fallback 3: network / passive provider
             try {
-                    Location lk = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-                    if (lk != null && lk.getAccuracy() > 0 && lk.getAccuracy() <= 200f) {
-                        Log.d(TAG, "requestCurrentLocation: fallback2 lastKnown GPS acc="
-                                + lk.getAccuracy() + "m");
-                        pingAndReturn(lk, callback);
-                        return;
-                    } else {
-                        // Fallback 3: network / passive provider
-                        try {
-                            Location net = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-                            if (net == null)
-                                net = locationManager.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER);
-                            if (net != null) {
-                                Log.d(TAG, "requestCurrentLocation: fallback3 network/passive acc="
-                                        + net.getAccuracy() + "m");
-                                pingAndReturn(net, callback);
-                                return;
-                            }
-                        } catch (SecurityException ignored) {
+                loc = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+                if (loc == null)
+                    loc = locationManager.getLastKnownLocation(LocationManager.PASSIVE_PROVIDER);
+                if (loc != null) {
+                    Log.d(TAG, "requestCurrentLocation: fallback3 network/passive acc="
+                            + loc.getAccuracy() + "m");
+                    pingAndReturn(loc, callback);
+                    return;
+                } else {
+                    try {
+                        // Fallback 2: LocationManager last known GPS
+                        loc = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                        if (loc != null && loc.getAccuracy() > 0 && loc.getAccuracy() <= 200f) {
+                            Log.d(TAG, "requestCurrentLocation: fallback2 lastKnown GPS acc="
+                                    + loc.getAccuracy() + "m");
+                            pingAndReturn(loc, callback);
+                            return;
+                        } else {
+
                         }
+                    } catch (SecurityException ignored) {
                     }
-                } catch (SecurityException ignored) {
                 }
+            } catch (SecurityException ignored) {
+            }
+            // Fallback 1: in-memory lastGpsLocation (any age, acc ≤ 200m)
+            if (lastGpsLocation != null && lastGpsLocation.getAccuracy() > 0
+                    && lastGpsLocation.getAccuracy() <= 200f) {
+                Log.d(TAG, "requestCurrentLocation: fallback1 lastGpsLocation acc="
+                        + lastGpsLocation.getAccuracy() + "m age="
+                        + (System.currentTimeMillis() - lastGpsLocation.getTime()) / 1000 + "s");
+                pingAndReturn(lastGpsLocation, callback);
+                return;
+            } else {
+
+            }
 
             callback.onError("getCurrentLocation timed out after " + (timeoutMs / 1000) + "s — no fallback available");
         }, timeoutMs);
@@ -677,19 +674,20 @@ public class LocationTrackingService extends Service implements
             long now = System.currentTimeMillis();
             long sincePing = now - lastPingAndReturnMs;
             // if (sincePing >= 5_000L) {
-                lastPingAndReturnMs = now;
-                float speed = (loc.getSpeed() > 0 ? loc.getSpeed() : 0);
-                if(lastKnownActivityType.equals("still")){
-                    speed = 0;
-                }
-                float threshold = AppSettings.getVehicleSpeed(getApplicationContext());
-                String activityType = speed >= threshold ? "in_vehicle"
-                        : (speed >= 1.5f ? "running" : (speed >= 0.5f ? "walking" : "still"));
-                api.sendPing(loc, false, 0, "still");
-                Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: pinged (" + loc.getLatitude()
-                        + ", " + loc.getLongitude() + ") spd=" + speed + " m/s");
+            lastPingAndReturnMs = now;
+            float speed = (loc.getSpeed() > 0 ? loc.getSpeed() : 0);
+            if (lastKnownActivityType.equals("still")) {
+                speed = 0;
+            }
+            float threshold = AppSettings.getVehicleSpeed(getApplicationContext());
+            String activityType = speed >= threshold ? "in_vehicle"
+                    : (speed >= 1.5f ? "running" : (speed >= 0.5f ? "walking" : "still"));
+            api.sendPing(loc, false, 0, "still");
+            Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: pinged (" + loc.getLatitude()
+                    + ", " + loc.getLongitude() + ") spd=" + speed + " m/s");
             // } else {
-            //     Log.d(TAG, "requestCurrentLocation: ping skipped (" + (sincePing / 1000) + "s since last ping)");
+            // Log.d(TAG, "requestCurrentLocation: ping skipped (" + (sincePing / 1000) + "s
+            // since last ping)");
             // }
         }
         callback.onLocation(loc);
@@ -2244,7 +2242,7 @@ public class LocationTrackingService extends Service implements
                 lastKnownActivityType = "on_bicycle";
                 return "ON_BICYCLE";
             case DetectedActivity.WALKING:
-                lastKnownActivityType = "walking"; 
+                lastKnownActivityType = "walking";
                 return "WALKING";
             case DetectedActivity.RUNNING:
                 lastKnownActivityType = "running";
@@ -2313,7 +2311,7 @@ public class LocationTrackingService extends Service implements
                     break;
                 case "WALKING":
                     activityChangeString = "walking";
-                    lastKnownActivityType = "walking"; 
+                    lastKnownActivityType = "walking";
                     break;
                 case "RUNNING":
                     activityChangeString = "running";
