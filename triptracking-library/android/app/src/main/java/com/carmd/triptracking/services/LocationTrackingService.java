@@ -569,40 +569,40 @@ public class LocationTrackingService extends Service implements
             return;
         }
 
-        // android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
-        // final boolean[] resolved = { false };
+        android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+        final boolean[] resolved = { false };
 
-        // android.location.LocationListener listener = new android.location.LocationListener() {
-        //     @Override
-        //     public void onLocationChanged(@NonNull Location loc) {
-        //         if (resolved[0])
-        //             return;
-        //         // Wait for an accurate fix
-        //         if (loc.getAccuracy() > 50) {
-        //             Log.d(TAG, "TripTrackerPlugin getCurrentLocation equestCurrentLocation: inaccurate fix "
-        //                     + loc.getAccuracy() + "m — waiting");
-        //             return;
-        //         }
-        //         Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: got accurate fix "
-        //                 + loc.getAccuracy() + "m — returning");
-        //         resolved[0] = true;
-        //         locationManager.removeUpdates(this);
-        //         handler.removeCallbacksAndMessages(null);
-        //         pingAndReturn(loc, callback);
-        //     }
+        android.location.LocationListener listener = new android.location.LocationListener() {
+            @Override
+            public void onLocationChanged(@NonNull Location loc) {
+                if (resolved[0])
+                    return;
+                // Wait for an accurate fix
+                if (loc.getAccuracy() > 50) {
+                    Log.d(TAG, "TripTrackerPlugin getCurrentLocation equestCurrentLocation: inaccurate fix "
+                            + loc.getAccuracy() + "m — waiting");
+                    return;
+                }
+                Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: got accurate fix "
+                        + loc.getAccuracy() + "m — returning");
+                resolved[0] = true;
+                locationManager.removeUpdates(this);
+                handler.removeCallbacksAndMessages(null);
+                pingAndReturn(loc, callback);
+            }
 
-        //     @Override
-        //     public void onProviderDisabled(@NonNull String provider) {
-        //         if (resolved[0])
-        //             return;
-        //         resolved[0] = true;
-        //         locationManager.removeUpdates(this);
-        //         handler.removeCallbacksAndMessages(null);
-        //         Log.d(TAG,
-        //                 "TripTrackerPlugin getCurrentLocation requestCurrentLocation: GPS provider disabled during request");
-        //         callback.onError("GPS provider disabled");
-        //     }
-        // };
+            @Override
+            public void onProviderDisabled(@NonNull String provider) {
+                if (resolved[0])
+                    return;
+                resolved[0] = true;
+                locationManager.removeUpdates(this);
+                handler.removeCallbacksAndMessages(null);
+                Log.d(TAG,
+                        "TripTrackerPlugin getCurrentLocation requestCurrentLocation: GPS provider disabled during request");
+                callback.onError("GPS provider disabled");
+            }
+        };
 
         // Timeout — fall back through multiple location sources, then error
         handler.postDelayed(() -> {
