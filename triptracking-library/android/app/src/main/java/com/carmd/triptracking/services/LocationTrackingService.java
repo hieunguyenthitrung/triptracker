@@ -1128,10 +1128,12 @@ public class LocationTrackingService extends Service implements
      * distance-based via the distance gate.
      */
     private void runSaveTick() {
-        Log.d(TAG, "Check Internal Save tick fired");
         float speed = getEffectiveSpeed();
         boolean sensorStill = sensorTracker == null || !sensorTracker.getStats().isMoving();
 
+        Log.d(TAG, "Check Internal Save tick fired" +
+                " speed=" + String.format("%.1f", speed) + " m/s" +
+                " sensorStill=" + sensorStill);
         // ── Auto-trip: still timer management ─────────────────────────────
         boolean isStill = speed < STATIONARY_THRESHOLD && sensorStill;
         if (isStill) {
