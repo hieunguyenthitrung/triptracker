@@ -256,6 +256,9 @@ public class SensorBasedLocationTracker implements SensorEventListener {
     public void onAccuracyChanged(Sensor sensor, int accuracy) {}
 
     private void processAccelerometer(SensorEvent event) {
+        Log.d(TAG, "Check Internal Accel: " + String.format("%.2f", event.values[0]) + ", " +
+                String.format("%.2f", event.values[1]) + ", " +
+                String.format("%.2f", event.values[2]));
         // Low-pass filter to remove gravity
         gravity[0] = ALPHA_LOW_PASS * gravity[0] + (1 - ALPHA_LOW_PASS) * event.values[0];
         gravity[1] = ALPHA_LOW_PASS * gravity[1] + (1 - ALPHA_LOW_PASS) * event.values[1];

@@ -1116,7 +1116,7 @@ public class LocationTrackingService extends Service implements
             return;
         saveHandler.removeCallbacks(saveLoopTask);
         saveHandler.postDelayed(saveLoopTask, nextSaveIntervalMs());
-        Log.d(TAG, "Save loop rescheduled → " + (nextSaveIntervalMs() / 1000) + "s");
+        Log.d(TAG, "Check Internal Save loop rescheduled → " + (nextSaveIntervalMs() / 1000) + "s");
     }
 
     /**
@@ -1128,6 +1128,7 @@ public class LocationTrackingService extends Service implements
      * distance-based via the distance gate.
      */
     private void runSaveTick() {
+        Log.d(TAG, "Check Internal Save tick fired");
         float speed = getEffectiveSpeed();
         boolean sensorStill = sensorTracker == null || !sensorTracker.getStats().isMoving();
 
