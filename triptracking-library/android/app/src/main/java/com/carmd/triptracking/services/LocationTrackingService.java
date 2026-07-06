@@ -1010,7 +1010,7 @@ public class LocationTrackingService extends Service implements
             locationManager.requestLocationUpdates(
                     LocationManager.GPS_PROVIDER,
                     30_000L, // 30 seconds interval
-                    100f, // 100 meters displacement
+                    200f, // 100 meters displacement
                     this);
             Log.d(TAG, "🔋 GPS LOW-POWER — 30s/100m (Activity Recognition + sensor still active)");
         } catch (SecurityException e) {
@@ -1697,8 +1697,8 @@ public class LocationTrackingService extends Service implements
             return;
         try {
             locationManager.removeUpdates(this);
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 3f, this);
-            Log.d(TAG, "GPS updates started (1s / 3m)");
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 15_000L, 80f, this);
+            Log.d(TAG, "GPS updates started (15s / 80m)");
         } catch (SecurityException e) {
             Log.e(TAG, "Permission error starting GPS", e);
         }
@@ -2233,6 +2233,11 @@ public class LocationTrackingService extends Service implements
                 // // Not tracking + still → ensure GPS is off
                 // stopGpsUpdates();
             }
+        }
+        else if (activityType == DetectedActivity.STILL) {
+            // Still detected → start auto-end countdown if trip is active
+            activityRecognitionVehicle = false;
+            stopGpsUpdates();
         }
         // ON_BICYCLE, WALKING, RUNNING: logged but don't trigger auto-start/stop
     }
