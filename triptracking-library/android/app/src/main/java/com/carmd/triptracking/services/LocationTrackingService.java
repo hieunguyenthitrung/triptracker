@@ -371,7 +371,7 @@ public class LocationTrackingService extends Service implements
                             stopGpsUpdates();
                             Log.d(TAG, "🔋 GPS stopped — motion without trip start, location icon hidden");
                         }
-                    }, 10_000L);
+                    }, 15_000L);
     }
 
     @Override
