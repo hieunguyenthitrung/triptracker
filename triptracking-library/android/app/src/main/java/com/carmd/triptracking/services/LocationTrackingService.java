@@ -368,7 +368,19 @@ public class LocationTrackingService extends Service implements
         Log.d(TAG, "Service started — sensor-first tracking active");
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             if (!isTracking) {
-                stopGpsUpdates();
+                // stopGpsUpdates();
+                try {
+            locationManager.removeUpdates(this);
+            // Immediately re-register at low rate — keeps GPS chip warm
+            // locationManager.requestLocationUpdates(
+            // LocationManager.GPS_PROVIDER,
+            // 30_000L, // 30 seconds interval
+            // 200f, // 100 meters displacement
+            // this);
+            Log.d(TAG, "🔋 GPS LOW-POWER — 30s/100m (Activity Recognition + sensor still active)");
+        } catch (SecurityException e) {
+            Log.e(TAG, "stopGpsUpdates: no permission — " + e.getMessage());
+        }
                 Log.d(TAG, "🔋 GPS stopped — still, location icon hidden");
             }
         }, 30_000L);
