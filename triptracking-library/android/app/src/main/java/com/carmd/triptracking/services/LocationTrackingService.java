@@ -1614,15 +1614,22 @@ public class LocationTrackingService extends Service implements
     private void startSensorTracking() {
         try {
             Location seed = getInitialLocation();
-            if (seed != null) {
-                sensorTracker.startTracking(seed);
-                lastSensorLocation = new Location(seed);
+            if (seed == null) {
+                // No GPS cache yet (first launch / indoors). Start sensors immediately
+                // with a zero-position placeholder so accelerometer events fire right away.
+                // The real position is corrected by updateFromGPS() on the first GPS fix.
+                seed = new Location("placeholder");
+                seed.setLatitude(0);
+                seed.setLongitude(0);
+                seed.setAccuracy(9999f);
+                Log.w(TAG, "No cached location — starting sensors with placeholder, will calibrate on first GPS fix");
+                requestSingleLocationFix();
+            } else {
                 Log.d(TAG, "Sensors seeded at (" +
                         String.format("%.6f, %.6f", seed.getLatitude(), seed.getLongitude()) + ")");
-            } else {
-                Log.w(TAG, "No cached location — requesting live fix to seed sensors");
-                requestSingleLocationFix();
             }
+            sensorTracker.startTracking(seed);
+            lastSensorLocation = new Location(seed);
         } catch (Exception e) {
             Log.e(TAG, "Failed to start sensor tracking", e);
         }
