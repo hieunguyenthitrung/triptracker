@@ -1750,7 +1750,7 @@ public class LocationTrackingService extends Service implements
         try {
             locationManager.removeUpdates(this);
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 15_000L,
-            80f, this);
+                    80f, this);
             Log.d(TAG, "GPS updates started (15s / 80m)");
         } catch (SecurityException e) {
             Log.e(TAG, "Permission error starting GPS", e);
@@ -1766,9 +1766,10 @@ public class LocationTrackingService extends Service implements
      */
     private Location getInitialLocation() {
         if (!hasPermission(Manifest.permission.ACCESS_FINE_LOCATION) &&
-                !hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION))
-                Log.d(TAG, "startSensorTracking 11");
+                !hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION)) {
+            Log.d(TAG, "startSensorTracking 55");
             return null;
+        }
 
         // GPS only — network and passive providers are excluded per tracking rules
         for (String provider : new String[] {
@@ -1776,10 +1777,13 @@ public class LocationTrackingService extends Service implements
             try {
                 Location loc = locationManager.getLastKnownLocation(provider);
                 if (isLocationUsable(loc)) {
+                    Log.d(TAG, "startSensorTracking 11");
                     Log.d(TAG, "Cached location from " + provider);
                     return loc;
                 }
+                Log.d(TAG, "startSensorTracking 77");
             } catch (SecurityException ignored) {
+                Log.d(TAG, "startSensorTracking 66");
             }
         }
 
@@ -2115,7 +2119,7 @@ public class LocationTrackingService extends Service implements
      * Similar to iOS CMMotionActivity detection.
      */
     public void startActivityRecognition() {
-        
+
         try {
             // Define transitions we care about
             java.util.List<ActivityTransition> transitions = new java.util.ArrayList<>();
