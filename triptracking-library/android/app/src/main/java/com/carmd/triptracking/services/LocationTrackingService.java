@@ -1088,19 +1088,17 @@ public class LocationTrackingService extends Service implements
 
             }
             
-            // Only re-enable GPS for meaningful motion (>= 1 m/s = walking pace).
-            // Below this threshold the sensor is just picking up vibration/noise —
-            // restarting GPS would keep the location icon visible permanently.
-            if (isTracking || speed >= 1.0f) {
-                startGPSTracking();
-                if (!isTracking) {
-                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                        if (!isTracking) {
-                            stopGpsUpdates();
-                            Log.d(TAG, "🔋 GPS stopped — motion without trip start, location icon hidden");
-                        }
-                    }, 30_000L);
-                }
+            // Re-enable GPS on any confirmed movement — the sensor already requires
+            // MOVEMENT_THRESHOLD (2.0 m/s²) sustained for 800ms before firing, so
+            // noise is already filtered out at the source. No speed guard needed here.
+            startGPSTracking();
+            if (!isTracking) {
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    if (!isTracking) {
+                        stopGpsUpdates();
+                        Log.d(TAG, "🔋 GPS stopped — motion without trip start, location icon hidden");
+                    }
+                }, 30_000L);
             }
         }
         rescheduleSaveLoop();

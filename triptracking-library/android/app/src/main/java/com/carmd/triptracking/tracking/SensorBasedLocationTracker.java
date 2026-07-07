@@ -300,17 +300,19 @@ public class SensorBasedLocationTracker implements SensorEventListener {
                 movementStartTime = now;
             }
             // Confirm movement after sustained acceleration
+            lastMovementTime = now;
+            currentSpeed = Math.min(accelerationMagnitude * 0.15f, 1.5f);
             if (!isMoving && (now - movementStartTime) >= MOVEMENT_CONFIRM_MS) {
                 isMoving = true;
                 Log.d(TAG, "🚶 Movement confirmed - Accel: " +
                         String.format("%.2f", accelerationMagnitude) + " m/s²");
+                // currentSpeed is now set before the callback so the listener
+                // receives the correct speed (not the stale previous value).
                 listener.onMovementDetected(true, currentSpeed);
 
                 // ── Switch to high-rate MOVING mode ───────────────────────
                 switchToMovingMode();
             }
-            lastMovementTime = now;
-            currentSpeed = Math.min(accelerationMagnitude * 0.15f, 1.5f);
         } else {
             movementStartTime = 0;
             // Only stop "moving" after STILL_CONFIRM_MS of no activity
