@@ -1323,13 +1323,13 @@ public class LocationTrackingService extends Service implements
             if (seed == null) {
                 // No GPS cache yet (first launch / indoors). Start sensors immediately
                 // with a zero-position placeholder so accelerometer events fire right away.
-                // The real position is corrected by updateFromGPS() on the first GPS fix.
+                // Position is corrected by updateFromGPS() when the first GPS fix arrives
+                // via the main startGPSTracking() listener — no separate one-shot needed.
                 seed = new Location("placeholder");
                 seed.setLatitude(0);
                 seed.setLongitude(0);
                 seed.setAccuracy(9999f);
                 Log.w(TAG, "No cached location — starting sensors with placeholder, will calibrate on first GPS fix");
-                requestSingleLocationFix();
             } else {
                 Log.d(TAG, "Sensors seeded at (" +
                         String.format("%.6f, %.6f", seed.getLatitude(), seed.getLongitude()) + ")");
