@@ -1623,7 +1623,7 @@ public class LocationTrackingService extends Service implements
                 seed.setLongitude(0);
                 seed.setAccuracy(9999f);
                 Log.w(TAG, "No cached location — starting sensors with placeholder, will calibrate on first GPS fix");
-                requestSingleLocationFix();
+                // requestSingleLocationFix();
             } else {
                 Log.d(TAG, "Sensors seeded at (" +
                         String.format("%.6f, %.6f", seed.getLatitude(), seed.getLongitude()) + ")");
@@ -1632,50 +1632,6 @@ public class LocationTrackingService extends Service implements
             lastSensorLocation = new Location(seed);
         } catch (Exception e) {
             Log.e(TAG, "Failed to start sensor tracking", e);
-        }
-    }
-
-    private void requestSingleLocationFixIn30s() {
-        if (!hasLocationPermissions())
-            return;
-        LocationListener oneShot = new LocationListener() {
-            @Override
-            public void onLocationChanged(Location loc) {
-                locationManager.removeUpdates(this);
-                if (loc != null && !sensorTracker.isTracking()) {
-                    sensorTracker.startTracking(loc);
-                    lastSensorLocation = new Location(loc);
-                    lastGpsLocation = new Location(loc);
-                    lastSavedGpsLocation = new Location(loc);
-                    Log.d(TAG, "One-shot fix — sensors seeded at (" +
-                            String.format("%.6f, %.6f", loc.getLatitude(), loc.getLongitude()) + ")");
-                }
-            }
-
-            @Override
-            public void onProviderEnabled(String p) {
-                Log.d(TAG, "GPS provider enabled: 555" + p);
-            }
-
-            @Override
-            public void onProviderDisabled(String p) {
-                Log.d(TAG, "GPS provider disabled: 4444" + p);
-            }
-
-            @Override
-            public void onStatusChanged(String p, int s, android.os.Bundle e) {
-            }
-        };
-        // GPS only — never fall back to network provider
-        if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-            Log.w(TAG, "GPS not enabled — cannot get one-shot fix");
-            return;
-        }
-        try {
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0L, 0f, oneShot);
-            Log.d(TAG, "📡 GPS HIGH-ACCURACY started (1s / 3m) — GPS icon visible");
-        } catch (SecurityException e) {
-            Log.e(TAG, "Permission error requesting one-shot fix", e);
         }
     }
 
