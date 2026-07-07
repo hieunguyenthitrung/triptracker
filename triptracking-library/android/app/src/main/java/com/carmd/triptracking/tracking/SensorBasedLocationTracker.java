@@ -230,6 +230,7 @@ public class SensorBasedLocationTracker implements SensorEventListener {
 
     @Override
     public void onSensorChanged(SensorEvent event) {
+        Log.d(TAG, "onSensorChanged: " + event.sensor.getName() + " | Type: " + event.sensor.getType());
         if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
             processAccelerometer(event);
         }
