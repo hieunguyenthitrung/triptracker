@@ -665,8 +665,8 @@ public class LocationTrackingService extends Service implements
         }, timeoutMs);
 
         try {
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0L, 0f, listener,
-                    android.os.Looper.getMainLooper());
+            // locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0L, 0f, listener,
+                    // android.os.Looper.getMainLooper());
             Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: waiting for GPS fix (timeout "
                     + (timeoutMs / 1000) + "s)");
         } catch (SecurityException e) {
@@ -1655,7 +1655,7 @@ public class LocationTrackingService extends Service implements
             return;
         }
         try {
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0L, 0f, oneShot);
+            // locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0L, 0f, oneShot);
             Log.d(TAG, "📡 GPS HIGH-ACCURACY started (1s / 3m) — GPS icon visible");
         } catch (SecurityException e) {
             Log.e(TAG, "Permission error requesting one-shot fix", e);
@@ -1727,7 +1727,7 @@ public class LocationTrackingService extends Service implements
             return;
         try {
             locationManager.removeUpdates(this);
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 15_000L, 80f, this);
+            // locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 15_000L, 80f, this);
             Log.d(TAG, "GPS updates started (15s / 80m)");
         } catch (SecurityException e) {
             Log.e(TAG, "Permission error starting GPS", e);
