@@ -320,7 +320,7 @@ public class LocationTrackingService extends Service implements
         // Otherwise, Activity Recognition will detect IN_VEHICLE → start GPS for
         // confirmation.
         // GPS runs continuously: calibration + vehicle-speed detection
-        // startGPSTracking();
+        startGPSTracking();
 
         // Activity Recognition — detect automotive/still (like iOS CMMotionActivity)
         startActivityRecognition();
@@ -987,12 +987,19 @@ public class LocationTrackingService extends Service implements
         // Resume GPS at low-power after 20s cooldown
         if (autoStopHandler == null)
             autoStopHandler = new Handler(Looper.getMainLooper());
-        // autoStopHandler.postDelayed(() -> {
-        //     if (!isTracking) {
-        //         startGPSTracking();
-        //         Log.d(TAG, "📡 GPS LOW-POWER resumed — 20s cooldown complete, ready for next trip");
-        //     }
-        // }, 20_000L);
+        autoStopHandler.postDelayed(() -> {
+            if (!isTracking) {
+                startGPSTracking();
+                Log.d(TAG, "📡 GPS resumed after trip end — will stop in 15s if still parked");
+                // Stop GPS again after 15s if no trip has started (device still parked)
+                autoStopHandler.postDelayed(() -> {
+                    if (!isTracking) {
+                        stopGpsUpdates();
+                        Log.d(TAG, "🔋 GPS stopped — device parked, location icon hidden");
+                    }
+                }, 15_000L);
+            }
+        }, 20_000L);
     }
 
     // =========================================================================
@@ -1293,6 +1300,14 @@ public class LocationTrackingService extends Service implements
 
             // Re-enable GPS if it was stopped during still period
             startGPSTracking();
+            if (!isTracking) {
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    if (!isTracking) {
+                        stopGpsUpdates();
+                        Log.d(TAG, "🔋 GPS stopped — motion without trip start, location icon hidden");
+                    }
+                }, 30_000L);
+            }
         }
         rescheduleSaveLoop();
         Log.d(TAG, "Movement state → " + (isMoving ? "MOVING" : "STILL") +
@@ -2222,10 +2237,10 @@ public class LocationTrackingService extends Service implements
             // Vehicle exited — reset the flag
             activityRecognitionVehicle = false;
             // If no trip started, stop GPS to save battery
-            // if (!isTracking) {
-            // Log.i(TAG, "🔋 IN_VEHICLE exited without trip — stopping GPS");
-            // stopGpsUpdates();
-            // }
+            if (!isTracking) {
+                Log.i(TAG, "🔋 IN_VEHICLE exited without trip — stopping GPS");
+                stopGpsUpdates();
+            }
 
         } else if (activityType == DetectedActivity.STILL
                 && transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER) {
