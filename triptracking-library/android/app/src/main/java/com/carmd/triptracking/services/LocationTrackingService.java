@@ -314,7 +314,7 @@ public class LocationTrackingService extends Service implements
             wakeLock.acquire();
 
         // Seed sensor tracker with best available cached location
-        // startSensorTracking();
+        startSensorTracking();
 
         // GPS: only start if restoring an active trip.
         // Otherwise, Activity Recognition will detect IN_VEHICLE → start GPS for
@@ -367,11 +367,11 @@ public class LocationTrackingService extends Service implements
 
         Log.d(TAG, "Service started — sensor-first tracking active");
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                        if (!isTracking) {
-                            stopGpsUpdates();
-                            Log.d(TAG, "🔋 GPS stopped — motion without trip start, location icon hidden");
-                        }
-                    }, 20_000L);
+            if (!isTracking) {
+                stopGpsUpdates();
+                Log.d(TAG, "🔋 GPS stopped — still, location icon hidden");
+            }
+        }, 30_000L);
     }
 
     @Override
@@ -665,8 +665,9 @@ public class LocationTrackingService extends Service implements
         }, timeoutMs);
 
         try {
-            // locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0L, 0f, listener,
-            //         android.os.Looper.getMainLooper());
+            // locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0L, 0f,
+            // listener,
+            // android.os.Looper.getMainLooper());
             Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: waiting for GPS fix (timeout "
                     + (timeoutMs / 1000) + "s)");
         } catch (SecurityException e) {
@@ -1021,10 +1022,10 @@ public class LocationTrackingService extends Service implements
             locationManager.removeUpdates(this);
             // Immediately re-register at low rate — keeps GPS chip warm
             // locationManager.requestLocationUpdates(
-            //         LocationManager.GPS_PROVIDER,
-            //         30_000L, // 30 seconds interval
-            //         200f, // 100 meters displacement
-            //         this);
+            // LocationManager.GPS_PROVIDER,
+            // 30_000L, // 30 seconds interval
+            // 200f, // 100 meters displacement
+            // this);
             Log.d(TAG, "🔋 GPS LOW-POWER — 30s/100m (Activity Recognition + sensor still active)");
         } catch (SecurityException e) {
             Log.e(TAG, "stopGpsUpdates: no permission — " + e.getMessage());
@@ -1727,7 +1728,8 @@ public class LocationTrackingService extends Service implements
             return;
         try {
             locationManager.removeUpdates(this);
-            // locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 15_000L, 80f, this);
+            // locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 15_000L,
+            // 80f, this);
             Log.d(TAG, "GPS updates started (15s / 80m)");
         } catch (SecurityException e) {
             Log.e(TAG, "Permission error starting GPS", e);
@@ -2263,8 +2265,7 @@ public class LocationTrackingService extends Service implements
                 // // Not tracking + still → ensure GPS is off
                 // stopGpsUpdates();
             }
-        }
-        else if (activityType == DetectedActivity.STILL) {
+        } else if (activityType == DetectedActivity.STILL) {
             // Still detected → start auto-end countdown if trip is active
             activityRecognitionVehicle = false;
             stopGpsUpdates();
