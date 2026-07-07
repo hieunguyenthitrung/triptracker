@@ -368,19 +368,7 @@ public class LocationTrackingService extends Service implements
         Log.d(TAG, "Service started — sensor-first tracking active");
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             if (!isTracking) {
-                // stopGpsUpdates();
-                try {
-            locationManager.removeUpdates(this);
-            // Immediately re-register at low rate — keeps GPS chip warm
-            // locationManager.requestLocationUpdates(
-            // LocationManager.GPS_PROVIDER,
-            // 30_000L, // 30 seconds interval
-            // 200f, // 100 meters displacement
-            // this);
-            Log.d(TAG, "🔋 GPS LOW-POWER — 30s/100m (Activity Recognition + sensor still active)");
-        } catch (SecurityException e) {
-            Log.e(TAG, "stopGpsUpdates: no permission — " + e.getMessage());
-        }
+                stopGpsUpdates();
                 Log.d(TAG, "🔋 GPS stopped — still, location icon hidden");
             }
         }, 30_000L);
@@ -1626,10 +1614,52 @@ public class LocationTrackingService extends Service implements
                         String.format("%.6f, %.6f", seed.getLatitude(), seed.getLongitude()) + ")");
             } else {
                 Log.w(TAG, "No cached location — requesting live fix to seed sensors");
-                requestSingleLocationFix();
+                // requestSingleLocationFixIn30s();
             }
         } catch (Exception e) {
             Log.e(TAG, "Failed to start sensor tracking", e);
+        }
+    }
+
+    private void requestSingleLocationFixIn30s() {
+        if (!hasLocationPermissions())
+            return;
+        LocationListener oneShot = new LocationListener() {
+            @Override
+            public void onLocationChanged(Location loc) {
+                locationManager.removeUpdates(this);
+                if (loc != null && !sensorTracker.isTracking()) {
+                    sensorTracker.startTracking(loc);
+                    lastSensorLocation = new Location(loc);
+                    lastGpsLocation = new Location(loc);
+                    lastSavedGpsLocation = new Location(loc);
+                    Log.d(TAG, "One-shot fix — sensors seeded at (" +
+                            String.format("%.6f, %.6f", loc.getLatitude(), loc.getLongitude()) + ")");
+                }
+            }
+
+            @Override
+            public void onProviderEnabled(String p) {
+            }
+
+            @Override
+            public void onProviderDisabled(String p) {
+            }
+
+            @Override
+            public void onStatusChanged(String p, int s, android.os.Bundle e) {
+            }
+        };
+        // GPS only — never fall back to network provider
+        if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            Log.w(TAG, "GPS not enabled — cannot get one-shot fix");
+            return;
+        }
+        try {
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0L, 0f, oneShot);
+            Log.d(TAG, "📡 GPS HIGH-ACCURACY started (1s / 3m) — GPS icon visible");
+        } catch (SecurityException e) {
+            Log.e(TAG, "Permission error requesting one-shot fix", e);
         }
     }
 
@@ -1740,8 +1770,8 @@ public class LocationTrackingService extends Service implements
             return;
         try {
             locationManager.removeUpdates(this);
-            // locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 15_000L,
-            // 80f, this);
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 15_000L,
+            80f, this);
             Log.d(TAG, "GPS updates started (15s / 80m)");
         } catch (SecurityException e) {
             Log.e(TAG, "Permission error starting GPS", e);
