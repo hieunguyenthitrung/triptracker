@@ -761,13 +761,21 @@ public class LocationTrackingService extends Service implements
         startForegroundNotification("Trip Tracker", "Waiting for vehicle speed…");
         notifyTrackingStateChanged(false);
 
-        // Resume GPS at low-power after 20s cooldown
+        // Resume GPS briefly after 20s cooldown to get a fresh fix, then stop again
+        // if still parked — this hides the location icon in the status bar when idle.
         if (autoStopHandler == null)
             autoStopHandler = new Handler(Looper.getMainLooper());
         autoStopHandler.postDelayed(() -> {
             if (!isTracking) {
                 startGPSTracking();
-                Log.d(TAG, "📡 GPS LOW-POWER resumed — 20s cooldown complete, ready for next trip");
+                Log.d(TAG, "📡 GPS resumed after trip end — will stop in 15s if still parked");
+                // Stop GPS again after 15s if no trip has started (device still parked)
+                autoStopHandler.postDelayed(() -> {
+                    if (!isTracking) {
+                        stopGpsUpdates();
+                        Log.d(TAG, "🔋 GPS stopped — device parked, location icon hidden");
+                    }
+                }, 15_000L);
             }
         }, 20_000L);
     }
