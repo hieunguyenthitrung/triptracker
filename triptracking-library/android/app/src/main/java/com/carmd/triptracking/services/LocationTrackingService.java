@@ -1767,7 +1767,7 @@ public class LocationTrackingService extends Service implements
     private Location getInitialLocation() {
         if (!hasPermission(Manifest.permission.ACCESS_FINE_LOCATION) &&
                 !hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION))
-                Log.d(TAG, "startSensorTracking 55");
+                Log.d(TAG, "startSensorTracking 11");
             return null;
 
         // GPS only — network and passive providers are excluded per tracking rules
@@ -1776,13 +1776,10 @@ public class LocationTrackingService extends Service implements
             try {
                 Location loc = locationManager.getLastKnownLocation(provider);
                 if (isLocationUsable(loc)) {
-                    Log.d(TAG, "startSensorTracking 88");
                     Log.d(TAG, "Cached location from " + provider);
                     return loc;
                 }
-                Log.d(TAG, "startSensorTracking 77");
             } catch (SecurityException ignored) {
-                Log.e(TAG, "startSensorTracking 99");
             }
         }
 
