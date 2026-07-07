@@ -1612,9 +1612,11 @@ public class LocationTrackingService extends Service implements
     // =========================================================================
 
     private void startSensorTracking() {
+        Log.d(TAG, "startSensorTracking 11");
         try {
             Location seed = getInitialLocation();
             if (seed == null) {
+                Log.d(TAG, "startSensorTracking 22");
                 // No GPS cache yet (first launch / indoors). Start sensors immediately
                 // with a zero-position placeholder so accelerometer events fire right away.
                 // The real position is corrected by updateFromGPS() on the first GPS fix.
@@ -1625,6 +1627,7 @@ public class LocationTrackingService extends Service implements
                 Log.w(TAG, "No cached location — starting sensors with placeholder, will calibrate on first GPS fix");
                 // requestSingleLocationFix();
             } else {
+                Log.d(TAG, "startSensorTracking 33");
                 Log.d(TAG, "Sensors seeded at (" +
                         String.format("%.6f, %.6f", seed.getLatitude(), seed.getLongitude()) + ")");
             }
@@ -1764,6 +1767,7 @@ public class LocationTrackingService extends Service implements
     private Location getInitialLocation() {
         if (!hasPermission(Manifest.permission.ACCESS_FINE_LOCATION) &&
                 !hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION))
+                Log.d(TAG, "startSensorTracking 55");
             return null;
 
         // GPS only — network and passive providers are excluded per tracking rules
@@ -1772,10 +1776,13 @@ public class LocationTrackingService extends Service implements
             try {
                 Location loc = locationManager.getLastKnownLocation(provider);
                 if (isLocationUsable(loc)) {
+                    Log.d(TAG, "startSensorTracking 88");
                     Log.d(TAG, "Cached location from " + provider);
                     return loc;
                 }
+                Log.d(TAG, "startSensorTracking 77");
             } catch (SecurityException ignored) {
+                Log.d(TAG, "startSensorTracking 66");
             }
         }
 

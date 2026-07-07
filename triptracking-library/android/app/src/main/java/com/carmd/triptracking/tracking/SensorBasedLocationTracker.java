@@ -36,7 +36,7 @@ public class SensorBasedLocationTracker implements SensorEventListener {
     private static final float MOVEMENT_THRESHOLD = 2.0f;
 
     // Device must stay above threshold for this long before we declare "moving"
-    private static final long MOVEMENT_CONFIRM_MS = 800L;
+    private static final long MOVEMENT_CONFIRM_MS = 10L;
 
     // Device must stay below threshold for this long before switching to low-power still mode
     private static final long STILL_CONFIRM_MS = 2000L;
