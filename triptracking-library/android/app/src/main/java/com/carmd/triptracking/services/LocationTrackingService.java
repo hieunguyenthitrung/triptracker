@@ -2135,9 +2135,11 @@ public class LocationTrackingService extends Service implements
      * Similar to iOS CMMotionActivity detection.
      */
     public void startActivityRecognition() {
+        
         try {
             // Define transitions we care about
             java.util.List<ActivityTransition> transitions = new java.util.ArrayList<>();
+            Log.w(TAG, "⚠️ ACTIVITY_RECOGNITION permission not granted — using speed-only detection");
 
             // IN_VEHICLE enter → auto-start trip
             transitions.add(new ActivityTransition.Builder()
