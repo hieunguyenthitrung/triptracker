@@ -298,6 +298,7 @@ public class LocationTrackingService extends Service implements
      * Activate full location tracking. Only called when permission confirmed.
      */
     public void activateLocationTracking() {
+        Log.i(TAG, "✅ activateLocationTracking called — starting sensor + GPS tracking");
         locationTrackingActive = true;
 
         // Upgrade to location-type foreground notification
