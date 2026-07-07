@@ -314,7 +314,7 @@ public class LocationTrackingService extends Service implements
             wakeLock.acquire();
 
         // Seed sensor tracker with best available cached location
-        startSensorTracking();
+        // startSensorTracking();
 
         // GPS: only start if restoring an active trip.
         // Otherwise, Activity Recognition will detect IN_VEHICLE → start GPS for
@@ -371,7 +371,7 @@ public class LocationTrackingService extends Service implements
                             stopGpsUpdates();
                             Log.d(TAG, "🔋 GPS stopped — motion without trip start, location icon hidden");
                         }
-                    }, 10_000L);
+                    }, 20_000L);
     }
 
     @Override
