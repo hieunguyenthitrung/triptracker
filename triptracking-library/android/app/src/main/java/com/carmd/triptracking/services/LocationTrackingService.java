@@ -1298,15 +1298,19 @@ public class LocationTrackingService extends Service implements
                 emitMotionChange("WALKING", "ENTER");
             }
 
-            // Re-enable GPS if it was stopped during still period
-            startGPSTracking();
-            if (!isTracking) {
-                new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                    if (!isTracking) {
-                        stopGpsUpdates();
-                        Log.d(TAG, "🔋 GPS stopped — motion without trip start, location icon hidden");
-                    }
-                }, 30_000L);
+            // Only re-enable GPS for meaningful motion (>= 1 m/s = walking pace).
+            // Below this threshold the sensor is just picking up vibration/noise —
+            // restarting GPS would keep the location icon visible permanently.
+            if (isTracking || speed >= 1.0f) {
+                startGPSTracking();
+                if (!isTracking) {
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        if (!isTracking) {
+                            stopGpsUpdates();
+                            Log.d(TAG, "🔋 GPS stopped — motion without trip start, location icon hidden");
+                        }
+                    }, 30_000L);
+                }
             }
         }
         rescheduleSaveLoop();
