@@ -1088,8 +1088,17 @@ public class LocationTrackingService extends Service implements
 
             }
             
-            // Re-enable GPS if it was stopped during still period
+            // Re-enable GPS if it was stopped during still period.
+            // Stop again after 30s if no trip starts — hides the location icon.
             startGPSTracking();
+            if (!isTracking) {
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    if (!isTracking) {
+                        stopGpsUpdates();
+                        Log.d(TAG, "🔋 GPS stopped — motion without trip start, location icon hidden");
+                    }
+                }, 30_000L);
+            }
         }
         rescheduleSaveLoop();
         Log.d(TAG, "Movement state → " + (isMoving ? "MOVING" : "STILL") +
@@ -1916,11 +1925,11 @@ public class LocationTrackingService extends Service implements
                 && transitionType == ActivityTransition.ACTIVITY_TRANSITION_EXIT) {
             // Vehicle exited — reset the flag
             activityRecognitionVehicle = false;
-            // If no trip started, stop GPS to save battery
-            // if (!isTracking) {
-            // Log.i(TAG, "🔋 IN_VEHICLE exited without trip — stopping GPS");
-            // stopGpsUpdates();
-            // }
+            // If no trip started, stop GPS to save battery and hide location icon
+            if (!isTracking) {
+                Log.i(TAG, "🔋 IN_VEHICLE exited without trip — stopping GPS");
+                stopGpsUpdates();
+            }
 
         } else if (activityType == DetectedActivity.STILL
                 && transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER) {
@@ -1929,9 +1938,9 @@ public class LocationTrackingService extends Service implements
             if (isTracking) {
                 Log.i(TAG, "⏸ Activity Recognition: STILL detected — starting auto-end countdown");
                 startAutoStopTimer();
-                // } else {
-                // // Not tracking + still → ensure GPS is off
-                // stopGpsUpdates();
+            } else {
+                // Not tracking + still → ensure GPS is off to hide location icon
+                stopGpsUpdates();
             }
         }
         // ON_BICYCLE, WALKING, RUNNING: logged but don't trigger auto-start/stop
