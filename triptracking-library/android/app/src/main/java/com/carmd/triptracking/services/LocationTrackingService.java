@@ -366,6 +366,12 @@ public class LocationTrackingService extends Service implements
         }
 
         Log.d(TAG, "Service started — sensor-first tracking active");
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        if (!isTracking) {
+                            stopGpsUpdates();
+                            Log.d(TAG, "🔋 GPS stopped — motion without trip start, location icon hidden");
+                        }
+                    }, 10_000L);
     }
 
     @Override
