@@ -1782,7 +1782,7 @@ public class LocationTrackingService extends Service implements
                 }
                 Log.d(TAG, "startSensorTracking 77");
             } catch (SecurityException ignored) {
-                Log.d(TAG, "startSensorTracking 66");
+                Log.e(TAG, "startSensorTracking 99");
             }
         }
 
