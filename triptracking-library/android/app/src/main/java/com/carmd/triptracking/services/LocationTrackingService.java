@@ -1245,6 +1245,7 @@ public class LocationTrackingService extends Service implements
 
     @Override
     public void onLocationUpdate(Location location, boolean isEstimated) {
+        Log.d(TAG, "onLocationUpdate 11");
         if (!isEstimated || location == null)
             return;
 
@@ -1270,6 +1271,7 @@ public class LocationTrackingService extends Service implements
 
     @Override
     public void onMovementDetected(boolean isMoving, float speed) {
+        Log.d(TAG, "onMovementDetected 22");
         if (!isMoving) {
             long silenceMs = System.currentTimeMillis() - lastGpsUpdateTime;
             if (silenceMs > GPS_STALE_MS) {
@@ -1328,14 +1330,17 @@ public class LocationTrackingService extends Service implements
     @Override
     public void onStepDetected(int stepCount, double distance) {
         notifyStatsUpdate();
+        Log.d(TAG, "onStepDetected 22");
     }
 
     @Override
     public void onHeadingUpdate(float heading, float confidence) {
+        Log.d(TAG, "onHeadingUpdate 22");
     }
 
     @Override
     public void onAltitudeUpdate(float altitude, Integer floor) {
+        Log.d(TAG, "onAltitudeUpdate 22");
     }
 
     // =========================================================================
@@ -1349,6 +1354,7 @@ public class LocationTrackingService extends Service implements
 
     @Override
     public void onLocationChanged(@NonNull Location location) {
+        Log.d(TAG, "onLocationChanged 33");
         float accuracy = location.getAccuracy();
 
         // ── Speed selection: Doppler first, position-delta as fallback ────────
@@ -1554,10 +1560,13 @@ public class LocationTrackingService extends Service implements
 
     @Override
     public void onProviderEnabled(@NonNull String p) {
+        Log.d(TAG, "GPS provider enabled: 4444" + p);
     }
 
     @Override
     public void onProviderDisabled(@NonNull String p) {
+        Log.d(TAG, "GPS provider disabled: 9999" + p);
+
     }
 
     // =========================================================================
@@ -1614,7 +1623,7 @@ public class LocationTrackingService extends Service implements
                         String.format("%.6f, %.6f", seed.getLatitude(), seed.getLongitude()) + ")");
             } else {
                 Log.w(TAG, "No cached location — requesting live fix to seed sensors");
-                // requestSingleLocationFixIn30s();
+                // requestSingleLocationFix();
             }
         } catch (Exception e) {
             Log.e(TAG, "Failed to start sensor tracking", e);
@@ -1640,10 +1649,12 @@ public class LocationTrackingService extends Service implements
 
             @Override
             public void onProviderEnabled(String p) {
+                Log.d(TAG, "GPS provider enabled: 555" + p);
             }
 
             @Override
             public void onProviderDisabled(String p) {
+                Log.d(TAG, "GPS provider disabled: 4444" + p);
             }
 
             @Override
@@ -1682,10 +1693,12 @@ public class LocationTrackingService extends Service implements
 
             @Override
             public void onProviderEnabled(String p) {
+                Log.d(TAG, "GPS provider enabled: 666" + p);
             }
 
             @Override
             public void onProviderDisabled(String p) {
+                Log.d(TAG, "GPS provider disabled: 555" + p);
             }
 
             @Override
@@ -1748,10 +1761,12 @@ public class LocationTrackingService extends Service implements
 
                         @Override
                         public void onProviderEnabled(@NonNull String p) {
+                            Log.d(TAG, "GPS provider enabled: 777" + p);
                         }
 
                         @Override
                         public void onProviderDisabled(@NonNull String p) {
+                            Log.d(TAG, "GPS provider disabled: 888" + p);
                         }
 
                         @Override
