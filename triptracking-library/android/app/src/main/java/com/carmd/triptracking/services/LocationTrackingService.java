@@ -1009,7 +1009,7 @@ public class LocationTrackingService extends Service implements
             locationManager.requestLocationUpdates(
                     LocationManager.GPS_PROVIDER,
                     30_000L, // 30 seconds interval
-                    100f, // 100 meters displacement
+                    80f, // 100 meters displacement
                     this);
             Log.d(TAG, "🔋 GPS LOW-POWER — 30s/100m (Activity Recognition + sensor still active)");
         } catch (SecurityException e) {
@@ -1623,7 +1623,7 @@ public class LocationTrackingService extends Service implements
             return;
         }
         try {
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0L, 0f, oneShot);
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 15_000L, 80f, oneShot);
             Log.d(TAG, "📡 GPS HIGH-ACCURACY started (1s / 3m) — GPS icon visible");
         } catch (SecurityException e) {
             Log.e(TAG, "Permission error requesting one-shot fix", e);
@@ -1695,7 +1695,7 @@ public class LocationTrackingService extends Service implements
             return;
         try {
             locationManager.removeUpdates(this);
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 3f, this);
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 15_000L, 80f, this);
             Log.d(TAG, "GPS updates started (1s / 3m)");
         } catch (SecurityException e) {
             Log.e(TAG, "Permission error starting GPS", e);
