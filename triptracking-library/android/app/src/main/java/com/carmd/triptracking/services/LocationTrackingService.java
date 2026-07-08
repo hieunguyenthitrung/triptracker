@@ -274,10 +274,11 @@ public class LocationTrackingService extends Service implements
 
         // If permission already granted → activate full tracking now
         if (hasLocationPermissions()) {
+            Log.i(TAG, "✅ startSensorTracking hasLocationPermissions() called — starting sensor + GPS tracking");
             activateLocationTracking();
         } else {
             // No permission yet → poll every 2s until granted
-            Log.w(TAG, "⚠️ No location permission — waiting…");
+            Log.w(TAG, "⚠️ startSensorTracking No location permission — waiting…");
             startPermissionPoller();
         }
     }
@@ -298,7 +299,7 @@ public class LocationTrackingService extends Service implements
      * Activate full location tracking. Only called when permission confirmed.
      */
     public void activateLocationTracking() {
-        Log.i(TAG, "✅ activateLocationTracking called — starting sensor + GPS tracking");
+        Log.i(TAG, "✅ startSensorTracking activateLocationTracking called — starting sensor + GPS tracking");
         locationTrackingActive = true;
 
         // Upgrade to location-type foreground notification
@@ -370,7 +371,7 @@ public class LocationTrackingService extends Service implements
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             if (!isTracking) {
                 stopGpsUpdates();
-                Log.d(TAG, "🔋 GPS stopped — still, location icon hidden");
+                Log.d(TAG, "🔋 startSensorTracking GPS stopped — still, location icon hidden");
             }
         }, 30_000L);
     }
