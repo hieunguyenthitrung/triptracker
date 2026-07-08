@@ -8,6 +8,9 @@
 #   ./release.sh 1.0.50 "Fix GPS cold start speed"
 # ═══════════════════════════════════════════════════════════════
 
+# ── Get current branch name ──
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
 set -e
 
 VERSION=$1
@@ -102,14 +105,14 @@ echo "📝 All files updated. Committing..."
 git add -A
 git commit -m "v$VERSION — $MESSAGE"
 git tag "$VERSION"
-git push origin main
+git push origin "$CURRENT_BRANCH"
 git push origin "$VERSION"
 
 # ── Create and push a version branch ──
 BRANCH="release/v$VERSION"
 git checkout -b "$BRANCH"
 git push origin "$BRANCH"
-git checkout main   # switch back to main after pushing branch
+git checkout "$CURRENT_BRANCH"   # switch back to original branch
 
 echo ""
 echo "═══════════════════════════════════════════════════"
