@@ -36,7 +36,7 @@ public class SensorBasedLocationTracker implements SensorEventListener {
     private static final float MOVEMENT_THRESHOLD = 2.0f;
 
     // Device must stay above threshold for this long before we declare "moving"
-    private static final long MOVEMENT_CONFIRM_MS = 10L;
+    private static final long MOVEMENT_CONFIRM_MS = 800L;
 
     // Device must stay below threshold for this long before switching to low-power still mode
     private static final long STILL_CONFIRM_MS = 2000L;
@@ -304,21 +304,17 @@ public class SensorBasedLocationTracker implements SensorEventListener {
                 movementStartTime = now;
             }
             // Confirm movement after sustained acceleration
-            lastMovementTime = now;
-            currentSpeed = Math.min(accelerationMagnitude * 0.15f, 1.5f);
             if (!isMoving && (now - movementStartTime) >= MOVEMENT_CONFIRM_MS) {
                 isMoving = true;
                 Log.d(TAG, "🚶 Movement confirmed - Accel: " +
                         String.format("%.2f", accelerationMagnitude) + " m/s²");
-                // currentSpeed is now set before the callback so the listener
-                // receives the correct speed (not the stale previous value).
                 listener.onMovementDetected(true, currentSpeed);
 
                 // ── Switch to high-rate MOVING mode ───────────────────────
                 switchToMovingMode();
             }
-            // lastMovementTime = now;
-            // currentSpeed = Math.min(accelerationMagnitude * 0.15f, 1.5f);
+            lastMovementTime = now;
+            currentSpeed = Math.min(accelerationMagnitude * 0.15f, 1.5f);
         } else {
             movementStartTime = 0;
             // Only stop "moving" after STILL_CONFIRM_MS of no activity
