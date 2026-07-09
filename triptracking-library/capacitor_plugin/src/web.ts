@@ -76,7 +76,31 @@ export class TripTrackerWeb extends WebPlugin implements TripTrackerPlugin {
     throw this.unavailable('sendRecentLogs is only available on iOS/Android');
   }
 
+  async writeLog(): Promise<void> {
+    throw this.unavailable('writeLog is only available on iOS/Android');
+  }
+
+  async endTrip(): Promise<{ ended: boolean; tripId?: number; reason?: string }> {
+    throw this.unavailable('endTrip is only available on iOS/Android');
+  }
+
+  async updateToolId(): Promise<{ updated: boolean; toolId: string }> {
+    throw this.unavailable('updateToolId is only available on iOS/Android');
+  }
+
   async resetConfig(): Promise<{ reset: boolean }> {
     throw this.unavailable('resetConfig is only available on iOS/Android');
+  }
+
+  async startHeartbeatTimer(): Promise<{ started: boolean }> {
+    throw this.unavailable('startHeartbeatTimer is only available on iOS/Android');
+  }
+
+  async stopHeartbeatTimer(): Promise<{ stopped: boolean }> {
+    throw this.unavailable('stopHeartbeatTimer is only available on iOS/Android');
+  }
+
+  async setTripNotifications(): Promise<{ notifyTripStart: boolean; notifyTripEnd: boolean }> {
+    throw this.unavailable('setTripNotifications is only available on iOS/Android');
   }
 }

@@ -2,11 +2,9 @@
  * TripTracker Capacitor Plugin
  *
  * Bridges TripTracker iOS native code to Ionic/JavaScript.
- * Provides: tracking status, settings pages, geofencing, notifications, logs.
+ * Provides: tracking status, geofencing, notifications, logs.
  */
-
 import type { PluginListenerHandle } from '@capacitor/core';
-
 export interface TripTrackerPlugin {
     /**
      * Initialize TripTracker SDK with custom config.
@@ -58,30 +56,6 @@ export interface TripTrackerPlugin {
      */
     stopTracking(): Promise<{
         stopped: boolean;
-    }>;
-    /** Open the full native Settings page (sliders, toggles, web monitor, CarPlay). */
-    openSettings(): Promise<{
-        opened: boolean;
-    }>;
-    /** Open the Notification Settings page (per-type push toggles + voice). */
-    openNotificationSettings(): Promise<{
-        opened: boolean;
-    }>;
-    /** Open the Geofence Manager page (map + zone list). */
-    openGeofenceManager(): Promise<{
-        opened: boolean;
-    }>;
-    /** Open the main TripTracker map + tracking view. */
-    openMainView(): Promise<{
-        opened: boolean;
-    }>;
-    /** Open the Trip History page. */
-    openHistory(): Promise<{
-        opened: boolean;
-    }>;
-    /** Open Daily Locations page. */
-    openDailyLocations(): Promise<{
-        opened: boolean;
     }>;
     /** Get current tracking status, speed, distance, trip info. */
     getTrackingStatus(): Promise<TrackingStatus>;
@@ -141,76 +115,90 @@ export interface TripTrackerPlugin {
      * Share the last N days of log files via system share sheet (email, AirDrop, etc.).
      * Default: 3 days.
      */
-    sendRecentLogs(options?: { days?: number }): Promise<{ path: string }>;
+    sendRecentLogs(options?: {
+        days?: number;
+    }): Promise<{
+        path: string;
+    }>;
     /** Write a message to TripTracker native log file */
-    writeLog(options: { message: string }): Promise<void>;
+    writeLog(options: {
+        message: string;
+    }): Promise<void>;
     /**
      * End the current trip immediately.
      * Sends 3 final pings at speed=0, calls trip-end API, and flushes queue.
-     */
-    endTrip(): Promise<{ ended: boolean; tripId?: number; reason?: string }>;
-    updateToolId(options: { toolId: string }): Promise<{ updated: boolean; toolId: string }>;
-    /**
-       * Reset and clear all TripTracker config from persistent storage.
-       * Removes all saved keys from UserDefaults (iOS) / SharedPreferences (Android)
-       * and resets in-memory config to defaults.
-       * Call this on logout or when switching accounts/environments.
-       */
-    resetConfig(): Promise<{ reset: boolean }>;
-
-    /**
-   * Start the native heartbeat timer.
-   * The native SDK fires a "heartbeat" event to JS every `intervalSeconds`
-   * (default 10 s) — useful to wake Ionic code in background so it can
-   * reconnect a BLE dongle or run other JS logic.
-   * No-op if the timer is already running.
    */
-    startHeartbeatTimer(options?: { intervalSeconds?: number }): Promise<{ started: boolean }>;
-
+    endTrip(): Promise<{
+        ended: boolean;
+        tripId?: number;
+        reason?: string;
+    }>;
+    updateToolId(options: {
+        toolId: string;
+    }): Promise<{
+        updated: boolean;
+        toolId: string;
+    }>;
+    /**
+     * Reset and clear all TripTracker config from persistent storage.
+     * Removes all saved keys from UserDefaults (iOS) / SharedPreferences (Android)
+     * and resets in-memory config to defaults.
+     * Call this on logout or when switching accounts/environments.
+     */
+    resetConfig(): Promise<{
+        reset: boolean;
+    }>;
+    /**
+    * Start the native heartbeat timer.
+    * The native SDK fires a "heartbeat" event to JS every `intervalSeconds`
+    * (default 10 s) — useful to wake Ionic code in background so it can
+    * reconnect a BLE dongle or run other JS logic.
+    * No-op if the timer is already running.
+    */
+    startHeartbeatTimer(options?: {
+        intervalSeconds?: number;
+    }): Promise<{
+        started: boolean;
+    }>;
     /**
      * Stop the native heartbeat timer started by startHeartbeatTimer().
      */
-    stopHeartbeatTimer(): Promise<{ stopped: boolean }>;
-
+    stopHeartbeatTimer(): Promise<{
+        stopped: boolean;
+    }>;
     /**
      * Enable or disable trip start / end push notifications at runtime.
      * Returns the current state of both flags after the update.
      */
+    /**
+       * Enable or disable trip start / end push notifications at runtime.
+       * Returns the current state of both flags after the update.
+       */
     setTripNotifications(options: {
-    /** Set both notifyTripStart and notifyTripEnd at once */
-    notify?: boolean;
-    /** Set only notifyTripStart */
-    start?: boolean;
-    /** Set only notifyTripEnd */
-    end?: boolean;
-  }): Promise<{
-    notifyTripStart: boolean;
-    notifyTripEnd: boolean;
-  }>;
-
-    // ═══════════════════════════════════════════════════════════════════
-    // Event Listeners
-    // ═══════════════════════════════════════════════════════════════════
-
+        /** Set both notifyTripStart and notifyTripEnd at once */
+        notify?: boolean;
+        /** Set only notifyTripStart */
+        start?: boolean;
+        /** Set only notifyTripEnd */
+        end?: boolean;
+    }): Promise<{
+        notifyTripStart: boolean;
+        notifyTripEnd: boolean;
+    }>;
     /** Listen for activity/motion changes (IN_VEHICLE, STILL, MOVING, etc.) */
     addListener(eventName: 'activityChange', listener: (event: ActivityChangeEvent) => void): Promise<PluginListenerHandle>;
-
     /** Listen for location updates */
     addListener(eventName: 'locationUpdate', listener: (event: LocationUpdateEvent) => void): Promise<PluginListenerHandle>;
-
     /** Listen for tracking state changes (trip start/stop) */
     addListener(eventName: 'trackingStateChange', listener: (event: TrackingStateChangeEvent) => void): Promise<PluginListenerHandle>;
-
     /** Listen for stats updates (speed, distance, duration) */
     addListener(eventName: 'statsUpdate', listener: (event: StatsUpdateEvent) => void): Promise<PluginListenerHandle>;
-
     /**
      * Fired every 30 seconds from the native location service.
      * Wakes the WKWebView JS engine in background — use this to run
      * BLE/dongle connection logic that can't execute while backgrounded.
      */
     addListener(eventName: 'heartbeat', listener: (event: HeartbeatEvent) => void): Promise<PluginListenerHandle>;
-
     /** Remove all listeners for a given event */
     removeAllListeners(): Promise<void>;
 }
@@ -334,11 +322,6 @@ export interface TripTrackerConfigOptions {
     /** Tool/dongle ID sent with pings */
     toolId?: string;
 }
-
-// ═══════════════════════════════════════════════════════════════════
-// Event Interfaces
-// ═══════════════════════════════════════════════════════════════════
-
 /** Activity/motion change event from Activity Recognition or sensors. */
 export interface ActivityChangeEvent {
     /** Activity type:
@@ -352,7 +335,6 @@ export interface ActivityChangeEvent {
      */
     transition: string;
 }
-
 /** Location update event — fired each time a new location is saved. */
 export interface LocationUpdateEvent {
     latitude: number;
@@ -360,25 +342,21 @@ export interface LocationUpdateEvent {
     speed: number;
     speedKmh: number;
     accuracy: number;
-    source: string;       // "GPS" | "SENSORS"
-    distance: number;     // total trip distance in meters
+    source: string;
+    distance: number;
     timestamp: number;
 }
-
 /** Tracking state change event — fired when a trip starts or stops. */
 export interface TrackingStateChangeEvent {
     isTracking: boolean;
 }
-
 /** Stats update event — fired periodically with current trip metrics. */
 export interface StatsUpdateEvent {
-    speed: number;        // m/s
+    speed: number;
     speedKmh: number;
-    distance: number;     // meters
-    duration: number;     // seconds
+    distance: number;
+    duration: number;
 }
-
 export interface HeartbeatEvent {
-    timestamp: number;    // Unix timestamp in milliseconds
+    timestamp: number;
 }
-

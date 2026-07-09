@@ -15,24 +15,6 @@ export class TripTrackerWeb extends WebPlugin {
     async stopTracking() {
         throw this.unavailable('stopTracking is only available on iOS/Android');
     }
-    async openSettings() {
-        throw this.unavailable('openSettings is only available on iOS');
-    }
-    async openNotificationSettings() {
-        throw this.unavailable('openNotificationSettings is only available on iOS');
-    }
-    async openGeofenceManager() {
-        throw this.unavailable('openGeofenceManager is only available on iOS/Android');
-    }
-    async openMainView() {
-        throw this.unavailable('openMainView is only available on iOS/Android');
-    }
-    async openHistory() {
-        throw this.unavailable('openHistory is only available on iOS/Android');
-    }
-    async openDailyLocations() {
-        throw this.unavailable('openDailyLocations is only available on iOS/Android');
-    }
     async getTrackingStatus() {
         throw this.unavailable('getTrackingStatus is only available on iOS');
     }
@@ -71,6 +53,27 @@ export class TripTrackerWeb extends WebPlugin {
     }
     async sendRecentLogs() {
         throw this.unavailable('sendRecentLogs is only available on iOS/Android');
+    }
+    async writeLog() {
+        throw this.unavailable('writeLog is only available on iOS/Android');
+    }
+    async endTrip() {
+        throw this.unavailable('endTrip is only available on iOS/Android');
+    }
+    async updateToolId() {
+        throw this.unavailable('updateToolId is only available on iOS/Android');
+    }
+    async resetConfig() {
+        throw this.unavailable('resetConfig is only available on iOS/Android');
+    }
+    async startHeartbeatTimer() {
+        throw this.unavailable('startHeartbeatTimer is only available on iOS/Android');
+    }
+    async stopHeartbeatTimer() {
+        throw this.unavailable('stopHeartbeatTimer is only available on iOS/Android');
+    }
+    async setTripNotifications() {
+        throw this.unavailable('setTripNotifications is only available on iOS/Android');
     }
 }
 //# sourceMappingURL=web.js.map

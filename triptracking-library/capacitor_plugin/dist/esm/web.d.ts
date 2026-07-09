@@ -17,24 +17,6 @@ export declare class TripTrackerWeb extends WebPlugin implements TripTrackerPlug
     stopTracking(): Promise<{
         stopped: boolean;
     }>;
-    openSettings(): Promise<{
-        opened: boolean;
-    }>;
-    openNotificationSettings(): Promise<{
-        opened: boolean;
-    }>;
-    openGeofenceManager(): Promise<{
-        opened: boolean;
-    }>;
-    openMainView(): Promise<{
-        opened: boolean;
-    }>;
-    openHistory(): Promise<{
-        opened: boolean;
-    }>;
-    openDailyLocations(): Promise<{
-        opened: boolean;
-    }>;
     getTrackingStatus(): Promise<any>;
     getCurrentLocation(): Promise<any>;
     getTripHistory(): Promise<any>;
@@ -48,4 +30,27 @@ export declare class TripTrackerWeb extends WebPlugin implements TripTrackerPlug
     sendTodayLog(): Promise<any>;
     sendAllLogs(): Promise<any>;
     sendRecentLogs(): Promise<any>;
+    writeLog(): Promise<void>;
+    endTrip(): Promise<{
+        ended: boolean;
+        tripId?: number;
+        reason?: string;
+    }>;
+    updateToolId(): Promise<{
+        updated: boolean;
+        toolId: string;
+    }>;
+    resetConfig(): Promise<{
+        reset: boolean;
+    }>;
+    startHeartbeatTimer(): Promise<{
+        started: boolean;
+    }>;
+    stopHeartbeatTimer(): Promise<{
+        stopped: boolean;
+    }>;
+    setTripNotifications(): Promise<{
+        notifyTripStart: boolean;
+        notifyTripEnd: boolean;
+    }>;
 }
