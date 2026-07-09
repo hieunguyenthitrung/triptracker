@@ -446,7 +446,9 @@ public final class TripTrackerAPIService {
         // after reconnect, which causes server-side duplicate/conflict errors.
         post(url: config.endURL, body: body) { [weak self] ok in
             print("📡 TripTracker API trip-end \(ok ? "OK" : "FAILED (not retried)")")
-            self?.includeVehicleId = false
+            if ok {
+                self?.includeVehicleId = false
+            }
         }
     }
 

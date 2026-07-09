@@ -365,11 +365,11 @@ public final class TripTrackerAPIService {
                 }
                 
                 Log.d(TAG, "TripTracker Body" + body.toString() + pingURL);
+                if (!pendingQueue.isEmpty()) flushQueue();
                 boolean ok = post(pingURL, body);
                 if (ok) {
                     Log.d(TAG, "Ping OK: " + body.toString());
                     // Success — try flushing pending queue too
-                    if (!pendingQueue.isEmpty()) flushQueue();
                 } else {
                     Log.d(TAG, "Ping FAIL — queued for retry");
                     enqueue(pingURL, body);
@@ -389,6 +389,8 @@ public final class TripTrackerAPIService {
         if (routeId == null || routeId.isEmpty()) return;
         executor.execute(() -> {
             try {
+                if (!pendingQueue.isEmpty()) flushQueue();
+
                 JSONObject body = new JSONObject();
                 body.put("user_Id", userId);
                 body.put("os_Info", osInfo);
@@ -407,11 +409,10 @@ public final class TripTrackerAPIService {
                     try { Thread.sleep(2000); } catch (InterruptedException ignored) {}
                 }
 
-                includeVehicleId = false;
 
                 if (ok) {
+                    includeVehicleId = false;
                     Log.d(TAG, "Trip-end OK");
-                    if (!pendingQueue.isEmpty()) flushQueue();
                 } else {
                     Log.d(TAG, "Trip-end FAIL after 3 attempts — queued for retry");
                     // enqueue(endURL, body);
