@@ -18,12 +18,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@v5
+      - name: Analyze with SonarQube
+        uses: SonarSource/sonarqube-scan-action@v4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
           args: >
-            -Dsonar.projectKey=hieunguyentt_TripTracker
-            -Dsonar.organization=hieunguyentt
+            -Dsonar.projectKey=TripTracker
+            -Dsonar.branch.name=${{ github.ref_name }}
