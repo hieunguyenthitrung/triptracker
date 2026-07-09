@@ -690,6 +690,12 @@ public class LocationTrackingService: NSObject {
         currentTripId = -1
         tripStartTime = nil
 
+        // Clear foreground baseline — it belongs to the ended trip, not the next one.
+        // Without this, if the user opens the app after a trip ends while still near
+        // the endpoint, the 100m movement guard in evaluateAutoTripFromGPS blocks
+        // the next auto-start until the vehicle travels 100m from that stale location.
+        foregroundBaseLocation = nil
+
         delegate?.didChangeTrackingState(isTracking: false)
         print("✅ TripTracker Trip stopped — dist: \(totalDistance)m, dur: \(duration)s")
 
@@ -1537,12 +1543,13 @@ public class LocationTrackingService: NSObject {
         guard !isTracking else { return }
         foregroundBaseLocation = nil  // trip started — baseline no longer needed
 
-        // Only auto-start if vehicle_id or route_id is configured.
-        // If neither is set, user hasn't selected a vehicle yet — don't start trip.
-        let vehicleId = TripTrackerAPIService.shared.config.vehicleId
-        let routeId = TripTrackerAPIService.shared.config.routeId
-        guard !vehicleId.isEmpty || !routeId.isEmpty else {
-            print("⏳ TripTracker Auto-start SKIPPED — no vehicle_id or route_id configured")
+        // Only auto-start if the SDK is configured (userId + pingURL + endURL).
+        // We deliberately do NOT gate on vehicleId/routeId here: after a trip ends, the
+        // host app may temporarily clear vehicleId before setting it for the next trip.
+        // Blocking on vehicleId would prevent the new trip from auto-starting during that
+        // window. The startTrip() guard on isEnabled is the correct safety net.
+        guard TripTrackerAPIService.shared.isEnabled else {
+            print("⏳ TripTracker Auto-start SKIPPED — SDK not configured (no userId/pingURL)")
             return
         }
 
