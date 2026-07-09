@@ -1,15 +1,10 @@
 package com.carmd.triptracking.ui;
 
-import android.graphics.Bitmap;
-import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.view.MenuItem;
 import android.widget.TextView;
-import android.widget.Toast;
 
-import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
@@ -90,100 +85,6 @@ public class DayDetailsActivity extends AppCompatActivity implements OnMapReadyC
         drawDailyRoute();
     }
 
-    private void drawDailyHistory() {
-        // Load locations for this day (cache + trips)
-        List<LocationDatabase.LocationPoint> allLocations = database.getAllLocationsByDay(date);
-
-        if (allLocations.isEmpty()) {
-            Toast.makeText(this, "No location data for this trip", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        android.util.Log.d("RouteView", "Total locations for trip: " + allLocations.size());
-        // Filter to GPS and Sensor points only (remove WiFi/Cell jumps for cleaner route)
-        List<LocationDatabase.LocationPoint> routeLocations = new ArrayList<>();
-
-        // Use all locations then deduplicate and remove points closer than 5 m
-        routeLocations = filterRoutePoints(allLocations);
-        android.util.Log.d("DayDetails", "Filtered route points: " + routeLocations.size() + " from " + allLocations.size());
-
-        // Filter GPS and Sensor points only for clean route
-        List<LocationDatabase.LocationPoint> filteredLocations = new ArrayList<>();
-        for (LocationDatabase.LocationPoint point : allLocations) {
-            String source = (point.source != null ? point.source : "").toLowerCase();
-            // Include GPS and Sensor points only
-            if (source.contains("gps") || source.contains("sensor")) {
-                // Filter by accuracy too
-                if (point.accuracy > 0 && point.accuracy < 100) {
-                    filteredLocations.add(point);
-                } else if (point.accuracy == 0) {
-                    filteredLocations.add(point);
-                }
-            }
-        }
-
-        android.util.Log.d("RouteView", "Filtered GPS/Sensor points: " + filteredLocations.size());
-
-        // Use filtered locations for drawing route
-        List<LocationDatabase.LocationPoint> locations = filteredLocations.isEmpty() ?
-                allLocations : filteredLocations;
-
-        if (locations.size() < 2) {
-            Toast.makeText(this, "Not enough points to draw route", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // Convert to LatLng points
-        List<LatLng> routePoints = new ArrayList<>();
-        for (LocationDatabase.LocationPoint point : locations) {
-            routePoints.add(new LatLng(point.latitude, point.longitude));
-        }
-
-        // Draw route line
-        PolylineOptions polylineOptions = new PolylineOptions()
-                .addAll(routePoints)
-                .color(Color.parseColor("#4CAF50"))
-                .width(7.5f)
-                .geodesic(true)
-                .zIndex(1000f);
-
-        map.addPolyline(polylineOptions);
-
-        // Add start marker (green)
-        LocationDatabase.LocationPoint start = routeLocations.get(0);
-        map.addMarker(new MarkerOptions()
-                .position(new LatLng(start.latitude, start.longitude))
-                .title("Start")
-                .snippet(new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US)
-                        .format(new java.util.Date(start.timestamp)))
-                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
-
-        // Add end marker (red)
-        LocationDatabase.LocationPoint end = routeLocations.get(routeLocations.size() - 1);
-        map.addMarker(new MarkerOptions()
-                .position(new LatLng(end.latitude, end.longitude))
-                .title("End")
-                .snippet(new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US)
-                        .format(new java.util.Date(end.timestamp)))
-                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)));
-
-        // Calculate bounds and zoom to fit route
-        LatLngBounds.Builder boundsBuilder = new LatLngBounds.Builder();
-        for (LatLng point : routePoints) {
-            boundsBuilder.include(point);
-        }
-        LatLngBounds bounds = boundsBuilder.build();
-
-        // Zoom to fit with padding
-        int padding = 100; // pixels
-        map.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, padding));
-
-        // Log for debugging
-        android.util.Log.d("DayDetails",
-                "Route drawn: " + routeLocations.size() + " points (filtered from " +
-                        allLocations.size() + " total)");
-    }
-
     private void drawDailyRoute() {
         // Load locations for this day (cache + trips)
         List<LocationDatabase.LocationPoint> allLocations = database.getAllLocationsByDay(date);
@@ -213,27 +114,6 @@ public class DayDetailsActivity extends AppCompatActivity implements OnMapReadyC
             }
             return;
         }
-
-        // Create route polyline from filtered points
-//        List<LatLng> routePoints = new ArrayList<>();
-//        LatLngBounds.Builder boundsBuilder = new LatLngBounds.Builder();
-//
-////        for (LocationDatabase.LocationPoint point : routeLocations) {
-//        for (int i = 0; i < routeLocations.size() ; i++) {
-//            LocationDatabase.LocationPoint point = routeLocations.get(i);
-//            LatLng latLng = new LatLng(point.latitude, point.longitude);
-//            routePoints.add(latLng);
-//            boundsBuilder.include(latLng);
-//        }
-//
-//        // Draw polyline (green for daily route to match web monitor)
-//        PolylineOptions polylineOptions = new PolylineOptions()
-//                .addAll(routePoints)
-//                .color(Color.parseColor("#4CAF50"))  // Green
-//                .width(10f)
-//                .geodesic(false);
-//
-//        map.addPolyline(polylineOptions);
 
         // Draw route as separate segments — if two consecutive points are more
         // than 50 m apart the segment is skipped (e.g. gap between trips or
@@ -353,109 +233,6 @@ public class DayDetailsActivity extends AppCompatActivity implements OnMapReadyC
         return result;
     }
 
-    private void drawPOIDailyRoute() {
-        // Load locations for this day (cache + trips)
-        List<LocationDatabase.LocationPoint> allLocations = database.getAllLocationsByDay(date);
-
-        if (allLocations.isEmpty()) {
-            return;
-        }
-
-        android.util.Log.d("DayDetails", "Displaying " + allLocations.size() + " location points as markers");
-
-        // Calculate bounds to fit all markers
-        LatLngBounds.Builder boundsBuilder = new LatLngBounds.Builder();
-        List<LocationDatabase.LocationPoint> routeLocations = new ArrayList<>();
-        routeLocations = filterRoutePoints(allLocations);
-
-        List<LatLng> routePoints = new ArrayList<>();
-
-        // Add a marker for each location point
-        for (int i = 0; i < routeLocations.size(); i++) {
-            LocationDatabase.LocationPoint point = routeLocations.get(i);
-            LatLng position = new LatLng(point.latitude, point.longitude);
-            boundsBuilder.include(position);
-
-            LatLng latLng = new LatLng(point.latitude, point.longitude);
-            routePoints.add(latLng);
-
-            // Format time
-            java.text.SimpleDateFormat timeFormat = new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US);
-            String time = timeFormat.format(new java.util.Date(point.timestamp));
-
-            // Determine marker color based on source
-            float markerColor;
-            String source = (point.source != null ? point.source : "UNKNOWN").toUpperCase();
-
-            if (source.contains("GPS")) {
-                markerColor = BitmapDescriptorFactory.HUE_BLUE;     // Blue for GPS
-            } else if (source.contains("WIFI") || source.contains("WI-FI")) {
-                markerColor = BitmapDescriptorFactory.HUE_ORANGE;   // Orange for WiFi
-            } else if (source.contains("CELL") || source.contains("NETWORK")) {
-                markerColor = BitmapDescriptorFactory.HUE_RED;      // Red for Cell
-            } else if (source.contains("SENSOR")) {
-                markerColor = BitmapDescriptorFactory.HUE_GREEN;    // Green for Sensor
-            } else {
-                markerColor = BitmapDescriptorFactory.HUE_VIOLET;   // Violet for Unknown
-            }
-
-            // Format speed if available
-            String speedInfo = "";
-            if (point.speed > 0) {
-                speedInfo = String.format(java.util.Locale.US, " | %.1f km/h", point.speed * 3.6);
-            }
-
-            // Format accuracy if available
-            String accuracyInfo = "";
-            if (point.accuracy > 0) {
-                accuracyInfo = String.format(java.util.Locale.US, " | ±%.0fm", point.accuracy);
-            }
-
-            // Create marker
-            MarkerOptions markerOptions = new MarkerOptions()
-                    .position(position)
-                    .title(time + " - " + source)
-                    .snippet(String.format(java.util.Locale.US,
-                            "%.6f, %.6f%s%s",
-                            point.latitude, point.longitude, speedInfo, accuracyInfo))
-                    .icon(BitmapDescriptorFactory.defaultMarker(markerColor));
-
-            // Make first and last markers slightly different
-            if (i == 0) {
-                // First point - make it stand out with star icon
-                markerOptions.title("🌅 Day Start - " + time)
-                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
-                        .alpha(1.0f);
-            } else if (i == allLocations.size() - 1) {
-                // Last point - make it stand out
-                markerOptions.title("🏁 Day End -" + time)
-                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
-                        .alpha(1.0f);
-            } else {
-                // Regular points - slightly transparent
-                markerOptions.alpha(0.7f);
-            }
-
-            map.addMarker(markerOptions);
-        }
-
-//        // Draw polyline (green for daily route to match web monitor)
-//        PolylineOptions polylineOptions = new PolylineOptions()
-//                .addAll(routePoints)
-//                .color(Color.parseColor("#4CAF50"))  // Green
-//                .width(10f)
-//                .geodesic(true);
-//
-//        map.addPolyline(polylineOptions);
-
-        // Fit map to show all markers
-        LatLngBounds bounds = boundsBuilder.build();
-        int padding = 100; // pixels
-        map.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, padding));
-
-        android.util.Log.d("DayDetails", "All markers displayed successfully");
-    }
-
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (item.getItemId() == android.R.id.home) {
@@ -463,15 +240,5 @@ public class DayDetailsActivity extends AppCompatActivity implements OnMapReadyC
             return true;
         }
         return super.onOptionsItemSelected(item);
-    }
-
-    private BitmapDescriptor bitmapDescriptorFromVector(@DrawableRes int vectorResId) {
-        Drawable drawable = ContextCompat.getDrawable(this, vectorResId);
-        drawable.setBounds(0, 0, drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight());
-        Bitmap bitmap = Bitmap.createBitmap(
-                drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(bitmap);
-        drawable.draw(canvas);
-        return BitmapDescriptorFactory.fromBitmap(bitmap);
     }
 }

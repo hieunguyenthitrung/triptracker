@@ -10,7 +10,6 @@
 
 import Foundation
 import UserNotifications
-import UIKit
 
 public class NotificationManager: NSObject {
 
@@ -27,17 +26,6 @@ public class NotificationManager: NSObject {
 
     /// Request notification permission. Call once at app launch.
     public func requestPermission() {
-        // let center = UNUserNotificationCenter.current()
-        // // center.delegate = self
-        // center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
-        //     if granted {
-        //         print("🔔 Notification permission granted")
-        //     } else {
-        //         print("🔔 Notification permission denied: \(error?.localizedDescription ?? "–")")
-        //     }
-        //     // Schedule daily reminder regardless — it'll fire once permission is granted
-        //     // self.scheduleDailyReminder()
-        // }
     }
 
     // MARK: - Trip Notifications
@@ -168,24 +156,3 @@ public class NotificationManager: NSObject {
         }
     }
 }
-
-// MARK: - UNUserNotificationCenterDelegate
-
-// extension NotificationManager: UNUserNotificationCenterDelegate {
-
-//     /// Show notification even when app is in foreground.
-//     public func userNotificationCenter(_ center: UNUserNotificationCenter,
-//                                 willPresent notification: UNNotification,
-//                                 withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-//         completionHandler([.banner, .sound])
-//     }
-
-//     /// Handle tap on notification.
-//     public func userNotificationCenter(_ center: UNUserNotificationCenter,
-//                                 didReceive response: UNNotificationResponse,
-//                                 withCompletionHandler completionHandler: @escaping () -> Void) {
-//         let id = response.notification.request.identifier
-//         print("🔔 Notification tapped: \(id)")
-//         completionHandler()
-//     }
-// }

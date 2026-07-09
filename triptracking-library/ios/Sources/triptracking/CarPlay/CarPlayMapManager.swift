@@ -27,7 +27,6 @@ public class CarPlayMapManager: NSObject {
 
     // Track state for alerts (prevent duplicate alerts)
     private var lastTripState: Bool = false
-    private var lastAnnouncedTripId: Int64 = -1
 
     public init(interfaceController: CPInterfaceController, window: CPWindow) {
         self.interfaceController = interfaceController

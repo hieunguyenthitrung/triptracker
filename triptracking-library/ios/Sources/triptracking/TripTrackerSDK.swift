@@ -123,11 +123,6 @@ public final class TripTrackerSDK {
             print("📍 TripTracker relaunched by iOS for significant location change or visit event")
         }
 
-        // if UserDefaults.standard.bool(forKey: "tt_webMonitorEnabled") {
-        //     webServer = LocationWebServer(); webServer?.start()
-        // }
-
-        // NotificationManager.shared.requestPermission()
         if GeofenceManager.shared.isEnabled { GeofenceManager.shared.startMonitoringAll() }
 
         // If permission already granted, start GPS immediately

@@ -531,11 +531,6 @@ public final class TripTrackerAPIService {
         }.resume()
     }
 
-    /// Synchronous POST — used by flush queue on background thread
-    private func postSync(url urlStr: String, body: [String: Any]) -> Bool {
-        return postSyncWith(session: session, url: urlStr, body: body)
-    }
-
     /// Synchronous POST with a specific URLSession — avoids stale DNS cache
     private func postSyncWith(session: URLSession, url urlStr: String, body: [String: Any]) -> Bool
     {

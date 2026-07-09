@@ -23,7 +23,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import com.carmd.triptracking.R;
 import com.carmd.triptracking.database.LocationDatabase;

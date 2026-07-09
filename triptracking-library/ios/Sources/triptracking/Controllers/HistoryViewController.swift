@@ -4,7 +4,6 @@
 //
 
 import UIKit
-import MapKit
 
 public class HistoryViewController: UIViewController {
     

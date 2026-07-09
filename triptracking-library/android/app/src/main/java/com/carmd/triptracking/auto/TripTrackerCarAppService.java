@@ -1,11 +1,9 @@
 package com.carmd.triptracking.auto;
 
-import android.content.pm.ApplicationInfo;
 import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.car.app.CarAppService;
 import androidx.car.app.Session;
-import androidx.car.app.SessionInfo;
 import androidx.car.app.validation.HostValidator;
 
 /**

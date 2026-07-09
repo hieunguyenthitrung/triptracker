@@ -14,17 +14,12 @@ import com.carmd.triptracking.database.LocationDatabase;
 import com.carmd.triptracking.geofence.GeofenceManager;
 import com.carmd.triptracking.services.LocationTrackingService;
 import com.carmd.triptracking.ui.AppSettings;
-import com.carmd.triptracking.database.LocationDatabase;
-import com.carmd.triptracking.geofence.GeofenceManager;
-import com.carmd.triptracking.services.LocationTrackingService;
-import com.carmd.triptracking.ui.AppSettings;
 import com.carmd.triptracking.ui.DailyLocationsActivity;
 import com.carmd.triptracking.ui.GeofenceSettingsActivity;
 import com.carmd.triptracking.ui.MainActivity;
 import com.carmd.triptracking.ui.NotificationSettingsActivity;
 import com.carmd.triptracking.ui.SettingsActivity;
 import com.carmd.triptracking.ui.TripHistoryActivity;
-import com.carmd.triptracking.util.VoiceFeedback;
 
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
@@ -33,11 +28,7 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
 import com.carmd.triptracking.util.LogcatWriter;
 import com.carmd.triptracking.api.TripTrackerAPIService;
@@ -760,61 +751,4 @@ public class TripTrackerCapPlugin extends Plugin {
         android.util.Log.e("TripTrackerPlugin", "Share failed: " + e.getMessage());
     }
 }
-    // private void shareLogFiles(int days) {
-    //     if (getActivity() == null) return;
-
-    //     // Collect dates to include
-    //     java.util.Set<String> datesToInclude = new java.util.HashSet<>();
-    //     java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US);
-    //     if (days >= 0) {
-    //         int count = (days == 0) ? 1 : days;
-    //         java.util.Calendar cal = java.util.Calendar.getInstance();
-    //         for (int i = 0; i < count; i++) {
-    //             datesToInclude.add(sdf.format(cal.getTime()));
-    //             cal.add(java.util.Calendar.DAY_OF_YEAR, -1);
-    //         }
-    //     }
-
-    //     // Get files from LogcatWriter (uses getCacheDir, prefix "triptracker_logcat_")
-    //     File[] logFiles = com.carmd.triptracking.util.LogcatWriter.getAllLogFiles(getContext());
-    //     if (logFiles == null || logFiles.length == 0) return;
-
-    //     ArrayList<Uri> uris = new ArrayList<>();
-    //     for (File f : logFiles) {
-    //         if (days == -1) {
-    //             // All files
-    //             uris.add(getUriForFile(f));
-    //         } else {
-    //             // Filter by date
-    //             for (String date : datesToInclude) {
-    //                 if (f.getName().contains(date)) {
-    //                     uris.add(getUriForFile(f));
-    //                     break;
-    //                 }
-    //             }
-    //         }
-    //     }
-    //     if (uris.isEmpty()) return;
-
-    //     String subject;
-    //     if (days == 0) {
-    //         subject = "TripTracker Today's Log";
-    //     } else if (days == -1) {
-    //         subject = "TripTracker All Logs (" + logFiles.length + " files)";
-    //     } else {
-    //         subject = "TripTracker Logs — Last " + days + " days";
-    //     }
-
-    //     Intent shareIntent = new Intent(Intent.ACTION_SEND_MULTIPLE);
-    //     shareIntent.setType("text/plain");
-    //     shareIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
-    //     shareIntent.putExtra(Intent.EXTRA_SUBJECT, subject);
-    //     shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-    //     getActivity().startActivity(Intent.createChooser(shareIntent, subject));
-    // }
-
-    private Uri getUriForFile(File f) {
-        return FileProvider.getUriForFile(getContext(),
-                getContext().getPackageName() + ".fileprovider", f);
-    }
 }

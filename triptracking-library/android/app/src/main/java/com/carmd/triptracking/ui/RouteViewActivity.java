@@ -177,17 +177,6 @@ public class RouteViewActivity extends AppCompatActivity implements OnMapReadyCa
                 .snippet(formatTime(locations.get(locations.size() - 1).timestamp))
                 .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)));
         
-        // Add waypoint markers every 10 points
-//        for (int i = 10; i < locations.size() - 10; i += 10) {
-//            LocationDatabase.LocationPoint point = locations.get(i);
-//            map.addMarker(new MarkerOptions()
-//                    .position(new LatLng(point.latitude, point.longitude))
-//                    .title("Waypoint " + (i / 10))
-//                    .snippet(formatTime(point.timestamp) + " | " + point.source)
-//                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE))
-//                    .alpha(0.7f));
-//        }
-
         // Calculate bounds and zoom to fit route
         LatLngBounds.Builder boundsBuilder = new LatLngBounds.Builder();
         for (LatLng point : routePoints) {

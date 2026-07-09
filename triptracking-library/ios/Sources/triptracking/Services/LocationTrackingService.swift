@@ -105,10 +105,6 @@ public class LocationTrackingService: NSObject {
     public var isFakeRouteActive: Bool = false
     public var appTerminated: Bool = false
 
-    /// Still timeout: after being still for this long (no trip), stop GPS completely.
-    /// GPS will restart when CMMotionActivity detects movement.
-    /// Default: 5 minutes (300 seconds)
-    private let stillGpsTimeoutSecs: TimeInterval = 300
     private var stillGpsTimer: Timer?
 
     /// Internal flag: true during injectFakeGPS() so didUpdateLocations knows it's fake.
@@ -135,7 +131,6 @@ public class LocationTrackingService: NSObject {
     /// Pending one-shot location request from requestCurrentLocation().
     private var currentLocationCompletion: ((CLLocation?, Error?) -> Void)?
     private var currentLocationTimer: Timer?
-    private var lastCurrentLocationTime: Date = .distantPast
     private var lastPingAndReturnTime: Date = .distantPast
 
     /// Distance threshold for pedestrian (walking/running/cycling) API pings.
@@ -217,7 +212,6 @@ public class LocationTrackingService: NSObject {
     weak var autoTripDelegate: AutoTripDelegate?
 
     private var lastLocationSaveTime: Int64 = 0
-    private var lastGPSSaveTime: Date = .distantPast
     /// Timestamp (truncated to the second) of the last point we actually persisted.
     /// Any save call with the same second-level timestamp is dropped as a duplicate.
     private var lastPersistedTimestampSec: Int64 = 0
@@ -225,7 +219,6 @@ public class LocationTrackingService: NSObject {
     // MARK: - Timers / background task
     private var periodicTimer: Timer?
     private var heartbeatTimer: Timer?
-    private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
 
     // MARK: - Motion state
 
@@ -449,37 +442,6 @@ public class LocationTrackingService: NSObject {
             return
         }
 
-        // Debounce: if called multiple times on foreground resume, only run once per 2s
-        // let sinceLastCall = abs(lastCurrentLocationTime.timeIntervalSinceNow)
-        // if sinceLastCall < 5.0 {
-        //     print(
-        //         "📍 TripTracker requestCurrentLocation — debounced (\(String(format:"%.1f", sinceLastCall))s since last call)"
-        //     )
-        //     if let cached = locationManager.location {
-        //         pingAndReturn(cached, completion: completion)
-        //     }
-        //     return
-        // }
-        // lastCurrentLocationTime = Date()
-
-        // let cached = locationManager.location
-        // let age = cached.map { abs($0.timestamp.timeIntervalSinceNow) } ?? Double.infinity
-        // let acc = cached?.horizontalAccuracy ?? -1
-
-        // // Use cached fix immediately if good enough — avoids GPS wait entirely:
-        // //   • accuracy ≤ 20m, any age up to 60s   (high-quality fix)
-        // //   • accuracy ≤ 50m, age ≤ 30s           (good fix, recent)
-        // //   • accuracy ≤ 100m, age ≤ 10s          (acceptable fix, very fresh)
-        // if let cached = cached, acc > 0,
-        //     (acc <= 20 && age < 60) || (acc <= 50 && age < 30) || (acc <= 100 && age < 10)
-        // {
-        //     print(
-        //         "📍 TripTracker requestCurrentLocation — using cached fix acc:\(Int(acc))m age:\(Int(age))s"
-        //     )
-        //     pingAndReturn(cached, completion: completion)
-        //     return
-        // }
-
         // Cancel any previous pending request
         currentLocationTimer?.invalidate()
         currentLocationTimer = nil
@@ -539,26 +501,19 @@ public class LocationTrackingService: NSObject {
         let speed: Float =
             effective > 0 ? effective : (location.speed > 0 ? Float(location.speed) : 0)
         let apiSvc = TripTrackerAPIService.shared
-        let sincePing = abs(lastPingAndReturnTime.timeIntervalSinceNow)
-        // if apiSvc.isEnabled && sincePing >= 5.0 {
-            lastPingAndReturnTime = Date()
-            let activityType: String
-            switch lastMotionState {
-            case .automotive: activityType = "in_vehicle"
-            case .running: activityType = "running"
-            case .cycling: activityType = "on_bicycle"
-            case .walking: activityType = "walking"
-            default: activityType = speed > 0 ? "walking" : "still"
-            }
-            apiSvc.sendPing(location: location, isMoving: false, speed: 0, activityType: "still")
-            print(
-                "📡 TripTracker requestCurrentLocation — pinged (\(location.coordinate.latitude), \(location.coordinate.longitude)) spd=\(String(format:"%.1f", speed)) m/s"
-            )
-        // } else if sincePing < 5.0 {
-        //     print(
-        //         "📡 TripTracker requestCurrentLocation — ping skipped (\(String(format:"%.1f", sincePing))s since last ping)"
-        //     )
-        // }
+        lastPingAndReturnTime = Date()
+        let activityType: String
+        switch lastMotionState {
+        case .automotive: activityType = "in_vehicle"
+        case .running: activityType = "running"
+        case .cycling: activityType = "on_bicycle"
+        case .walking: activityType = "walking"
+        default: activityType = speed > 0 ? "walking" : "still"
+        }
+        apiSvc.sendPing(location: location, isMoving: false, speed: 0, activityType: "still")
+        print(
+            "📡 TripTracker requestCurrentLocation — pinged (\(location.coordinate.latitude), \(location.coordinate.longitude)) spd=\(String(format:"%.1f", speed)) m/s"
+        )
         completion(location, nil)
     }
 
@@ -958,17 +913,6 @@ public class LocationTrackingService: NSObject {
         }
     }
 
-    /// Stop trip-specific sensors only (pedometer, device motion, altimeter).
-    /// Keeps CMMotionActivity alive for detecting the next trip start.
-    private func stopTripSensors() {
-        motionManager.stopDeviceMotionUpdates()
-        pedometer.stopUpdates()
-        altimeter.stopRelativeAltitudeUpdates()
-        print(
-            "🔋 TripTracker Trip sensors stopped — CMMotionActivity still active for next trip detection"
-        )
-    }
-
     /// Stop ALL sensor tracking including CMMotionActivity.
     /// Only call when fully shutting down (e.g., user manually stops service).
     private func stopSensorTracking() {
@@ -1047,18 +991,10 @@ public class LocationTrackingService: NSObject {
         // Don't save now — let didUpdateLocations handle it with real GPS speed.
         if next == .automotive && prev != .automotive {
             adaptLocationAccuracy(for: .automotive)  // GPS ON → best accuracy
-            // evaluateAutoTrip(from: prev, to: next)
             print("📍 Motion → Automotive: GPS started, waiting for fresh GPS speed")
-            // guard let location = locationManager.location else { return }
-            // let speed = Float(max(0, location.speed))
-            // if(speed >= vehicleThreshold) {
             autoStartTrip(
                 reason: "Motion → Automotive (speed \(String(format:"%.1f", effectiveSpeed())) m/s)"
             )
-            // }else{
-            //     print("📍 Motion → Automotive - Cannot start trip")
-            //     print("📍 Motion → Automotive: speed \(String(format:"%.1f", effectiveSpeed())) m/s < threshold \(vehicleThreshold) m/s — trip not started - \(speed)")
-            // }
             return  // Don't save with stale speed — didUpdateLocations will save with real speed
         }
 
@@ -1449,15 +1385,6 @@ public class LocationTrackingService: NSObject {
     /// these MUST NOT reset the countdown or the trip will never auto-end.
     private func evaluateAutoTripFromGPS(speed: Float) {
         if speed >= vehicleThreshold {
-            //         // ── Vehicle speed detected ──
-            //         // But is this GPS fix trustworthy? Reject if accuracy > 20m.
-            //         let accuracy = lastGPSLocation?.horizontalAccuracy ?? 999
-            //         if accuracy > 20 {
-            //     print("⚠️ TripTracker Vehicle speed \(String(format:"%.1f", speed)) m/s IGNORED — poor accuracy \(Int(accuracy))m")
-            //     consecutiveVehicleSpeedCount = 0
-            //     return
-            // }
-
             consecutiveVehicleSpeedCount += 1
 
             // Cancel auto-end if already tracking

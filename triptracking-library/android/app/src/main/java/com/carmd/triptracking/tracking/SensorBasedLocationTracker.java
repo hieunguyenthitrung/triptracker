@@ -216,14 +216,6 @@ public class SensorBasedLocationTracker implements SensorEventListener {
         Log.d(TAG, "🏃 Switched to MOVING mode (accel=FASTEST, mag=GAME) — full tracking");
     }
 
-    /**
-     * Initial registration: starts in STILL mode (low power).
-     * Called from startTracking() only.
-     */
-    private void registerSensors() {
-        switchToStillMode();
-    }
-
     // =========================================================================
     // Sensor callbacks
     // =========================================================================

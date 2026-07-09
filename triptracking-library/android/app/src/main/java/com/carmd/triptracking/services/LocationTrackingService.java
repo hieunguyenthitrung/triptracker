@@ -104,10 +104,6 @@ public class LocationTrackingService extends Service implements
     private static final int NOTIF_TRIP_END = 2002;
     private static final int NOTIF_DISTANCE = 2003;
 
-    // ── Daily reminder ────────────────────────────────────────────────────
-    private static final int DAILY_REMINDER_REQUEST = 9002;
-    private static final int DAILY_LOG_SENDER_REQUEST = 9003;
-
     public static final String ACTION_START_TRACKING = "START_TRACKING";
     public static final String ACTION_RESUME_TRACKING = "RESUME_TRACKING"; // restart after kill
     public static final String ACTION_STOP_TRACKING = "STOP_TRACKING";
@@ -355,12 +351,6 @@ public class LocationTrackingService extends Service implements
             webServer = new LocationWebServer(this);
             webServer.start();
         }
-
-        // Schedule daily 6 AM reminder to check yesterday's route
-        // scheduleDailyReminder();
-
-        // Schedule daily 12 PM auto-send of log file via email
-        // scheduleDailyLogSender();
 
         // Re-register geofences (lost after reboot)
         if (com.carmd.triptracking.geofence.GeofenceManager.isEnabled(this)) {
@@ -1349,18 +1339,6 @@ public class LocationTrackingService extends Service implements
         // Cross-validation: if Doppler says slow but delta says fast, the delta is
         // GPS drift — discard it. Only raise speed when both agree.
         float speed = 0f;
-        // if (lastGpsLocation != null && lastGpsUpdateTime > 0 && accuracy <= 50f
-        // && lastGpsLocation.getAccuracy() <= 50f) {
-        // float distM = lastGpsLocation.distanceTo(location);
-        // long elapsedMs = System.currentTimeMillis() - lastGpsUpdateTime;
-        // float elapsedSec = elapsedMs / 1000f;
-        // if (elapsedSec > 0 && distM >= 0) {
-        // speed = distM / elapsedSec;
-        // }
-        // } else if (location.hasSpeed() && accuracy <= 50f) {
-        // // Use GPS hardware Doppler speed — more reliable than delta
-        // speed = location.getSpeed();
-        // }
 
         if (accuracy <= 50f) {
             float dopplerSpeed = location.hasSpeed() ? location.getSpeed() : 0f;
@@ -2014,57 +1992,6 @@ public class LocationTrackingService extends Service implements
         nm.notify(notifId, n);
     }
 
-    // =========================================================================
-    // Daily reminder — fires at 6:00 AM to check yesterday's route
-    // =========================================================================
-
-    /** Schedule a repeating alarm at 6:00 AM daily. */
-    private void scheduleDailyReminder() {
-        AlarmManager am = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-        Intent i = new Intent(this, com.carmd.triptracking.receivers.DailyReminderReceiver.class);
-        PendingIntent pi = PendingIntent.getBroadcast(this, DAILY_REMINDER_REQUEST, i,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-
-        // Next 6:00 AM
-        java.util.Calendar cal = java.util.Calendar.getInstance();
-        cal.set(java.util.Calendar.HOUR_OF_DAY, 6);
-        cal.set(java.util.Calendar.MINUTE, 0);
-        cal.set(java.util.Calendar.SECOND, 0);
-        cal.set(java.util.Calendar.MILLISECOND, 0);
-        // If 6 AM already passed today, schedule for tomorrow
-        if (cal.getTimeInMillis() <= System.currentTimeMillis()) {
-            cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
-        }
-
-        // Repeat every 24 hours
-        am.setRepeating(AlarmManager.RTC_WAKEUP, cal.getTimeInMillis(),
-                AlarmManager.INTERVAL_DAY, pi);
-        Log.d(TAG, "Daily reminder scheduled at 6:00 AM");
-    }
-
-    /** Schedule a repeating alarm at 12:00 PM daily to auto-send log file. */
-    private void scheduleDailyLogSender() {
-        AlarmManager am = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-        Intent i = new Intent(this, com.carmd.triptracking.receivers.DailyLogSenderReceiver.class);
-        PendingIntent pi = PendingIntent.getBroadcast(this, DAILY_LOG_SENDER_REQUEST, i,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-
-        // Next 12:00 PM
-        java.util.Calendar cal = java.util.Calendar.getInstance();
-        cal.set(java.util.Calendar.HOUR_OF_DAY, 12);
-        cal.set(java.util.Calendar.MINUTE, 0);
-        cal.set(java.util.Calendar.SECOND, 0);
-        cal.set(java.util.Calendar.MILLISECOND, 0);
-        // If 12 PM already passed today, schedule for tomorrow
-        if (cal.getTimeInMillis() <= System.currentTimeMillis()) {
-            cal.add(java.util.Calendar.DAY_OF_YEAR, 1);
-        }
-
-        am.setRepeating(AlarmManager.RTC_WAKEUP, cal.getTimeInMillis(),
-                AlarmManager.INTERVAL_DAY, pi);
-        Log.d(TAG, "Daily log sender scheduled at 12:00 PM");
-    }
-
     public long getCurrentTripDuration() {
         if (!isTracking || tripStartTime == 0)
             return 0;
@@ -2219,19 +2146,6 @@ public class LocationTrackingService extends Service implements
             Log.i(TAG, "🚗 Activity Recognition: IN_VEHICLE detected — enabling GPS for speed confirmation");
             if (!isTracking) {
                 activityRecognitionVehicle = true;
-                // Re-enable GPS to confirm vehicle speed — was stopped to save battery
-                // startGPSTracking();
-                // // Safety timeout: if no trip starts within 2 min, stop GPS to save battery
-                // if (autoStopHandler == null) autoStopHandler = new
-                // Handler(Looper.getMainLooper());
-                // autoStopHandler.postDelayed(() -> {
-                // if (!isTracking && activityRecognitionVehicle) {
-                // Log.i(TAG, "🔋 GPS confirmation timeout (2 min) — no vehicle speed confirmed,
-                // stopping GPS");
-                // activityRecognitionVehicle = false;
-                // stopGpsUpdates();
-                // }
-                // }, 120_000L); // 2 minutes
                 // If GPS speed is already high enough, start now
                 Location loc = getCurrentLocation();
                 if (loc != null && loc.hasSpeed() && loc.getSpeed() >= vehicleThreshold()) {
@@ -2246,11 +2160,6 @@ public class LocationTrackingService extends Service implements
                 && transitionType == ActivityTransition.ACTIVITY_TRANSITION_EXIT) {
             // Vehicle exited — reset the flag
             activityRecognitionVehicle = false;
-            // If no trip started, stop GPS to save battery
-            // if (!isTracking) {
-            // Log.i(TAG, "🔋 IN_VEHICLE exited without trip — stopping GPS");
-            // stopGpsUpdates();
-            // }
 
         } else if (activityType == DetectedActivity.STILL
                 && transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER) {
@@ -2259,9 +2168,6 @@ public class LocationTrackingService extends Service implements
             if (isTracking) {
                 Log.i(TAG, "⏸ Activity Recognition: STILL detected — starting auto-end countdown");
                 startAutoStopTimer();
-                // } else {
-                // // Not tracking + still → ensure GPS is off
-                // stopGpsUpdates();
             }
         }
         // ON_BICYCLE, WALKING, RUNNING: logged but don't trigger auto-start/stop
