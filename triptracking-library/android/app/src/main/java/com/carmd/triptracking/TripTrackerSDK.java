@@ -1,6 +1,5 @@
 package com.carmd.triptracking;
 
-import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -326,24 +325,6 @@ public final class TripTrackerSDK {
             Log.e(TAG, "Stop tracking failed: " + e.getMessage());
         }
     }
-
-    // ═══════════════════════════════════════════════════════════════
-    // Native pages
-    // ═══════════════════════════════════════════════════════════════
-
-    public static void openMainView(Activity a)       { a.startActivity(new Intent(a, MainActivity.class)); }
-    public static void openSettings(Activity a)        { a.startActivity(new Intent(a, SettingsActivity.class)); }
-    public static void openNotifications(Activity a)   { a.startActivity(new Intent(a, NotificationSettingsActivity.class)); }
-    public static void openGeofence(Activity a)        { a.startActivity(new Intent(a, GeofenceSettingsActivity.class)); }
-    public static void openHistory(Activity a)         { a.startActivity(new Intent(a, TripHistoryActivity.class)); }
-    public static void openDailyLocations(Activity a)  { a.startActivity(new Intent(a, DailyLocationsActivity.class)); }
-    public static void openMainView(Context c)      { launch(c, MainActivity.class); }
-    public static void openSettings(Context c)       { launch(c, SettingsActivity.class); }
-    public static void openNotifications(Context c)  { launch(c, NotificationSettingsActivity.class); }
-    public static void openGeofence(Context c)       { launch(c, GeofenceSettingsActivity.class); }
-    public static void openHistory(Context c)        { launch(c, TripHistoryActivity.class); }
-    public static void openDailyLocations(Context c) { launch(c, DailyLocationsActivity.class); }
-    private static void launch(Context c, Class<?> cls) { Intent i = new Intent(c, cls); i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); c.startActivity(i); }
 
     // Data access
     public static boolean isTracking()    { LocationTrackingService s = LocationTrackingService.getInstance(); return s != null && s.isCurrentlyTracking(); }

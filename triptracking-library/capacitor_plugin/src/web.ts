@@ -24,30 +24,6 @@ export class TripTrackerWeb extends WebPlugin implements TripTrackerPlugin {
     throw this.unavailable('stopTracking is only available on iOS/Android');
   }
 
-  async openSettings(): Promise<{ opened: boolean }> {
-    throw this.unavailable('openSettings is only available on iOS');
-  }
-
-  async openNotificationSettings(): Promise<{ opened: boolean }> {
-    throw this.unavailable('openNotificationSettings is only available on iOS');
-  }
-
-  async openGeofenceManager(): Promise<{ opened: boolean }> {
-    throw this.unavailable('openGeofenceManager is only available on iOS/Android');
-  }
-
-  async openMainView(): Promise<{ opened: boolean }> {
-    throw this.unavailable('openMainView is only available on iOS/Android');
-  }
-
-  async openHistory(): Promise<{ opened: boolean }> {
-    throw this.unavailable('openHistory is only available on iOS/Android');
-  }
-
-  async openDailyLocations(): Promise<{ opened: boolean }> {
-    throw this.unavailable('openDailyLocations is only available on iOS/Android');
-  }
-
   async getTrackingStatus(): Promise<any> {
     throw this.unavailable('getTrackingStatus is only available on iOS');
   }

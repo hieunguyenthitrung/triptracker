@@ -7,8 +7,6 @@
 //
 //  Usage in Ionic:
 //    import { TripTracker } from 'capacitor-triptracker';
-//    await TripTracker.openSettings();
-//    await TripTracker.openNotificationSettings();
 //    const status = await TripTracker.getTrackingStatus();
 //
 
@@ -30,12 +28,6 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
         CAPPluginMethod(name: "hasLocationPermission", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "startTracking", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "stopTracking", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "openSettings", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "openNotificationSettings", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "openGeofenceManager", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "openMainView", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "openHistory", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "openDailyLocations", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getTrackingStatus", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getCurrentLocation", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getTripHistory", returnType: CAPPluginReturnPromise),
@@ -215,21 +207,21 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
     @objc func setTripNotifications(_ call: CAPPluginCall) {
         if let notify = call.getBool("notify") {
             // Single flag controls both
-            NotificationSettingsViewController.isTripStartEnabled = notify
-            NotificationSettingsViewController.isTripEndEnabled = notify
+            NotificationManager.isTripStartEnabled = notify
+            NotificationManager.isTripEndEnabled = notify
         }
         print("setTripNotifications setTripNotifications setTripNotifications")
         if let start = call.getBool("start") {
-            NotificationSettingsViewController.isTripStartEnabled = start
+            NotificationManager.isTripStartEnabled = start
             // UserDefaults.standard.set(start, forKey: "tt_notify_tripStart")
         }
         if let end = call.getBool("end") {
-            NotificationSettingsViewController.isTripEndEnabled = end
+            NotificationManager.isTripEndEnabled = end
             // UserDefaults.standard.set(end, forKey: "tt_notify_tripEnd")
         }
         call.resolve([
-            "notifyTripStart": NotificationSettingsViewController.isTripStartEnabled,
-            "notifyTripEnd": NotificationSettingsViewController.isTripEndEnabled,
+            "notifyTripStart": NotificationManager.isTripStartEnabled,
+            "notifyTripEnd": NotificationManager.isTripEndEnabled,
         ])
     }
 
@@ -274,78 +266,6 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
     private static func hasLocationPermissionNative() -> Bool {
         let status = CLLocationManager().authorizationStatus
         return status == .authorizedAlways || status == .authorizedWhenInUse
-    }
-
-    /// Open the full native Settings page (sliders, toggles, everything).
-    @objc func openSettings(_ call: CAPPluginCall) {
-        DispatchQueue.main.async {
-            let vc = SettingsViewController()
-            let nav = UINavigationController(rootViewController: vc)
-            nav.modalPresentationStyle = .fullScreen
-            self.bridge?.viewController?.present(nav, animated: true) {
-                call.resolve(["opened": true])
-            }
-        }
-    }
-
-    /// Open the Notification Settings page (push toggle per type + voice).
-    @objc func openNotificationSettings(_ call: CAPPluginCall) {
-        DispatchQueue.main.async {
-            let vc = NotificationSettingsViewController()
-            let nav = UINavigationController(rootViewController: vc)
-            nav.modalPresentationStyle = .fullScreen
-            self.bridge?.viewController?.present(nav, animated: true) {
-                call.resolve(["opened": true])
-            }
-        }
-    }
-
-    /// Open the Geofence Manager page (map + zone list).
-    @objc func openGeofenceManager(_ call: CAPPluginCall) {
-        DispatchQueue.main.async {
-            let vc = GeofenceViewController()
-            let nav = UINavigationController(rootViewController: vc)
-            nav.modalPresentationStyle = .fullScreen
-            self.bridge?.viewController?.present(nav, animated: true) {
-                call.resolve(["opened": true])
-            }
-        }
-    }
-
-    /// Open the main TripTracker map view.
-    @objc func openMainView(_ call: CAPPluginCall) {
-        DispatchQueue.main.async {
-            let vc = MainViewController()
-            let nav = UINavigationController(rootViewController: vc)
-            nav.modalPresentationStyle = .fullScreen
-            self.bridge?.viewController?.present(nav, animated: true) {
-                call.resolve(["opened": true])
-            }
-        }
-    }
-
-    /// Open the Trip History page.
-    @objc func openHistory(_ call: CAPPluginCall) {
-        DispatchQueue.main.async {
-            let vc = HistoryViewController()
-            let nav = UINavigationController(rootViewController: vc)
-            nav.modalPresentationStyle = .fullScreen
-            self.bridge?.viewController?.present(nav, animated: true) {
-                call.resolve(["opened": true])
-            }
-        }
-    }
-
-    /// Open Daily Locations page.
-    @objc func openDailyLocations(_ call: CAPPluginCall) {
-        DispatchQueue.main.async {
-            let vc = DailyLocationsViewController()
-            let nav = UINavigationController(rootViewController: vc)
-            nav.modalPresentationStyle = .fullScreen
-            self.bridge?.viewController?.present(nav, animated: true) {
-                call.resolve(["opened": true])
-            }
-        }
     }
 
     // MARK: - Tracking Status
@@ -445,11 +365,11 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
             "webMonitorEnabled": ud.bool(forKey: "tt_webMonitorEnabled"),
             "voiceFeedbackEnabled": VoiceFeedbackManager.shared.isEnabled,
             "geofencingEnabled": GeofenceManager.shared.isEnabled,
-            "notifyTripStart": NotificationSettingsViewController.isTripStartEnabled,
-            "notifyTripEnd": NotificationSettingsViewController.isTripEndEnabled,
-            "notifyDistanceKm": NotificationSettingsViewController.isDistanceKmEnabled,
-            "notifyGeofenceEnter": NotificationSettingsViewController.isGeofenceEnterEnabled,
-            "notifyGeofenceExit": NotificationSettingsViewController.isGeofenceExitEnabled,
+            "notifyTripStart": NotificationManager.isTripStartEnabled,
+            "notifyTripEnd": NotificationManager.isTripEndEnabled,
+            "notifyDistanceKm": NotificationManager.isDistanceKmEnabled,
+            "notifyGeofenceEnter": NotificationManager.isGeofenceEnterEnabled,
+            "notifyGeofenceExit": NotificationManager.isGeofenceExitEnabled,
         ])
     }
 
@@ -538,22 +458,22 @@ public class TripTrackerPlugin: CAPPlugin, CAPBridgedPlugin, LocationUpdateDeleg
                 call.reject("Missing 'value'")
                 return
             }
-            NotificationSettingsViewController.isTripStartEnabled = v
-            NotificationSettingsViewController.isTripEndEnabled = v
+            NotificationManager.isTripStartEnabled = v
+            NotificationManager.isTripEndEnabled = v
 
         case "notifyTripStart":
             guard let v = call.getBool("value") else {
                 call.reject("Missing 'value'")
                 return
             }
-            NotificationSettingsViewController.isTripStartEnabled = v
+            NotificationManager.isTripStartEnabled = v
 
         case "notifyTripEnd":
             guard let v = call.getBool("value") else {
                 call.reject("Missing 'value'")
                 return
             }
-            NotificationSettingsViewController.isTripEndEnabled = v
+            NotificationManager.isTripEndEnabled = v
 
         default:
             call.reject("Unknown setting key: \(key)")

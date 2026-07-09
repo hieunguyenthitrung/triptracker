@@ -1,5 +1,3 @@
 <resources>
     <string name="app_name">Trip Tracker</string>
-    <string name="google_maps_key">AIzaSyAXVQyV9aIjdz0YdgeoGrvF2u-BGczXWXE</string>
-    <string name="clear_route">Clear Route</string>
 </resources>

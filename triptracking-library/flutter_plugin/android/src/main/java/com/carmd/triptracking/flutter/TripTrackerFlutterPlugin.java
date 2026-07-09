@@ -16,12 +16,6 @@ import com.carmd.triptracking.database.LocationDatabase;
 import com.carmd.triptracking.geofence.GeofenceManager;
 import com.carmd.triptracking.services.LocationTrackingService;
 import com.carmd.triptracking.ui.AppSettings;
-import com.carmd.triptracking.ui.DailyLocationsActivity;
-import com.carmd.triptracking.ui.GeofenceSettingsActivity;
-import com.carmd.triptracking.ui.MainActivity;
-import com.carmd.triptracking.ui.NotificationSettingsActivity;
-import com.carmd.triptracking.ui.SettingsActivity;
-import com.carmd.triptracking.ui.TripHistoryActivity;
 import com.carmd.triptracking.util.LogcatWriter;
 import com.carmd.triptracking.util.VoiceFeedback;
 
@@ -114,38 +108,6 @@ public class TripTrackerFlutterPlugin implements FlutterPlugin, MethodCallHandle
     @Override
     public void onMethodCall(@NonNull MethodCall call, @NonNull MethodChannel.Result result) {
         switch (call.method) {
-
-            // ── Native Pages ──
-
-            case "openMainView":
-                launchActivity(MainActivity.class);
-                result.success(asMap("opened", true));
-                break;
-
-            case "openSettings":
-                launchActivity(SettingsActivity.class);
-                result.success(asMap("opened", true));
-                break;
-
-            case "openNotificationSettings":
-                launchActivity(NotificationSettingsActivity.class);
-                result.success(asMap("opened", true));
-                break;
-
-            case "openGeofenceManager":
-                launchActivity(GeofenceSettingsActivity.class);
-                result.success(asMap("opened", true));
-                break;
-
-            case "openHistory":
-                launchActivity(TripHistoryActivity.class);
-                result.success(asMap("opened", true));
-                break;
-
-            case "openDailyLocations":
-                launchActivity(DailyLocationsActivity.class);
-                result.success(asMap("opened", true));
-                break;
 
             // ── Tracking Status ──
 
@@ -259,16 +221,6 @@ public class TripTrackerFlutterPlugin implements FlutterPlugin, MethodCallHandle
     // ═══════════════════════════════════════════════════════════════════════
     // Helper methods
     // ═══════════════════════════════════════════════════════════════════════
-
-    private void launchActivity(Class<?> cls) {
-        if (activity != null) {
-            activity.startActivity(new Intent(activity, cls));
-        } else if (context != null) {
-            Intent intent = new Intent(context, cls);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            context.startActivity(intent);
-        }
-    }
 
     private Map<String, Object> getTrackingStatus() {
         Map<String, Object> map = new HashMap<>();

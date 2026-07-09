@@ -287,7 +287,7 @@ public class GeofenceManager {
     // MARK: - Enter / Exit Actions
 
     private func handleEnter(zone: GeofenceZone) {
-        if zone.notifyOnEnter && NotificationSettingsViewController.isGeofenceEnterEnabled {
+        if zone.notifyOnEnter && NotificationManager.isGeofenceEnterEnabled {
             sendNotification(title: "📍 Entered: \(zone.name)",
                              body: "You arrived at \(zone.name).")
         }
@@ -326,7 +326,7 @@ public class GeofenceManager {
     }
 
     private func handleExit(zone: GeofenceZone) {
-        if zone.notifyOnExit && NotificationSettingsViewController.isGeofenceExitEnabled {
+        if zone.notifyOnExit && NotificationManager.isGeofenceExitEnabled {
             sendNotification(title: "📍 Left: \(zone.name)",
                              body: "You left \(zone.name).")
         }

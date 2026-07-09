@@ -11,14 +11,6 @@ abstract class TripTrackerPlatform extends PlatformInterface {
     _instance = instance;
   }
 
-  // Native pages
-  Future<void> openSettings();
-  Future<void> openNotificationSettings();
-  Future<void> openGeofenceManager();
-  Future<void> openMainView();
-  Future<void> openHistory();
-  Future<void> openDailyLocations();
-
   // Tracking
   Future<Map<String, dynamic>> getTrackingStatus();
   Future<Map<String, dynamic>> getCurrentLocation();

@@ -64,15 +64,6 @@ class _TripTrackerPageState extends State<TripTrackerPage> {
         title: const Text('TripTracker'),
         backgroundColor: const Color.fromRGBO(115, 204, 242, 1),
         foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () async {
-              await TripTracker.openSettings();
-              _refreshSettings();
-            },
-          ),
-        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -113,32 +104,6 @@ class _TripTrackerPageState extends State<TripTrackerPage> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
-
-          // ── Native Pages ──
-          const Text('Native Pages', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-
-          _actionTile(Icons.map, 'Main View', 'Full map + tracking UI', () async {
-            await TripTracker.openMainView();
-          }),
-          _actionTile(Icons.settings, 'Settings', 'Thresholds, web monitor, CarPlay', () async {
-            await TripTracker.openSettings();
-            _refreshSettings();
-          }),
-          _actionTile(Icons.notifications, 'Notifications & Voice', 'Per-type toggles', () async {
-            await TripTracker.openNotificationSettings();
-          }),
-          _actionTile(Icons.location_on, 'Geofence Zones', 'Map + zone management', () async {
-            await TripTracker.openGeofenceManager();
-          }),
-          _actionTile(Icons.history, 'Trip History', 'View past trips', () async {
-            await TripTracker.openHistory();
-          }),
-          _actionTile(Icons.calendar_today, 'Daily Locations', 'Day-by-day locations', () async {
-            await TripTracker.openDailyLocations();
-          }),
-
           const SizedBox(height: 16),
 
           // ── Quick Toggles ──
@@ -206,16 +171,6 @@ class _TripTrackerPageState extends State<TripTrackerPage> {
         Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
         Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
       ],
-    );
-  }
-
-  Widget _actionTile(IconData icon, String title, String subtitle, VoidCallback onTap) {
-    return ListTile(
-      leading: Icon(icon, color: Colors.blue),
-      title: Text(title),
-      subtitle: Text(subtitle),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: onTap,
     );
   }
 

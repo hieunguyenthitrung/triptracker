@@ -4,38 +4,6 @@ import 'triptracker_platform_interface.dart';
 class MethodChannelTripTracker extends TripTrackerPlatform {
   static const _channel = MethodChannel('triptracker');
 
-  // ── Native Pages ──
-
-  @override
-  Future<void> openSettings() async {
-    await _channel.invokeMethod('openSettings');
-  }
-
-  @override
-  Future<void> openNotificationSettings() async {
-    await _channel.invokeMethod('openNotificationSettings');
-  }
-
-  @override
-  Future<void> openGeofenceManager() async {
-    await _channel.invokeMethod('openGeofenceManager');
-  }
-
-  @override
-  Future<void> openMainView() async {
-    await _channel.invokeMethod('openMainView');
-  }
-
-  @override
-  Future<void> openHistory() async {
-    await _channel.invokeMethod('openHistory');
-  }
-
-  @override
-  Future<void> openDailyLocations() async {
-    await _channel.invokeMethod('openDailyLocations');
-  }
-
   // ── Tracking ──
 
   @override

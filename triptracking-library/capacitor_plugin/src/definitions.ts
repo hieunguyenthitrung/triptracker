@@ -2,7 +2,7 @@
  * TripTracker Capacitor Plugin
  *
  * Bridges TripTracker iOS native code to Ionic/JavaScript.
- * Provides: tracking status, settings pages, geofencing, notifications, logs.
+ * Provides: tracking status, geofencing, notifications, logs.
  */
 
 import type { PluginListenerHandle } from '@capacitor/core';
@@ -60,26 +60,6 @@ export interface TripTrackerPlugin {
    * Stop the tracking service.
    */
   stopTracking(): Promise<{ stopped: boolean }>;
-
-  // ── Native Pages ──
-
-  /** Open the full native Settings page (sliders, toggles, web monitor, CarPlay). */
-  openSettings(): Promise<{ opened: boolean }>;
-
-  /** Open the Notification Settings page (per-type push toggles + voice). */
-  openNotificationSettings(): Promise<{ opened: boolean }>;
-
-  /** Open the Geofence Manager page (map + zone list). */
-  openGeofenceManager(): Promise<{ opened: boolean }>;
-
-  /** Open the main TripTracker map + tracking view. */
-  openMainView(): Promise<{ opened: boolean }>;
-
-  /** Open the Trip History page. */
-  openHistory(): Promise<{ opened: boolean }>;
-
-  /** Open Daily Locations page. */
-  openDailyLocations(): Promise<{ opened: boolean }>;
 
   // ── Tracking Status ──
 

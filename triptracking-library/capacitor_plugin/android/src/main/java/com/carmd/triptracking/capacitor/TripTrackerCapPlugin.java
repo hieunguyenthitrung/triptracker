@@ -14,12 +14,6 @@ import com.carmd.triptracking.database.LocationDatabase;
 import com.carmd.triptracking.geofence.GeofenceManager;
 import com.carmd.triptracking.services.LocationTrackingService;
 import com.carmd.triptracking.ui.AppSettings;
-import com.carmd.triptracking.ui.DailyLocationsActivity;
-import com.carmd.triptracking.ui.GeofenceSettingsActivity;
-import com.carmd.triptracking.ui.MainActivity;
-import com.carmd.triptracking.ui.NotificationSettingsActivity;
-import com.carmd.triptracking.ui.SettingsActivity;
-import com.carmd.triptracking.ui.TripHistoryActivity;
 
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
@@ -307,54 +301,6 @@ public class TripTrackerCapPlugin extends Plugin {
         ret.put("initialized", true);
         ret.put("permissionGranted", permGranted);
         ret.put("trackingStarted", true);  // Service always starts
-        call.resolve(ret);
-    }
-
-    @PluginMethod
-    public void openSettings(PluginCall call) {
-        launchActivity(SettingsActivity.class);
-        JSObject ret = new JSObject();
-        ret.put("opened", true);
-        call.resolve(ret);
-    }
-
-    @PluginMethod
-    public void openNotificationSettings(PluginCall call) {
-        launchActivity(NotificationSettingsActivity.class);
-        JSObject ret = new JSObject();
-        ret.put("opened", true);
-        call.resolve(ret);
-    }
-
-    @PluginMethod
-    public void openGeofenceManager(PluginCall call) {
-        launchActivity(GeofenceSettingsActivity.class);
-        JSObject ret = new JSObject();
-        ret.put("opened", true);
-        call.resolve(ret);
-    }
-
-    @PluginMethod
-    public void openMainView(PluginCall call) {
-        launchActivity(MainActivity.class);
-        JSObject ret = new JSObject();
-        ret.put("opened", true);
-        call.resolve(ret);
-    }
-
-    @PluginMethod
-    public void openHistory(PluginCall call) {
-        launchActivity(TripHistoryActivity.class);
-        JSObject ret = new JSObject();
-        ret.put("opened", true);
-        call.resolve(ret);
-    }
-
-    @PluginMethod
-    public void openDailyLocations(PluginCall call) {
-        launchActivity(DailyLocationsActivity.class);
-        JSObject ret = new JSObject();
-        ret.put("opened", true);
         call.resolve(ret);
     }
 
@@ -700,12 +646,6 @@ public class TripTrackerCapPlugin extends Plugin {
     // ═══════════════════════════════════════════════════════════════════
     // Helpers
     // ═══════════════════════════════════════════════════════════════════
-
-    private void launchActivity(Class<?> cls) {
-        Intent intent = new Intent(getContext(), cls);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        getContext().startActivity(intent);
-    }
 
     /**
      * Share log files via share sheet (email, etc.)

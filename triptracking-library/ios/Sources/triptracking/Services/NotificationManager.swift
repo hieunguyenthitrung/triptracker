@@ -18,6 +18,37 @@ public class NotificationManager: NSObject {
     // MARK: - Notification identifiers
     private let dailyReminderID = "tt_daily_route_reminder"
 
+    // MARK: - Per-type settings (UserDefaults)
+
+    private struct Keys {
+        static let tripStart     = "tt_notify_tripStart"
+        static let tripEnd       = "tt_notify_tripEnd"
+        static let distanceKm    = "tt_notify_distanceKm"
+        static let geofenceEnter = "tt_notify_geofenceEnter"
+        static let geofenceExit  = "tt_notify_geofenceExit"
+    }
+
+    public static var isTripStartEnabled: Bool {
+        get { UserDefaults.standard.object(forKey: Keys.tripStart) == nil ? true : UserDefaults.standard.bool(forKey: Keys.tripStart) }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.tripStart) }
+    }
+    public static var isTripEndEnabled: Bool {
+        get { UserDefaults.standard.object(forKey: Keys.tripEnd) == nil ? true : UserDefaults.standard.bool(forKey: Keys.tripEnd) }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.tripEnd) }
+    }
+    public static var isDistanceKmEnabled: Bool {
+        get { UserDefaults.standard.object(forKey: Keys.distanceKm) == nil ? true : UserDefaults.standard.bool(forKey: Keys.distanceKm) }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.distanceKm) }
+    }
+    public static var isGeofenceEnterEnabled: Bool {
+        get { UserDefaults.standard.object(forKey: Keys.geofenceEnter) == nil ? true : UserDefaults.standard.bool(forKey: Keys.geofenceEnter) }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.geofenceEnter) }
+    }
+    public static var isGeofenceExitEnabled: Bool {
+        get { UserDefaults.standard.object(forKey: Keys.geofenceExit) == nil ? true : UserDefaults.standard.bool(forKey: Keys.geofenceExit) }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.geofenceExit) }
+    }
+
     private override init() {
         super.init()
     }
@@ -32,7 +63,7 @@ public class NotificationManager: NSObject {
 
     /// Notify when a trip auto-starts.
     public func notifyTripStarted(tripId: Int64, vehicleId: String = "") {
-        guard NotificationSettingsViewController.isTripStartEnabled else { return }
+        guard Self.isTripStartEnabled else { return }
         let content = UNMutableNotificationContent()
         content.title = "🚗 Trip Started"
         let vehicleInfo = vehicleId.isEmpty ? "" : " · Vehicle: \(vehicleId)"
@@ -58,7 +89,7 @@ public class NotificationManager: NSObject {
 
     /// Notify when a trip auto-ends.
     public func notifyTripEnded(tripId: Int64, reason: String, distance: Double, duration: Int64, vehicleId: String = "") {
-        guard NotificationSettingsViewController.isTripEndEnabled else { return }
+        guard Self.isTripEndEnabled else { return }
         let content = UNMutableNotificationContent()
         content.title = "🏁 Trip Ended"
 
@@ -92,7 +123,7 @@ public class NotificationManager: NSObject {
 
     /// Notify when a distance milestone is reached (every 1 km).
     public func notifyDistanceMilestone(km: Int, totalDistance: Double) {
-        guard NotificationSettingsViewController.isDistanceKmEnabled else { return }
+        guard Self.isDistanceKmEnabled else { return }
         let content = UNMutableNotificationContent()
         content.title = "📏 \(km) km Traveled"
 

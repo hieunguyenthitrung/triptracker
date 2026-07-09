@@ -8,7 +8,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 import androidx.core.app.NotificationCompat;
-import com.carmd.triptracking.ui.MainActivity;
 import com.carmd.triptracking.ui.AppSettings;
 import com.google.android.gms.location.Geofence;
 import com.google.android.gms.location.GeofencingEvent;
@@ -108,8 +107,7 @@ public class GeofenceBroadcastReceiver extends BroadcastReceiver {
     private void showGeofenceNotification(Context context, String emoji,
                                            String transitionStr, String zoneName,
                                            String time, int notifId) {
-        Intent launch = new Intent(context, MainActivity.class);
-        launch.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        Intent launch = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
         PendingIntent pi = PendingIntent.getActivity(context, notifId, launch,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 

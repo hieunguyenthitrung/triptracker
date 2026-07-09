@@ -14,11 +14,6 @@ import { TripTracker, TrackingStatus, SettingsResult } from 'capacitor-triptrack
     <ion-header>
       <ion-toolbar color="primary">
         <ion-title>Trip Tracker</ion-title>
-        <ion-buttons slot="end">
-          <ion-button (click)="openSettings()">
-            <ion-icon name="settings-outline"></ion-icon>
-          </ion-button>
-        </ion-buttons>
       </ion-toolbar>
     </ion-header>
 
@@ -52,36 +47,6 @@ import { TripTracker, TrackingStatus, SettingsResult } from 'capacitor-triptrack
           </ion-grid>
         </ion-card-content>
       </ion-card>
-
-      <!-- Quick Actions -->
-      <ion-list>
-        <ion-item button (click)="openSettings()">
-          <ion-icon name="settings-outline" slot="start" color="primary"></ion-icon>
-          <ion-label>
-            <h2>Settings</h2>
-            <p>Tracking thresholds, web monitor, CarPlay</p>
-          </ion-label>
-          <ion-icon name="chevron-forward" slot="end"></ion-icon>
-        </ion-item>
-
-        <ion-item button (click)="openNotificationSettings()">
-          <ion-icon name="notifications-outline" slot="start" color="warning"></ion-icon>
-          <ion-label>
-            <h2>Notifications & Voice</h2>
-            <p>Push notifications, voice announcements</p>
-          </ion-label>
-          <ion-icon name="chevron-forward" slot="end"></ion-icon>
-        </ion-item>
-
-        <ion-item button (click)="openGeofenceManager()">
-          <ion-icon name="location-outline" slot="start" color="danger"></ion-icon>
-          <ion-label>
-            <h2>Geofence Zones</h2>
-            <p>{{ geofenceCount }} zone(s) configured</p>
-          </ion-label>
-          <ion-icon name="chevron-forward" slot="end"></ion-icon>
-        </ion-item>
-      </ion-list>
 
       <!-- Settings Quick Toggles -->
       <ion-card>
@@ -149,21 +114,6 @@ export class TripTrackerPage implements OnInit, OnDestroy {
   async refreshGeofences() {
     const { count } = await TripTracker.getGeofenceZones();
     this.geofenceCount = count;
-  }
-
-  async openSettings() {
-    await TripTracker.openSettings();
-    // Refresh when user comes back
-    setTimeout(() => this.refreshSettings(), 500);
-  }
-
-  async openNotificationSettings() {
-    await TripTracker.openNotificationSettings();
-  }
-
-  async openGeofenceManager() {
-    await TripTracker.openGeofenceManager();
-    setTimeout(() => this.refreshGeofences(), 500);
   }
 
   async toggleWebMonitor() {

@@ -392,20 +392,7 @@ public final class TripTrackerSDK {
             let c = UISceneConfiguration(name: "CarPlay Configuration", sessionRole: session.role)
             c.delegateClass = CarPlaySceneDelegate.self; return c
         }
-        let c = UISceneConfiguration(name: "Default Configuration", sessionRole: session.role)
-        c.delegateClass = SceneDelegate.self; return c
-    }
-
-    // ── Present Native Pages ──
-    public static func presentMainView(from vc: UIViewController) { present(MainViewController(), from: vc) }
-    public static func presentSettings(from vc: UIViewController) { present(SettingsViewController(), from: vc) }
-    public static func presentNotificationSettings(from vc: UIViewController) { present(NotificationSettingsViewController(), from: vc) }
-    public static func presentGeofenceManager(from vc: UIViewController) { present(GeofenceViewController(), from: vc) }
-    public static func presentHistory(from vc: UIViewController) { present(HistoryViewController(), from: vc) }
-    public static func presentDailyLocations(from vc: UIViewController) { present(DailyLocationsViewController(), from: vc) }
-    private static func present(_ child: UIViewController, from vc: UIViewController) {
-        let nav = UINavigationController(rootViewController: child); nav.modalPresentationStyle = .fullScreen
-        vc.present(nav, animated: true)
+        return UISceneConfiguration(name: "Default Configuration", sessionRole: session.role)
     }
 
     // ── Data Access ──

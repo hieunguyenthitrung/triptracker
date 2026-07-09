@@ -5,9 +5,6 @@
 /// ```dart
 /// import 'package:triptracker/triptracker.dart';
 ///
-/// // Open native Settings page
-/// await TripTracker.openSettings();
-///
 /// // Get tracking status
 /// final status = await TripTracker.getTrackingStatus();
 /// print('Speed: ${status.speedKmh} km/h');
@@ -118,26 +115,6 @@ class GeofenceZone {
 
 class TripTracker {
   static TripTrackerPlatform get _platform => TripTrackerPlatform.instance;
-
-  // ── Native Pages ──
-
-  /// Open the full native Settings page (sliders, toggles, web monitor, CarPlay).
-  static Future<void> openSettings() => _platform.openSettings();
-
-  /// Open the Notification Settings page (per-type push toggles + voice).
-  static Future<void> openNotificationSettings() => _platform.openNotificationSettings();
-
-  /// Open the Geofence Manager page (map + zone list).
-  static Future<void> openGeofenceManager() => _platform.openGeofenceManager();
-
-  /// Open the main TripTracker map view.
-  static Future<void> openMainView() => _platform.openMainView();
-
-  /// Open the Trip History page.
-  static Future<void> openHistory() => _platform.openHistory();
-
-  /// Open the Daily Locations page.
-  static Future<void> openDailyLocations() => _platform.openDailyLocations();
 
   // ── Tracking ──
 

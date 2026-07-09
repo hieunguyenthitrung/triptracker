@@ -15,26 +15,6 @@ public class TripTrackerPlugin: NSObject, FlutterPlugin {
 
         switch call.method {
 
-        // ── Native Pages ──
-
-        case "openSettings":
-            presentVC(SettingsViewController(), result: result)
-
-        case "openNotificationSettings":
-            presentVC(NotificationSettingsViewController(), result: result)
-
-        case "openGeofenceManager":
-            presentVC(GeofenceViewController(), result: result)
-
-        case "openMainView":
-            presentVC(MainViewController(), result: result)
-
-        case "openHistory":
-            presentVC(HistoryViewController(), result: result)
-
-        case "openDailyLocations":
-            presentVC(DailyLocationsViewController(), result: result)
-
         // ── Tracking ──
 
         case "getTrackingStatus":
@@ -101,11 +81,11 @@ public class TripTrackerPlugin: NSObject, FlutterPlugin {
                 "webMonitorEnabled": ud.bool(forKey: "tt_webMonitorEnabled"),
                 "voiceFeedbackEnabled": VoiceFeedbackManager.shared.isEnabled,
                 "geofencingEnabled": GeofenceManager.shared.isEnabled,
-                "notifyTripStart": NotificationSettingsViewController.isTripStartEnabled,
-                "notifyTripEnd": NotificationSettingsViewController.isTripEndEnabled,
-                "notifyDistanceKm": NotificationSettingsViewController.isDistanceKmEnabled,
-                "notifyGeofenceEnter": NotificationSettingsViewController.isGeofenceEnterEnabled,
-                "notifyGeofenceExit": NotificationSettingsViewController.isGeofenceExitEnabled,
+                "notifyTripStart": NotificationManager.isTripStartEnabled,
+                "notifyTripEnd": NotificationManager.isTripEndEnabled,
+                "notifyDistanceKm": NotificationManager.isDistanceKmEnabled,
+                "notifyGeofenceEnter": NotificationManager.isGeofenceEnterEnabled,
+                "notifyGeofenceExit": NotificationManager.isGeofenceExitEnabled,
             ])
 
         case "updateSetting":
@@ -222,28 +202,6 @@ public class TripTrackerPlugin: NSObject, FlutterPlugin {
     }
 
     // MARK: - Helpers
-
-    private func presentVC(_ vc: UIViewController, result: @escaping FlutterResult) {
-        DispatchQueue.main.async {
-            let nav = UINavigationController(rootViewController: vc)
-            nav.modalPresentationStyle = .fullScreen
-            if let topVC = UIApplication.shared.connectedScenes
-                .compactMap({ $0 as? UIWindowScene })
-                .first(where: { $0.activationState == .foregroundActive })?
-                .windows.first(where: { $0.isKeyWindow })?
-                .rootViewController {
-                var presenter = topVC
-                while let presented = presenter.presentedViewController {
-                    presenter = presented
-                }
-                presenter.present(nav, animated: true) {
-                    result(["opened": true])
-                }
-            } else {
-                result(FlutterError(code: "NO_VC", message: "No view controller", details: nil))
-            }
-        }
-    }
 
     private func shareFiles(_ files: [URL], subject: String) {
         var items: [Any] = [subject]
