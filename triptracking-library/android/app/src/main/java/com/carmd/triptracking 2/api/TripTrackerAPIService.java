@@ -1,0 +1,485 @@
+package com.carmd.triptracking.api;
+
+import android.content.Context;
+import android.location.Location;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.NetworkRequest;
+import android.os.Build;
+import android.util.Log;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.*;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.text.SimpleDateFormat;
+import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.ArrayList;
+import java.util.List;
+
+public final class TripTrackerAPIService {
+    private static final String TAG = "TripTrackerAPI";
+    private static final int MAX_QUEUE_SIZE = 500;
+    private static TripTrackerAPIService instance;
+
+    // Config
+    private String pingURL = "";
+    private String endURL = "";
+    private String userId = "";
+    private String vehicleId = "";           // Optional
+    private String osInfo = "Android " + Build.VERSION.RELEASE;
+    private String routeId = "";
+    private String authorizationKey = "";
+    private String apiAuthKey = "";          // Legacy
+    private String apiAuthToken = "";        // New header: api-auth-token
+    private String toolId = "";              // Tool/dongle ID
+
+    // Whether to include vehicle_id in outgoing payloads
+    // True during active trip, false otherwise
+    private boolean includeVehicleId = false;
+
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+
+    // ═══════════════════════════════════════════════════════════════
+    // Retry Queue — persists failed requests to disk
+    // ═══════════════════════════════════════════════════════════════
+
+    private final CopyOnWriteArrayList<String> pendingQueue = new CopyOnWriteArrayList<>();
+    private volatile boolean isFlushing = false;
+    private Context appContext;
+    private ConnectivityManager.NetworkCallback networkCallback;
+
+    private TripTrackerAPIService() {}
+
+    public static synchronized TripTrackerAPIService getInstance() {
+        if (instance == null) instance = new TripTrackerAPIService();
+        return instance;
+    }
+
+    /** Call once with app context to enable queue persistence + network monitoring */
+    public void setContext(Context ctx) {
+        this.appContext = ctx.getApplicationContext();
+        loadPendingQueue();
+        startNetworkMonitor();
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Queue Persistence
+    // ═══════════════════════════════════════════════════════════════
+
+    private File getQueueFile() {
+        if (appContext == null) return null;
+        return new File(appContext.getCacheDir(), "triptracker_pending_api.json");
+    }
+
+    private void loadPendingQueue() {
+        File file = getQueueFile();
+        if (file == null || !file.exists()) return;
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader(file));
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) sb.append(line);
+            reader.close();
+
+            JSONArray arr = new JSONArray(sb.toString());
+            pendingQueue.clear();
+            for (int i = 0; i < arr.length(); i++) {
+                pendingQueue.add(arr.getString(i));
+            }
+            Log.i(TAG, "Queue loaded: " + pendingQueue.size() + " pending requests");
+        } catch (Exception e) {
+            Log.e(TAG, "Load queue error: " + e.getMessage());
+        }
+    }
+
+    private void savePendingQueue() {
+        File file = getQueueFile();
+        if (file == null) return;
+        try {
+            JSONArray arr = new JSONArray();
+            for (String item : pendingQueue) arr.put(item);
+            FileWriter writer = new FileWriter(file);
+            writer.write(arr.toString());
+            writer.close();
+        } catch (Exception e) {
+            Log.e(TAG, "Save queue error: " + e.getMessage());
+        }
+    }
+
+    private void enqueue(String url, JSONObject body) {
+        try {
+            JSONObject item = new JSONObject();
+            item.put("url", url);
+            item.put("body", body.toString());
+            item.put("ts", System.currentTimeMillis());
+            pendingQueue.add(item.toString());
+
+            // Trim oldest if over limit
+            while (pendingQueue.size() > MAX_QUEUE_SIZE) {
+                pendingQueue.remove(0);
+            }
+            savePendingQueue();
+            Log.i(TAG, "Queued (total: " + pendingQueue.size() + ") — will retry when online");
+        } catch (Exception e) {
+            Log.e(TAG, "Enqueue error: " + e.getMessage());
+        }
+    }
+
+    /** Flush all pending requests. Called when network becomes available. */
+    public void flushQueue() {
+        if (isFlushing || pendingQueue.isEmpty()) return;
+        isFlushing = true;
+
+        executor.execute(() -> {
+            Log.i(TAG, "Flushing " + pendingQueue.size() + " pending requests…");
+
+            // Separate pings from endTrip
+            JSONArray allLocations = new JSONArray();
+            JSONObject pingTemplate = null;
+            List<String> endTripEntries = new ArrayList<>();
+            List<String> pingEntries = new ArrayList<>();
+
+            for (String entry : pendingQueue) {
+                try {
+                    JSONObject item = new JSONObject(entry);
+                    String url = item.getString("url");
+                    JSONObject body = new JSONObject(item.getString("body"));
+
+                    if (url.equals(pingURL)) {
+                        // Extract locations from ping body
+                        JSONArray locs = body.optJSONArray("location");
+                        if (locs != null) {
+                            for (int i = 0; i < locs.length(); i++) {
+                                allLocations.put(locs.getJSONObject(i));
+                            }
+                        }
+                        if (pingTemplate == null) pingTemplate = body;
+                        pingEntries.add(entry);
+                    } else {
+                        endTripEntries.add(entry);
+                    }
+                } catch (Exception e) {
+                    // Corrupt — will be removed
+                    pingEntries.add(entry);
+                }
+            }
+
+            boolean allSuccess = true;
+
+            // Batch all pings into ONE request
+            if (allLocations.length() > 0 && pingTemplate != null) {
+                try {
+                    pingTemplate.put("location", allLocations);
+                    boolean ok = post(pingURL, pingTemplate);
+                    if (ok) {
+                        Log.i(TAG, "Batch flush: " + allLocations.length() + " locations in 1 request ✅");
+                        pendingQueue.removeAll(pingEntries);
+                    } else {
+                        allSuccess = false;
+                        Log.w(TAG, "Batch flush failed — keeping in queue");
+                    }
+                } catch (Exception e) {
+                    allSuccess = false;
+                }
+            }
+
+            // Send endTrip requests individually (usually just 1)
+            if (allSuccess) {
+                List<String> sentEndTrips = new ArrayList<>();
+                for (String entry : endTripEntries) {
+                    try {
+                        JSONObject item = new JSONObject(entry);
+                        String url = item.getString("url");
+                        JSONObject body = new JSONObject(item.getString("body"));
+                        if (post(url, body)) {
+                            sentEndTrips.add(entry);
+                        } else {
+                            break;
+                        }
+                    } catch (Exception e) {
+                        sentEndTrips.add(entry);
+                    }
+                }
+                pendingQueue.removeAll(sentEndTrips);
+            }
+
+            savePendingQueue();
+            isFlushing = false;
+            Log.i(TAG, "Flush done: " + pendingQueue.size() + " remaining");
+        });
+    }
+
+    public int getPendingCount() { return pendingQueue.size(); }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Network Monitor — auto-flush when connectivity returns
+    // ═══════════════════════════════════════════════════════════════
+
+    private void startNetworkMonitor() {
+        if (appContext == null) return;
+        try {
+            ConnectivityManager cm = (ConnectivityManager) appContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (cm == null) return;
+
+            networkCallback = new ConnectivityManager.NetworkCallback() {
+                @Override
+                public void onAvailable(Network network) {
+                    if (!pendingQueue.isEmpty()) {
+                        Log.i(TAG, "Network restored — flushing pending queue");
+                        flushQueue();
+                    }
+                }
+            };
+
+            NetworkRequest request = new NetworkRequest.Builder()
+                    .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                    .build();
+            cm.registerNetworkCallback(request, networkCallback);
+            Log.i(TAG, "Network monitor started");
+        } catch (Exception e) {
+            Log.e(TAG, "Network monitor error: " + e.getMessage());
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Configure
+    // ═══════════════════════════════════════════════════════════════
+
+    // ── Full config (legacy — kept for backwards compat) ──
+    public void configure(String pingURL, String endURL, String userId, String vehicleId,
+                          String osInfo, String routeId, String authorizationKey, String apiAuthKey) {
+        configure(pingURL, endURL, userId, vehicleId, osInfo, routeId,
+                authorizationKey, apiAuthKey, "");
+    }
+
+    // ── Full config with new apiAuthToken ──
+    public void configure(String pingURL, String endURL, String userId, String vehicleId,
+                          String osInfo, String routeId, String authorizationKey,
+                          String apiAuthKey, String apiAuthToken) {
+        this.pingURL = pingURL != null ? pingURL : "";
+        this.endURL = endURL != null ? endURL : "";
+        this.userId = userId != null ? userId : "";
+        this.vehicleId = vehicleId != null ? vehicleId : "";
+        if (osInfo != null && !osInfo.isEmpty()) this.osInfo = osInfo + " - " + "4.2.4";
+        this.routeId = routeId != null ? routeId : "";
+        this.authorizationKey = authorizationKey != null ? authorizationKey : "";
+        this.apiAuthKey = apiAuthKey != null ? apiAuthKey : "";
+        this.apiAuthToken = apiAuthToken != null ? apiAuthToken : "";
+        Log.i(TAG, "API configured: ping=" + this.pingURL + " user=" + this.userId);
+
+        // Try flushing any pending requests now that config may have URLs
+        if (isEnabled() && !pendingQueue.isEmpty()) {
+            flushQueue();
+        }
+    }
+
+    // ── Update vehicle_id at any time ──
+    public void updateVehicleId(String vehicleId) {
+        this.vehicleId = vehicleId != null ? vehicleId : "";
+        this.routeId = vehicleId != null ? vehicleId : "";
+        Log.i(TAG, "vehicle_id updated → " + this.vehicleId);
+    }
+
+    public void updateToolId(String toolId) {
+        this.toolId = toolId != null ? toolId : "";
+        Log.i(TAG, "tool_id updated → " + this.toolId);
+    }
+
+    public String getVehicleId() {
+        return vehicleId;
+    }
+
+    public void setRouteId(String id) { this.routeId = id != null ? id : ""; }
+    public boolean isEnabled() { return !pingURL.isEmpty() && !endURL.isEmpty() && !userId.isEmpty(); }
+    public boolean hasUserId() { return userId != null && !userId.isEmpty(); }
+    public boolean hasRouteId() { return routeId != null && !routeId.isEmpty(); }
+
+    // ── Trip lifecycle — controls vehicle_id inclusion ──
+    public void onTripStart() {
+        includeVehicleId = true;
+        Log.i(TAG, "Trip started — vehicle_id will be included in pings " + pingURL + " routeId: " + routeId);
+    }
+
+    public void onTripEnd() {
+        includeVehicleId = false;
+        Log.i(TAG, "Trip ended — vehicle_id will NOT be included until next trip");
+    }
+
+    public boolean checkInTrip() {
+        Log.i(TAG, "includeVehicleId /(includeVehicleId)");
+        return includeVehicleId;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // POST /ping/v2
+    // ═══════════════════════════════════════════════════════════════
+
+    public void sendPing(Location location, boolean isMoving, float speed, String activityType) {
+        sendPing(location, isMoving, speed, activityType, this.routeId);
+    }
+
+    public void sendPing(Location location, boolean isMoving, float speed, String activityType, String routeId) {
+        if (!isEnabled()) return;
+        // Suppress pings from 0AM–6AM when user is still — avoid unnecessary API calls overnight
+        if (!isMoving) {
+            int hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY);
+            if (hour < 6) {
+                android.util.Log.d(TAG, "sendPing skipped — quiet hours 0AM–6AM, still, hour=" + hour);
+                return;
+            }
+        }
+
+        executor.execute(() -> {
+            try {
+                JSONObject locObj = new JSONObject();
+                locObj.put("is_Moving", isMoving);
+                locObj.put("timestamp", isoNow());
+                locObj.put("latitude", location.getLatitude());
+                locObj.put("longitude", location.getLongitude());
+                locObj.put("speed", speed);
+                locObj.put("activityType", activityType);
+                locObj.put("route_Id", toolId != null && !toolId.isEmpty() ? this.vehicleId : (includeVehicleId ? vehicleId : ""));
+                locObj.put("tool_Id", toolId != null && !toolId.isEmpty() ? toolId : "");
+                
+                Log.d(TAG, "routeId API :" + this.routeId + " route_id " + routeId + " tool_id : " + toolId);
+
+                JSONArray locArr = new JSONArray();
+                locArr.put(locObj);
+
+                JSONObject body = new JSONObject();
+                body.put("user_Id", userId);
+                body.put("os_Info", osInfo);
+                body.put("location", locArr);
+                
+                // Only include vehicle_Id during active trip and if configured
+                String tmp_vehicle_id = toolId != null && !toolId.isEmpty() ? this.vehicleId : (includeVehicleId ? vehicleId : "");
+                if(!tmp_vehicle_id.isEmpty()){
+                    body.put("vehicle_Id", tmp_vehicle_id);
+                }
+                
+                Log.d(TAG, "TripTracker Body" + body.toString() + pingURL);
+                boolean ok = post(pingURL, body);
+                if (ok) {
+                    Log.d(TAG, "Ping OK: " + body.toString());
+                    // Success — try flushing pending queue too
+                    if (!pendingQueue.isEmpty()) flushQueue();
+                } else {
+                    Log.d(TAG, "Ping FAIL — queued for retry");
+                    enqueue(pingURL, body);
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Ping error: " + e.getMessage());
+            }
+        });
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // POST /end
+    // ═══════════════════════════════════════════════════════════════
+
+    public void sendTripEnd(Location location) {
+        if (!isEnabled()) return;
+        if (routeId == null || routeId.isEmpty()) return;
+        executor.execute(() -> {
+            try {
+                JSONObject body = new JSONObject();
+                body.put("user_Id", userId);
+                body.put("os_Info", osInfo);
+                body.put("timestamp", isoNow());
+                body.put("latitude", location.getLatitude());
+                body.put("longitude", location.getLongitude());
+
+                Log.d(TAG, "📡 Sending trip-end: " + body.toString());
+
+                // Retry up to 3 times with 2s delay
+                boolean ok = false;
+                for (int attempt = 1; attempt <= 3; attempt++) {
+                    ok = post(endURL, body);
+                    if (ok) break;
+                    Log.d(TAG, "Trip-end attempt " + attempt + "/3 failed — retrying in 2s...");
+                    try { Thread.sleep(2000); } catch (InterruptedException ignored) {}
+                }
+
+                includeVehicleId = false;
+
+                if (ok) {
+                    Log.d(TAG, "Trip-end OK");
+                    if (!pendingQueue.isEmpty()) flushQueue();
+                } else {
+                    Log.d(TAG, "Trip-end FAIL after 3 attempts — queued for retry");
+                    // enqueue(endURL, body);
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Trip-end error: " + e.getMessage());
+            }
+        });
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // HTTP POST
+    // ═══════════════════════════════════════════════════════════════
+
+    private boolean post(String urlStr, JSONObject body) {
+        HttpURLConnection conn = null;
+        try {
+            URL url = new URL(urlStr);
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setConnectTimeout(15000);
+            conn.setReadTimeout(15000);
+            conn.setDoOutput(true);
+
+            if (!authorizationKey.isEmpty())
+                conn.setRequestProperty("AuthorizationKey", authorizationKey);
+            if (!apiAuthKey.isEmpty())
+                conn.setRequestProperty("api-auth-key", apiAuthKey);
+            if (!apiAuthToken.isEmpty())
+                conn.setRequestProperty("api-auth-token", apiAuthToken);
+
+            OutputStream os = conn.getOutputStream();
+            os.write(body.toString().getBytes("UTF-8"));
+            os.flush(); os.close();
+
+            int code = conn.getResponseCode();
+            if (code >= 200 && code < 300) {
+                return true;
+            } else {
+                // Read error response for debugging
+                try {
+                    java.io.InputStream errStream = conn.getErrorStream();
+                    if (errStream != null) {
+                        java.io.BufferedReader errReader = new java.io.BufferedReader(new java.io.InputStreamReader(errStream));
+                        StringBuilder errBody = new StringBuilder();
+                        String errLine;
+                        while ((errLine = errReader.readLine()) != null) errBody.append(errLine);
+                        Log.e(TAG, "POST " + urlStr + " → HTTP " + code + ": " + errBody.toString());
+                    } else {
+                        Log.e(TAG, "POST " + urlStr + " → HTTP " + code);
+                    }
+                } catch (Exception ignored) {
+                    Log.e(TAG, "POST " + urlStr + " → HTTP " + code);
+                }
+                return false;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "POST error: " + e.getMessage());
+            return false;
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+    }
+
+    private String isoNow() {
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US);
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+        return sdf.format(new Date());
+    }
+}
