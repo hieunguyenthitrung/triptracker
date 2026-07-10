@@ -684,23 +684,23 @@ public class LocationTrackingService extends Service implements
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0L, 0f,
                     listener,
                     android.os.Looper.getMainLooper());
-            Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: waiting for GPS fix (timeout "
+            Log.d(TAG, "startSensorTracking TripTrackerPlugin getCurrentLocation requestCurrentLocation: waiting for GPS fix (timeout "
                     + (timeoutMs / 1000) + "s)");
         } catch (SecurityException e) {
             handler.removeCallbacksAndMessages(null);
-            Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: GPS permission error");
+            Log.d(TAG, "startSensorTracking TripTrackerPlugin getCurrentLocation requestCurrentLocation: GPS permission error");
             callback.onError("GPS permission error: " + e.getMessage());
         }
     }
 
     private void pingAndReturn(Location loc, LocationCallback callback) {
-        Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: fix ok acc=" + loc.getAccuracy()
+        Log.d(TAG, "startSensorTracking TripTrackerPlugin getCurrentLocation requestCurrentLocation: fix ok acc=" + loc.getAccuracy()
                 + "m spd=" + loc.getSpeed() + " m/s");
         if (isTracking) {
             if (lastGpsLocationInTrip != null) {
                 long gapMs = loc.getTime() - lastGpsLocationInTrip.getTime();
                 if (gapMs > 5 * 60_000L) {
-                    Log.w(TAG, "⚠️ No GPS fix in trip for " + (gapMs / 60_000) +
+                    Log.w(TAG, "⚠️ startSensorTracking No GPS fix in trip for " + (gapMs / 60_000) +
                             " min — ending trip #" + currentTripId);
                     forceEndTrip();
                 }
@@ -721,10 +721,10 @@ public class LocationTrackingService extends Service implements
                 String activityType = speed >= threshold ? "in_vehicle"
                         : (speed >= 1.5f ? "running" : (speed >= 0.5f ? "walking" : "still"));
                 api.sendPing(loc, isTracking ? true : false, 0, isTracking ? "in_vehicle" : "still", null);
-                Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: pinged (" + loc.getLatitude()
+                Log.d(TAG, "startSensorTracking TripTrackerPlugin getCurrentLocation requestCurrentLocation: pinged (" + loc.getLatitude()
                         + ", " + loc.getLongitude() + ") spd=" + speed + " m/s");
             } else {
-                Log.d(TAG, "requestCurrentLocation: ping skipped (" + (sincePing / 1000) + "s since last ping)");
+                Log.d(TAG, "startSensorTracking TripTrackerPlugin getCurrentLocation requestCurrentLocation: ping skipped (" + (sincePing / 1000) + "s since last ping)");
             }
         }
         callback.onLocation(loc);
