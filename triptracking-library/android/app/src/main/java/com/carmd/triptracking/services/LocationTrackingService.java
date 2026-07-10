@@ -1615,7 +1615,7 @@ public class LocationTrackingService extends Service implements
                         String.format("%.6f, %.6f", seed.getLatitude(), seed.getLongitude()) + ")");
             } else {
                 Log.w(TAG, "No cached location — requesting live fix to seed sensors");
-                requestSingleLocationFix();
+                // requestSingleLocationFix();
             }
         } catch (Exception e) {
             Log.e(TAG, "Failed to start sensor tracking", e);
