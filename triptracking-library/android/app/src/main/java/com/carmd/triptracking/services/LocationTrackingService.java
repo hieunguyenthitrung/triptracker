@@ -712,7 +712,7 @@ public class LocationTrackingService extends Service implements
                         + loc.getAccuracy()
                         + "m spd=" + loc.getSpeed() + " m/s");
         if (isTracking) {
-            lastGpsLocationInTrip = database.getLastGpsLocationForTrip(currentTripId);
+            Location lastGpsLocationInTrip = database.getLastGpsLocationForTrip(currentTripId);
             if (lastGpsLocationInTrip != null) {
                 long gapMs = loc.getTime() - lastGpsLocationInTrip.getTime();
                 if (gapMs > 5 * 60_000L) {
@@ -726,7 +726,6 @@ public class LocationTrackingService extends Service implements
             }else{
                 Log.d(TAG, "startSensorTracking CANNOT ENDTRIP GPS fix in trip — trip #" + currentTripId);
             }
-            lastGpsLocationInTrip = loc;
         }
         TripTrackerAPIService api = TripTrackerAPIService.getInstance();
         if (api != null && api.isEnabled()) {
