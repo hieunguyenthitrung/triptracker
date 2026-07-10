@@ -1793,7 +1793,7 @@ public class LocationTrackingService extends Service implements
             locationManager.removeUpdates(this);
             long minTimeMs = isTracking ? GPS_ACTIVE_INTERVAL_MS : GPS_IDLE_INTERVAL_MS;
             float minDistanceM = isTracking ? GPS_ACTIVE_MIN_DISTANCE_M : GPS_IDLE_MIN_DISTANCE_M;
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, minTimeMs, minDistanceM, this);
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 30_000L, 80f, this);
             Log.d(TAG, "GPS updates started (" + (minTimeMs / 1000) + "s / " + minDistanceM + "m)");
         } catch (SecurityException e) {
             Log.e(TAG, "Permission error starting GPS", e);
