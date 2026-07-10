@@ -667,8 +667,9 @@ public class LocationTrackingService extends Service implements
         }, timeoutMs);
 
         try {
-            // locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0L, 0f, listener,
-            //         android.os.Looper.getMainLooper());
+            // locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0L, 0f,
+            // listener,
+            // android.os.Looper.getMainLooper());
             Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: waiting for GPS fix (timeout "
                     + (timeoutMs / 1000) + "s)");
         } catch (SecurityException e) {
@@ -1023,10 +1024,10 @@ public class LocationTrackingService extends Service implements
             locationManager.removeUpdates(this);
             // Immediately re-register at low rate — keeps GPS chip warm
             // locationManager.requestLocationUpdates(
-            //         LocationManager.GPS_PROVIDER,
-            //         30_000L, // 30 seconds interval
-            //         80f, // 100 meters displacement
-            //         this);
+            // LocationManager.GPS_PROVIDER,
+            // 30_000L, // 30 seconds interval
+            // 80f, // 100 meters displacement
+            // this);
             Log.d(TAG, "🔋 GPS LOW-POWER — 30s/100m (Activity Recognition + sensor still active)");
         } catch (SecurityException e) {
             Log.e(TAG, "stopGpsUpdates: no permission — " + e.getMessage());
@@ -2233,17 +2234,16 @@ public class LocationTrackingService extends Service implements
             if (!isTracking) {
                 activityRecognitionVehicle = true;
                 // Re-enable GPS to confirm vehicle speed — was stopped to save battery
-                // startGPSTracking();
+                startGPSTracking();
                 // // Safety timeout: if no trip starts within 2 min, stop GPS to save battery
-                // if (autoStopHandler == null) autoStopHandler = new
-                // Handler(Looper.getMainLooper());
+                // if (autoStopHandler == null)
+                //     autoStopHandler = new Handler(Looper.getMainLooper());
                 // autoStopHandler.postDelayed(() -> {
-                // if (!isTracking && activityRecognitionVehicle) {
-                // Log.i(TAG, "🔋 GPS confirmation timeout (2 min) — no vehicle speed confirmed,
-                // stopping GPS");
-                // activityRecognitionVehicle = false;
-                // stopGpsUpdates();
-                // }
+                //     if (!isTracking && activityRecognitionVehicle) {
+                //         Log.i(TAG, "🔋 GPS confirmation timeout (2 min) — no vehicle speed confirmed, stopping GPS");
+                //         activityRecognitionVehicle = false;
+                //         stopGpsUpdates();
+                //     }
                 // }, 120_000L); // 2 minutes
                 // If GPS speed is already high enough, start now
                 Location loc = getCurrentLocation();
