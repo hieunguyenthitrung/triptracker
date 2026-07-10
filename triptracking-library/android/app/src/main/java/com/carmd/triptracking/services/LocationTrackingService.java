@@ -1111,7 +1111,7 @@ public class LocationTrackingService extends Service implements
     // multiple times for one logical toggle. Without this, every stray firing
     // re-triggers startGPSTracking() (removeUpdates+requestLocationUpdates)
     // even though GPS's own enabled state never actually changed.
-    private Boolean lastKnownGpsProviderEnabled = null;
+    private Boolean lastKnownGpsProviderEnabled = false;
 
     /**
      * Stop GPS updates to save battery. Sensor tracker + Activity Recognition stay
