@@ -1776,13 +1776,25 @@ public class LocationTrackingService extends Service implements
         }
     }
 
+    // Idle/detection: battery-friendly poll while waiting to confirm a vehicle.
+    private static final long GPS_IDLE_INTERVAL_MS = 30_000L;
+    private static final float GPS_IDLE_MIN_DISTANCE_M = 80f;
+    // Active trip: fixes must arrive often enough that vehicleSaveDistance()
+    // (default 30 m, configurable) can actually gate save spacing instead of
+    // being blown through by minTime alone. At 40 m/s (144 km/h) 3s = 120m —
+    // still fine-grained relative to a 80-100m save distance.
+    private static final long GPS_ACTIVE_INTERVAL_MS = 3_000L;
+    private static final float GPS_ACTIVE_MIN_DISTANCE_M = 0f;
+
     private void startGPSTracking() {
         if (!hasPermission(Manifest.permission.ACCESS_FINE_LOCATION))
             return;
         try {
             locationManager.removeUpdates(this);
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 30_000L, 80f, this);
-            Log.d(TAG, "GPS updates started (30s / 80m)");
+            long minTimeMs = isTracking ? GPS_ACTIVE_INTERVAL_MS : GPS_IDLE_INTERVAL_MS;
+            float minDistanceM = isTracking ? GPS_ACTIVE_MIN_DISTANCE_M : GPS_IDLE_MIN_DISTANCE_M;
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, minTimeMs, minDistanceM, this);
+            Log.d(TAG, "GPS updates started (" + (minTimeMs / 1000) + "s / " + minDistanceM + "m)");
         } catch (SecurityException e) {
             Log.e(TAG, "Permission error starting GPS", e);
         }
