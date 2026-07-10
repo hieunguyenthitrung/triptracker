@@ -1829,7 +1829,7 @@ public class LocationTrackingService extends Service implements
     // (default 30 m, configurable) can actually gate save spacing instead of
     // being blown through by minTime alone. At 40 m/s (144 km/h) 3s = 120m —
     // still fine-grained relative to a 80-100m save distance.
-    private static final long GPS_ACTIVE_INTERVAL_MS = 15_000L;
+    private static final long GPS_ACTIVE_INTERVAL_MS = 5_000L;
     private static final float GPS_ACTIVE_MIN_DISTANCE_M = 0f;
 
     private void startGPSTracking(String callFrom, boolean forceStartGPS) {
