@@ -216,7 +216,6 @@ public class LocationTrackingService extends Service implements
     private Location lastSavedSensorLocation = null; // last sensor location actually saved (walk debounce)
     private Location lastGpsLocation = null; // latest GPS fix (updated every fix)
     private Location lastSavedGpsLocation = null; // last GPS fix actually saved (vehicle debounce)
-    private Location lastGpsLocationInTrip = null; // last GPS for in Trip
 
     // ── Speed state ───────────────────────────────────────────────────────────
     private float lastGpsSpeed = 0f;
@@ -713,15 +712,16 @@ public class LocationTrackingService extends Service implements
                         + loc.getAccuracy()
                         + "m spd=" + loc.getSpeed() + " m/s");
         if (isTracking) {
+            lastGpsLocationInTrip = database.getLastGpsLocationForTrip(currentTripId);
             if (lastGpsLocationInTrip != null) {
                 long gapMs = loc.getTime() - lastGpsLocationInTrip.getTime();
                 if (gapMs > 5 * 60_000L) {
                     Log.w(TAG, "⚠️ startSensorTracking No GPS fix in trip for " + (gapMs / 60_000) +
-                            " min — ending trip #" + currentTripId);
+                            " min — ending trip #" + currentTripId + lastGpsLocationInTrip.getLatitude() + "," + lastGpsLocationInTrip.getLongitude() + " → " + loc.getLatitude() + "," + loc.getLongitude());
                     forceEndTrip();
                 }else{
                     Log.d(TAG, "startSensorTracking CANNOT ENDTRIP  GPS fix in trip after " + (gapMs / 60_000) +
-                            " min — trip #" + currentTripId);
+                            " min — trip #" + currentTripId + lastGpsLocationInTrip.getLatitude() + "," + lastGpsLocationInTrip.getLongitude() + " → " + loc.getLatitude() + "," + loc.getLongitude());
                 }
             }else{
                 Log.d(TAG, "startSensorTracking CANNOT ENDTRIP GPS fix in trip — trip #" + currentTripId);
@@ -1687,9 +1687,6 @@ public class LocationTrackingService extends Service implements
         } else {
             moving = false;
             activityType = "still";
-        }
-        if (isTracking && activityType.equals("in_vehicle")) {
-            lastGpsLocationInTrip = location;
         }
         TripTrackerAPIService.getInstance().sendPing(location, moving, speed, activityType);
 

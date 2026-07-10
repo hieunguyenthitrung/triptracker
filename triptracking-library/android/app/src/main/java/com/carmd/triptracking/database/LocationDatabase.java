@@ -235,6 +235,36 @@ public class LocationDatabase extends SQLiteOpenHelper {
     }
     
     /**
+     * Get the most recently saved location for a trip (null if none saved yet).
+     * Ordered by LOC_ID (autoincrement insert order), not timestamp, since the
+     * device clock isn't guaranteed monotonic across GPS vs sensor sources.
+     */
+    public LocationPoint getLatestLocationForTrip(long tripId) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.query(TABLE_LOCATIONS, null,
+                LOC_TRIP_ID + "=?", new String[]{String.valueOf(tripId)},
+                null, null, LOC_ID + " DESC", "1");
+
+        LocationPoint point = null;
+        if (cursor.moveToFirst()) {
+            point = new LocationPoint();
+            point.id = cursor.getLong(cursor.getColumnIndexOrThrow(LOC_ID));
+            point.tripId = cursor.getLong(cursor.getColumnIndexOrThrow(LOC_TRIP_ID));
+            point.latitude = cursor.getDouble(cursor.getColumnIndexOrThrow(LOC_LATITUDE));
+            point.longitude = cursor.getDouble(cursor.getColumnIndexOrThrow(LOC_LONGITUDE));
+            point.altitude = cursor.getDouble(cursor.getColumnIndexOrThrow(LOC_ALTITUDE));
+            point.accuracy = cursor.getFloat(cursor.getColumnIndexOrThrow(LOC_ACCURACY));
+            point.speed = cursor.getFloat(cursor.getColumnIndexOrThrow(LOC_SPEED));
+            point.bearing = cursor.getFloat(cursor.getColumnIndexOrThrow(LOC_BEARING));
+            point.timestamp = cursor.getLong(cursor.getColumnIndexOrThrow(LOC_TIMESTAMP));
+            point.source = cursor.getString(cursor.getColumnIndexOrThrow(LOC_SOURCE));
+            point.provider = cursor.getString(cursor.getColumnIndexOrThrow(LOC_PROVIDER));
+        }
+        cursor.close();
+        return point;
+    }
+
+    /**
      * Get all locations for a trip
      */
     public List<LocationPoint> getLocationsForTrip(long tripId) {
