@@ -301,9 +301,11 @@ public final class TripTrackerSDK {
     public static void onPermissionGranted(Context context) {
         LocationTrackingService svc = LocationTrackingService.getInstance();
         if (svc != null) {
+            Log.i(TAG, "✅ startSensorTracking Permission granted 11 — location tracking activated");
             svc.onLocationPermissionGranted();
             Log.i(TAG, "✅ Permission granted — location tracking activated");
         } else {
+            Log.i(TAG, "✅ startSensorTracking Permission granted 22 — location tracking activated");
             // Service not running yet, start it
             startTracking(context);
         }

@@ -248,6 +248,8 @@ public class LocationTrackingService extends Service implements
     public void onCreate() {
         super.onCreate();
 
+        Log.d(TAG, "🔋 startSensorTracking onCreate");
+
         createNotificationChannel();
         instance = this;
         database = LocationDatabase.getInstance(this);
@@ -289,6 +291,7 @@ public class LocationTrackingService extends Service implements
      * Can be called from SDK or from the permission poller.
      */
     public void onLocationPermissionGranted() {
+        Log.d(TAG, "🔋 startSensorTracking onLocationPermissionGranted");
         if (locationTrackingActive) {
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
                 if (!isTracking) {
