@@ -209,6 +209,7 @@ public class LocationTrackingService extends Service implements
     private LocationDatabase database;
     private LocationWebServer webServer;
     private final List<LocationUpdateCallback> listeners = new ArrayList<>();
+    private BroadcastReceiver locationProviderReceiver;
 
     // ── Location state ────────────────────────────────────────────────────────
     private Location lastSensorLocation = null; // dead-reckoned by sensor tracker
@@ -309,6 +310,7 @@ public class LocationTrackingService extends Service implements
         if (sensorTracker == null) {
             sensorTracker = new SensorBasedLocationTracker(this, this);
         }
+        registerLocationProviderReceiver();
 
         PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "TripTracker::WakeLock");
@@ -424,6 +426,7 @@ public class LocationTrackingService extends Service implements
         try {
             stopPermissionPoller();
             stopActivityRecognition();
+            unregisterLocationProviderReceiver();
             if (isTracking) {
                 saveCheckpoint();
                 scheduleWatchdog();
@@ -1016,6 +1019,48 @@ public class LocationTrackingService extends Service implements
     // =========================================================================
 
     /**
+     * Register for the system-wide PROVIDERS_CHANGED broadcast. Unlike
+     * LocationListener.onProviderEnabled/Disabled — which only fire while a
+     * requestLocationUpdates() registration is active — this fires any time
+     * the user toggles GPS/location, even during the low-power window after
+     * stopGpsUpdates() has called removeUpdates(this).
+     */
+    private void registerLocationProviderReceiver() {
+        if (locationProviderReceiver != null)
+            return; // already registered
+        locationProviderReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                boolean gpsEnabled = locationManager != null
+                        && locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+                if (gpsEnabled) {
+                    onProviderEnabled(LocationManager.GPS_PROVIDER);
+                } else {
+                    onProviderDisabled(LocationManager.GPS_PROVIDER);
+                }
+            }
+        };
+        IntentFilter filter = new IntentFilter(LocationManager.PROVIDERS_CHANGED_ACTION);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(locationProviderReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(locationProviderReceiver, filter);
+        }
+        Log.i(TAG, "✅ Location provider change receiver registered");
+    }
+
+    private void unregisterLocationProviderReceiver() {
+        if (locationProviderReceiver != null) {
+            try {
+                unregisterReceiver(locationProviderReceiver);
+            } catch (Exception e) {
+                Log.w(TAG, "unregisterLocationProviderReceiver: " + e.getMessage());
+            }
+            locationProviderReceiver = null;
+        }
+    }
+
+    /**
      * Stop GPS updates to save battery. Sensor tracker + Activity Recognition stay
      * alive.
      */
@@ -1552,13 +1597,15 @@ public class LocationTrackingService extends Service implements
 
     @Override
     public void onProviderEnabled(@NonNull String p) {
-        Log.d(TAG, "GPS provider enabled: 4444" + p);
+        Log.i(TAG, "📡 Provider enabled: " + p + " — resuming GPS tracking");
+        if (LocationManager.GPS_PROVIDER.equals(p)) {
+            startGPSTracking();
+        }
     }
 
     @Override
     public void onProviderDisabled(@NonNull String p) {
-        Log.d(TAG, "GPS provider disabled: 9999" + p);
-
+        Log.w(TAG, "🚫 Provider disabled: " + p + " — falling back to sensor-only tracking");
     }
 
     // =========================================================================
