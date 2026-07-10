@@ -1106,12 +1106,20 @@ public class LocationTrackingService extends Service implements
         }
     }
 
+    // Edge-detection for PROVIDERS_CHANGED_ACTION — that broadcast fires for ANY
+    // provider change (network/passive/fused too, not just GPS) and can fire
+    // multiple times for one logical toggle. Without this, every stray firing
+    // re-triggers startGPSTracking() (removeUpdates+requestLocationUpdates)
+    // even though GPS's own enabled state never actually changed.
+    private Boolean lastKnownGpsProviderEnabled = null;
+
     /**
      * Stop GPS updates to save battery. Sensor tracker + Activity Recognition stay
      * alive.
      */
     private void stopGpsUpdates() {
         try {
+            lastKnownGpsProviderEnabled = false;
             locationManager.removeUpdates(this);
             // Immediately re-register at low rate — keeps GPS chip warm
             // locationManager.requestLocationUpdates(
@@ -1837,7 +1845,12 @@ public class LocationTrackingService extends Service implements
         if (!hasPermission(Manifest.permission.ACCESS_FINE_LOCATION))
             return;
         try {
+            if(lastKnownGpsProviderEnabled ) {
+                Log.w(TAG, "startGPSTracking skipped — already running");
+                return;
+            }
             locationManager.removeUpdates(this);
+            lastKnownGpsProviderEnabled = true;
             long minTimeMs = isTracking || forceStartGPS ? GPS_ACTIVE_INTERVAL_MS : GPS_IDLE_INTERVAL_MS;
             float minDistanceM = isTracking || forceStartGPS ? GPS_ACTIVE_MIN_DISTANCE_M : GPS_IDLE_MIN_DISTANCE_M;
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, minTimeMs, minDistanceM, this);
