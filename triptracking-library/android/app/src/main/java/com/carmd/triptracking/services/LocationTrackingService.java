@@ -289,11 +289,24 @@ public class LocationTrackingService extends Service implements
      * Can be called from SDK or from the permission poller.
      */
     public void onLocationPermissionGranted() {
-        if (locationTrackingActive)
+        if (locationTrackingActive) {
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                if (!isTracking) {
+                    stopGpsUpdates();
+                    Log.d(TAG, "🔋 startSensorTracking GPS stopped — still, location icon hidden");
+                }
+            }, 30_000L);
             return;
+        }
         Log.i(TAG, "✅ Permission granted — activating location tracking");
         stopPermissionPoller();
         activateLocationTracking();
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            if (!isTracking) {
+                stopGpsUpdates();
+                Log.d(TAG, "🔋 startSensorTracking GPS stopped — still, location icon hidden");
+            }
+        }, 30_000L);
     }
 
     /**
@@ -370,12 +383,6 @@ public class LocationTrackingService extends Service implements
         }
 
         Log.d(TAG, "Service started — sensor-first tracking active");
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            if (!isTracking) {
-                stopGpsUpdates();
-                Log.d(TAG, "🔋 startSensorTracking GPS stopped — still, location icon hidden");
-            }
-        }, 30_000L);
     }
 
     @Override
@@ -1707,8 +1714,8 @@ public class LocationTrackingService extends Service implements
             return;
         }
         try {
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 30_000L, 80f, oneShot);
-            Log.d(TAG, "📡 GPS HIGH-ACCURACY started (30s / 80m) — GPS icon visible");
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, minTimeMs, minDistanceM, oneShot);
+            Log.d(TAG, "📡 GPS HIGH-ACCURACY started (" + minTimeMs + "ms / " + minDistanceM + "m) — GPS icon visible");
         } catch (SecurityException e) {
             Log.e(TAG, "Permission error requesting one-shot fix", e);
         }
@@ -1783,7 +1790,7 @@ public class LocationTrackingService extends Service implements
     // (default 30 m, configurable) can actually gate save spacing instead of
     // being blown through by minTime alone. At 40 m/s (144 km/h) 3s = 120m —
     // still fine-grained relative to a 80-100m save distance.
-    private static final long GPS_ACTIVE_INTERVAL_MS = 3_000L;
+    private static final long GPS_ACTIVE_INTERVAL_MS = 15_000L;
     private static final float GPS_ACTIVE_MIN_DISTANCE_M = 0f;
 
     private void startGPSTracking() {
@@ -1793,7 +1800,7 @@ public class LocationTrackingService extends Service implements
             locationManager.removeUpdates(this);
             long minTimeMs = isTracking ? GPS_ACTIVE_INTERVAL_MS : GPS_IDLE_INTERVAL_MS;
             float minDistanceM = isTracking ? GPS_ACTIVE_MIN_DISTANCE_M : GPS_IDLE_MIN_DISTANCE_M;
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 30_000L, 80f, this);
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, minTimeMs, minDistanceM, this);
             Log.d(TAG, "GPS updates started (" + (minTimeMs / 1000) + "s / " + minDistanceM + "m)");
         } catch (SecurityException e) {
             Log.e(TAG, "Permission error starting GPS", e);
@@ -2296,13 +2303,14 @@ public class LocationTrackingService extends Service implements
                 startGPSTracking();
                 // // Safety timeout: if no trip starts within 2 min, stop GPS to save battery
                 // if (autoStopHandler == null)
-                //     autoStopHandler = new Handler(Looper.getMainLooper());
+                // autoStopHandler = new Handler(Looper.getMainLooper());
                 // autoStopHandler.postDelayed(() -> {
-                //     if (!isTracking && activityRecognitionVehicle) {
-                //         Log.i(TAG, "🔋 GPS confirmation timeout (2 min) — no vehicle speed confirmed, stopping GPS");
-                //         activityRecognitionVehicle = false;
-                //         stopGpsUpdates();
-                //     }
+                // if (!isTracking && activityRecognitionVehicle) {
+                // Log.i(TAG, "🔋 GPS confirmation timeout (2 min) — no vehicle speed confirmed,
+                // stopping GPS");
+                // activityRecognitionVehicle = false;
+                // stopGpsUpdates();
+                // }
                 // }, 120_000L); // 2 minutes
                 // If GPS speed is already high enough, start now
                 Location loc = getCurrentLocation();
