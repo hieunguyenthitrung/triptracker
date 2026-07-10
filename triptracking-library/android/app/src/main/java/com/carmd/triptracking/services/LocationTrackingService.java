@@ -216,6 +216,7 @@ public class LocationTrackingService extends Service implements
     private Location lastSavedSensorLocation = null; // last sensor location actually saved (walk debounce)
     private Location lastGpsLocation = null; // latest GPS fix (updated every fix)
     private Location lastSavedGpsLocation = null; // last GPS fix actually saved (vehicle debounce)
+    private Location lastGpsLocationInTrip = null; // last GPS for in Trip
 
     // ── Speed state ───────────────────────────────────────────────────────────
     private float lastGpsSpeed = 0f;
@@ -340,7 +341,7 @@ public class LocationTrackingService extends Service implements
         // Otherwise, Activity Recognition will detect IN_VEHICLE → start GPS for
         // confirmation.
         // GPS runs continuously: calibration + vehicle-speed detection
-        startGPSTracking();
+        startGPSTracking("activateLocationTracking");
 
         // Activity Recognition — detect automotive/still (like iOS CMMotionActivity)
         startActivityRecognition();
@@ -681,8 +682,8 @@ public class LocationTrackingService extends Service implements
 
         try {
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0L, 0f,
-            listener,
-            android.os.Looper.getMainLooper());
+                    listener,
+                    android.os.Looper.getMainLooper());
             Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: waiting for GPS fix (timeout "
                     + (timeoutMs / 1000) + "s)");
         } catch (SecurityException e) {
@@ -695,6 +696,17 @@ public class LocationTrackingService extends Service implements
     private void pingAndReturn(Location loc, LocationCallback callback) {
         Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: fix ok acc=" + loc.getAccuracy()
                 + "m spd=" + loc.getSpeed() + " m/s");
+        if (isTracking) {
+            if (lastGpsLocationInTrip != null) {
+                long gapMs = loc.getTime() - lastGpsLocationInTrip.getTime();
+                if (gapMs > 5 * 60_000L) {
+                    Log.w(TAG, "⚠️ No GPS fix in trip for " + (gapMs / 60_000) +
+                            " min — ending trip #" + currentTripId);
+                    forceEndTrip();
+                }
+            }
+            lastGpsLocationInTrip = loc;
+        }
         TripTrackerAPIService api = TripTrackerAPIService.getInstance();
         if (api != null && api.isEnabled()) {
             long now = System.currentTimeMillis();
@@ -708,7 +720,7 @@ public class LocationTrackingService extends Service implements
                 float threshold = AppSettings.getVehicleSpeed(getApplicationContext());
                 String activityType = speed >= threshold ? "in_vehicle"
                         : (speed >= 1.5f ? "running" : (speed >= 0.5f ? "walking" : "still"));
-                api.sendPing(loc, false, 0, "still");
+                api.sendPing(loc, isTracking ? true : false, 0, isTracking ? "in_vehicle" : "still", null);
                 Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: pinged (" + loc.getLatitude()
                         + ", " + loc.getLongitude() + ") spd=" + speed + " m/s");
             } else {
@@ -824,7 +836,7 @@ public class LocationTrackingService extends Service implements
         // because the current speed reading is what triggered the auto-start.
 
         // GPS was stopped by the previous stopTracking() call — restart it.
-        startGPSTracking();
+        startGPSTracking("startTracking");
 
         Log.d(TAG, "🚗 AUTO-TRIP STARTED — ID=" + currentTripId);
 
@@ -1011,7 +1023,7 @@ public class LocationTrackingService extends Service implements
             autoStopHandler = new Handler(Looper.getMainLooper());
         autoStopHandler.postDelayed(() -> {
             if (!isTracking) {
-                startGPSTracking();
+                startGPSTracking("stopTracking");
                 Log.d(TAG, "📡 GPS resumed after trip end — will stop in 15s if still parked");
                 // Stop GPS again after 15s if no trip has started (device still parked)
                 autoStopHandler.postDelayed(() -> {
@@ -1367,7 +1379,7 @@ public class LocationTrackingService extends Service implements
             // Re-enable GPS on any confirmed movement — the sensor already requires
             // MOVEMENT_THRESHOLD (2.0 m/s²) sustained for 800ms before firing, so
             // noise is already filtered out at the source. No speed guard needed here.
-            startGPSTracking();
+            startGPSTracking("onMovementDetected");
         }
         rescheduleSaveLoop();
         Log.d(TAG, "Movement state → " + (isMoving ? "MOVING" : "STILL") +
@@ -1609,7 +1621,7 @@ public class LocationTrackingService extends Service implements
     public void onProviderEnabled(@NonNull String p) {
         Log.i(TAG, "📡 Provider enabled: " + p + " — resuming GPS tracking");
         if (LocationManager.GPS_PROVIDER.equals(p)) {
-            startGPSTracking();
+            startGPSTracking("onProviderEnabled");
         }
     }
 
@@ -1651,7 +1663,9 @@ public class LocationTrackingService extends Service implements
             moving = false;
             activityType = "still";
         }
-        lastKnownActivityType = activityType;
+        if (isTracking && activityType.equals("in_vehicle")) {
+            lastGpsLocationInTrip = location;
+        }
         TripTrackerAPIService.getInstance().sendPing(location, moving, speed, activityType);
 
         Log.d(TAG, "Saved: source=" + sourceStr +
@@ -1798,7 +1812,7 @@ public class LocationTrackingService extends Service implements
     private static final long GPS_ACTIVE_INTERVAL_MS = 15_000L;
     private static final float GPS_ACTIVE_MIN_DISTANCE_M = 0f;
 
-    private void startGPSTracking() {
+    private void startGPSTracking(String callFrom) {
         if (!hasPermission(Manifest.permission.ACCESS_FINE_LOCATION))
             return;
         try {
@@ -1806,7 +1820,8 @@ public class LocationTrackingService extends Service implements
             long minTimeMs = isTracking ? GPS_ACTIVE_INTERVAL_MS : GPS_IDLE_INTERVAL_MS;
             float minDistanceM = isTracking ? GPS_ACTIVE_MIN_DISTANCE_M : GPS_IDLE_MIN_DISTANCE_M;
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, minTimeMs, minDistanceM, this);
-            Log.d(TAG, "startSensorTracking GPS updates started (" + (minTimeMs / 1000) + "s / " + minDistanceM + "m)");
+            Log.d(TAG, "startSensorTracking GPS updates started (" + (minTimeMs / 1000) + "s / " + minDistanceM + "m)"
+                    + " callFrom=" + callFrom);
         } catch (SecurityException e) {
             Log.e(TAG, "Permission error starting GPS", e);
         }
@@ -1944,7 +1959,7 @@ public class LocationTrackingService extends Service implements
         lastGpsSpeed = 0f;
         lastGpsUpdateTime = 0L;
 
-        startGPSTracking();
+        startGPSTracking("tryResumeFromCheckpoint");
 
         Location seed = getBestAvailableLocation();
         if (seed != null) {
@@ -2305,7 +2320,7 @@ public class LocationTrackingService extends Service implements
             if (!isTracking) {
                 activityRecognitionVehicle = true;
                 // Re-enable GPS to confirm vehicle speed — was stopped to save battery
-                startGPSTracking();
+                startGPSTracking("onActivityTransition");
                 // // Safety timeout: if no trip starts within 2 min, stop GPS to save battery
                 // if (autoStopHandler == null)
                 // autoStopHandler = new Handler(Looper.getMainLooper());
