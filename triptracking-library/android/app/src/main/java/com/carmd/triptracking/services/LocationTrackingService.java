@@ -677,9 +677,9 @@ public class LocationTrackingService extends Service implements
         }, timeoutMs);
 
         try {
-            // locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0L, 0f,
-            // listener,
-            // android.os.Looper.getMainLooper());
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0L, 0f,
+            listener,
+            android.os.Looper.getMainLooper());
             Log.d(TAG, "TripTrackerPlugin getCurrentLocation requestCurrentLocation: waiting for GPS fix (timeout "
                     + (timeoutMs / 1000) + "s)");
         } catch (SecurityException e) {
@@ -1714,6 +1714,8 @@ public class LocationTrackingService extends Service implements
             return;
         }
         try {
+            long minTimeMs = isTracking ? GPS_ACTIVE_INTERVAL_MS : GPS_IDLE_INTERVAL_MS;
+            float minDistanceM = isTracking ? GPS_ACTIVE_MIN_DISTANCE_M : GPS_IDLE_MIN_DISTANCE_M;
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, minTimeMs, minDistanceM, oneShot);
             Log.d(TAG, "📡 GPS HIGH-ACCURACY started (" + minTimeMs + "ms / " + minDistanceM + "m) — GPS icon visible");
         } catch (SecurityException e) {
