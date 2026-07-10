@@ -1017,7 +1017,7 @@ public class LocationTrackingService extends Service implements
                 autoStopHandler.postDelayed(() -> {
                     if (!isTracking) {
                         stopGpsUpdates();
-                        Log.d(TAG, "🔋 GPS stopped — device parked, location icon hidden");
+                        Log.d(TAG, "🔋 startSensorTracking GPS stopped — device parked, location icon hidden");
                     }
                 }, 15_000L);
             }
@@ -1083,7 +1083,7 @@ public class LocationTrackingService extends Service implements
             // 30_000L, // 30 seconds interval
             // 80f, // 100 meters displacement
             // this);
-            Log.d(TAG, "🔋 GPS LOW-POWER — 30s/100m (Activity Recognition + sensor still active)");
+            Log.d(TAG, "🔋 startSensorTracking GPS LOW-POWER — STOP");
         } catch (SecurityException e) {
             Log.e(TAG, "stopGpsUpdates: no permission — " + e.getMessage());
         }
@@ -1806,7 +1806,7 @@ public class LocationTrackingService extends Service implements
             long minTimeMs = isTracking ? GPS_ACTIVE_INTERVAL_MS : GPS_IDLE_INTERVAL_MS;
             float minDistanceM = isTracking ? GPS_ACTIVE_MIN_DISTANCE_M : GPS_IDLE_MIN_DISTANCE_M;
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, minTimeMs, minDistanceM, this);
-            Log.d(TAG, "GPS updates started (" + (minTimeMs / 1000) + "s / " + minDistanceM + "m)");
+            Log.d(TAG, "startSensorTracking GPS updates started (" + (minTimeMs / 1000) + "s / " + minDistanceM + "m)");
         } catch (SecurityException e) {
             Log.e(TAG, "Permission error starting GPS", e);
         }
