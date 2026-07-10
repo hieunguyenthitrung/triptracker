@@ -235,6 +235,40 @@ public class LocationDatabase extends SQLiteOpenHelper {
     }
     
     /**
+     * Get the most recent GPS-sourced location saved for a trip (null if none).
+     * Used to detect a trip whose GPS fixes have gone stale (e.g. sustained
+     * GPS/network outage) so it can be auto-ended.
+     */
+    public Location getLastGpsLocationForTrip(long tripId) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.query(TABLE_LOCATIONS, null,
+                LOC_TRIP_ID + "=? AND " + LOC_SOURCE + "=?",
+                new String[]{String.valueOf(tripId), "GPS"},
+                null, null, LOC_ID + " DESC", "1");
+
+        Location location = null;
+        if (cursor.moveToFirst()) {
+            int providerIdx = cursor.getColumnIndexOrThrow(LOC_PROVIDER);
+            String provider = cursor.isNull(providerIdx) ? "gps" : cursor.getString(providerIdx);
+            location = new Location(provider);
+            location.setLatitude(cursor.getDouble(cursor.getColumnIndexOrThrow(LOC_LATITUDE)));
+            location.setLongitude(cursor.getDouble(cursor.getColumnIndexOrThrow(LOC_LONGITUDE)));
+
+            int altIdx = cursor.getColumnIndexOrThrow(LOC_ALTITUDE);
+            if (!cursor.isNull(altIdx)) location.setAltitude(cursor.getDouble(altIdx));
+            int accIdx = cursor.getColumnIndexOrThrow(LOC_ACCURACY);
+            if (!cursor.isNull(accIdx)) location.setAccuracy(cursor.getFloat(accIdx));
+            int spdIdx = cursor.getColumnIndexOrThrow(LOC_SPEED);
+            if (!cursor.isNull(spdIdx)) location.setSpeed(cursor.getFloat(spdIdx));
+            int brgIdx = cursor.getColumnIndexOrThrow(LOC_BEARING);
+            if (!cursor.isNull(brgIdx)) location.setBearing(cursor.getFloat(brgIdx));
+            location.setTime(cursor.getLong(cursor.getColumnIndexOrThrow(LOC_TIMESTAMP)));
+        }
+        cursor.close();
+        return location;
+    }
+
+    /**
      * Get the most recently saved location for a trip (null if none saved yet).
      * Ordered by LOC_ID (autoincrement insert order), not timestamp, since the
      * device clock isn't guaranteed monotonic across GPS vs sensor sources.
