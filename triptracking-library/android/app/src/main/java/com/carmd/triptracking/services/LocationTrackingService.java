@@ -725,7 +725,7 @@ public class LocationTrackingService extends Service implements
                 }
             }else{
                 Log.d(TAG, "startSensorTracking CANNOT ENDTRIP GPS fix in trip — trip #" + currentTripId);
-            
+            }
             lastGpsLocationInTrip = loc;
         }
         TripTrackerAPIService api = TripTrackerAPIService.getInstance();
