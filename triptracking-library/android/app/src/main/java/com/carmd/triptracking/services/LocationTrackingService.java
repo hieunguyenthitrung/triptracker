@@ -1022,11 +1022,11 @@ public class LocationTrackingService extends Service implements
         try {
             locationManager.removeUpdates(this);
             // Immediately re-register at low rate — keeps GPS chip warm
-            locationManager.requestLocationUpdates(
-                    LocationManager.GPS_PROVIDER,
-                    30_000L, // 30 seconds interval
-                    80f, // 100 meters displacement
-                    this);
+            // locationManager.requestLocationUpdates(
+            //         LocationManager.GPS_PROVIDER,
+            //         30_000L, // 30 seconds interval
+            //         80f, // 100 meters displacement
+            //         this);
             Log.d(TAG, "🔋 GPS LOW-POWER — 30s/100m (Activity Recognition + sensor still active)");
         } catch (SecurityException e) {
             Log.e(TAG, "stopGpsUpdates: no permission — " + e.getMessage());
@@ -1615,7 +1615,7 @@ public class LocationTrackingService extends Service implements
                         String.format("%.6f, %.6f", seed.getLatitude(), seed.getLongitude()) + ")");
             } else {
                 Log.w(TAG, "No cached location — requesting live fix to seed sensors");
-                // requestSingleLocationFix();
+                requestSingleLocationFix();
             }
         } catch (Exception e) {
             Log.e(TAG, "Failed to start sensor tracking", e);
