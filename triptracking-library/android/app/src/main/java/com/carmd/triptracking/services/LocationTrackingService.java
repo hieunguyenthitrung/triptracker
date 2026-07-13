@@ -1841,14 +1841,14 @@ public class LocationTrackingService extends Service implements
     }
 
     // Idle/detection: battery-friendly poll while waiting to confirm a vehicle.
-    private static final long GPS_IDLE_INTERVAL_MS = 30_000L;
+    private static final long GPS_IDLE_INTERVAL_MS = 0_000L;
     private static final float GPS_IDLE_MIN_DISTANCE_M = 200f;
     // Active trip: fixes must arrive often enough that vehicleSaveDistance()
     // (default 30 m, configurable) can actually gate save spacing instead of
     // being blown through by minTime alone. At 40 m/s (144 km/h) 3s = 120m —
     // still fine-grained relative to a 80-100m save distance.
-    private static final long GPS_ACTIVE_INTERVAL_MS = 15_000L;
-    private static final float GPS_ACTIVE_MIN_DISTANCE_M = 40f;
+    private static final long GPS_ACTIVE_INTERVAL_MS = 0_000L;
+    private static final float GPS_ACTIVE_MIN_DISTANCE_M = 80f;
 
     private void startGPSTracking(String callFrom, boolean forceStartGPS) {
         if (!hasPermission(Manifest.permission.ACCESS_FINE_LOCATION))
