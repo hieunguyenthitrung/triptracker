@@ -751,6 +751,15 @@ public class LocationTrackingService extends Service implements
                                 + (sincePing / 1000) + "s since last ping)");
             }
         }
+
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            if (!isTracking) {
+                stopGpsUpdates();
+                Log.d(TAG, "🔋 startSensorTracking pingAndReturn stopped — still, location icon hidden");
+            } else {
+                Log.d(TAG, "🔋 startSensorTracking pingAndReturn DONT STOP GPS");
+            }
+        }, 30_000L);
         callback.onLocation(loc);
     }
 
@@ -1833,13 +1842,13 @@ public class LocationTrackingService extends Service implements
 
     // Idle/detection: battery-friendly poll while waiting to confirm a vehicle.
     private static final long GPS_IDLE_INTERVAL_MS = 30_000L;
-    private static final float GPS_IDLE_MIN_DISTANCE_M = 80f;
+    private static final float GPS_IDLE_MIN_DISTANCE_M = 200f;
     // Active trip: fixes must arrive often enough that vehicleSaveDistance()
     // (default 30 m, configurable) can actually gate save spacing instead of
     // being blown through by minTime alone. At 40 m/s (144 km/h) 3s = 120m —
     // still fine-grained relative to a 80-100m save distance.
-    private static final long GPS_ACTIVE_INTERVAL_MS = 5_000L;
-    private static final float GPS_ACTIVE_MIN_DISTANCE_M = 0f;
+    private static final long GPS_ACTIVE_INTERVAL_MS = 15_000L;
+    private static final float GPS_ACTIVE_MIN_DISTANCE_M = 80f;
 
     private void startGPSTracking(String callFrom, boolean forceStartGPS) {
         if (!hasPermission(Manifest.permission.ACCESS_FINE_LOCATION))
@@ -2396,6 +2405,14 @@ public class LocationTrackingService extends Service implements
                 // } else {
                 // // Not tracking + still → ensure GPS is off
                 // stopGpsUpdates();
+            }
+        }else if (activityType == DetectedActivity.STILL
+                && transitionType == ActivityTransition.ACTIVITY_TRANSITION_EXIT) {
+            // Device started moving again → cancel auto-end countdown
+            Log.i(TAG, "▶️ Activity Recognition: STILL exited — cancelling auto-end countdown");
+            if (!isTracking) {
+                Log.i(TAG, "🔋 IN_VEHICLE exited without trip — stopping GPS");
+                stopGpsUpdates();
             }
         }
         // ON_BICYCLE, WALKING, RUNNING: logged but don't trigger auto-start/stop
