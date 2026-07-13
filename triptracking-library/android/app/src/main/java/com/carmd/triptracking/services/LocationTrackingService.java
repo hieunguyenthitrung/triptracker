@@ -1848,7 +1848,7 @@ public class LocationTrackingService extends Service implements
     // being blown through by minTime alone. At 40 m/s (144 km/h) 3s = 120m —
     // still fine-grained relative to a 80-100m save distance.
     private static final long GPS_ACTIVE_INTERVAL_MS = 15_000L;
-    private static final float GPS_ACTIVE_MIN_DISTANCE_M = 80f;
+    private static final float GPS_ACTIVE_MIN_DISTANCE_M = 40f;
 
     private void startGPSTracking(String callFrom, boolean forceStartGPS) {
         if (!hasPermission(Manifest.permission.ACCESS_FINE_LOCATION))
